@@ -15,6 +15,8 @@ export interface PipelineContext {
   concurrency: number;
   /** Default urgency (0-1) at which a corroborated story stops the press. */
   urgencyThreshold: number;
+  /** Hard cap on total tokens for one edition; work is curtailed once it's hit. Undefined = no cap. */
+  tokenCap?: number;
   log: EditionLog;
   now: Date;
 }

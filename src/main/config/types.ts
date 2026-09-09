@@ -30,6 +30,8 @@ export interface PaperConfig {
     maxPageOne?: number;
     /** Default urgency (0-1) at which a corroborated story stops the press. */
     urgencyThreshold?: number;
+    /** Hard cap on total tokens for one edition; work is curtailed once it's hit. */
+    tokenCap?: number;
   };
   distribution?: DistributionConfig;
 }

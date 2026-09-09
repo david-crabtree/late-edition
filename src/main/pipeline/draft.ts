@@ -92,6 +92,11 @@ export function recordUsage(
   });
 }
 
+/** Total tokens (input + output) recorded so far this edition. */
+export function sumTokens(draft: EditionDraft): number {
+  return draft.tokenUsage.reduce((n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0), 0);
+}
+
 /** A URL/file-safe slug for a beat/story. */
 export function slugify(input: string): string {
   return (

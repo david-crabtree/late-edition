@@ -23,6 +23,7 @@ import {
   formatSignals,
   recordUsage,
   slugify,
+  sumTokens,
 } from './draft.js';
 import { loadPrompt, renderTemplate } from './prompts.js';
 
@@ -137,6 +138,21 @@ export async function stageReport(draft: EditionDraft, ctx: PipelineContext): Pr
             : `${story.reporterName} · desk ${index + 1}`;
       tasks.push({ story, resolved, label, index, total: pool.length });
     });
+  }
+
+  // Token cap: hold as many reporters as the remaining budget can't afford (a rough
+  // per-reporter estimate keeps it deterministic even though the desks run concurrently).
+  if (ctx.tokenCap) {
+    const perReporter = 2000;
+    const affordable = Math.max(0, Math.floor((ctx.tokenCap - sumTokens(draft)) / perReporter));
+    for (const held of tasks.splice(affordable)) {
+      draft.warnings.push(`Token cap (${ctx.tokenCap}) — held a reporter on "${held.story.slug}".`);
+      ctx.log.emit('reporter', 'capped', {
+        story: held.story.slug,
+        reporter: held.label,
+        cap: ctx.tokenCap,
+      });
+    }
   }
 
   const filed = await mapLimit(tasks, ctx.concurrency, async (t) => {

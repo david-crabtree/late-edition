@@ -2,13 +2,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import '../adapters/index.js'; // register built-in source adapters (side-effect import)
 import { loadNewsroom } from '../config/newsroom.js';
+import type { Newsroom } from '../config/types.js';
 import type { Edition } from '../core/edition.js';
+import { type Signal, makeSignalId, shortHash } from '../core/signal.js';
 import { renderHtml, renderMarkdown } from '../paper/render.js';
 import { nextEditionId, writeEdition } from '../store/edition-store.js';
 import { EditionLog } from '../store/log.js';
 import { paths } from '../store/paths.js';
 import type { PipelineContext } from './context.js';
-import { type EditionDraft, type Stage, nextStage } from './draft.js';
+import { type EditionDraft, type Stage, nextStage, slugify, sumTokens } from './draft.js';
 import {
   assembleEdition,
   stageAngles,
@@ -28,6 +30,10 @@ export interface RunOptions {
   forceProvider?: string;
   /** Resume an in-flight edition by id instead of starting a new one. */
   resumeId?: string;
+  /** A free-text topic to put on the front page — seeds one synthetic story and starts at ASSIGN (no WIRE). */
+  brief?: string;
+  /** Hard cap on total tokens for this edition (overrides config). */
+  tokenCap?: number;
   reporterTimeoutMs?: number;
   editorTimeoutMs?: number;
   writerTimeoutMs?: number;
@@ -64,7 +70,9 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
 
   const draft = opts.resumeId
     ? loadDraft(opts.root, opts.resumeId)
-    : newDraft(opts.root, newsroom.config.paper.name, newsroom.config.paper.tagline, now);
+    : opts.brief
+      ? briefDraft(opts.root, newsroom, opts.brief, now)
+      : newDraft(opts.root, newsroom.config.paper.name, newsroom.config.paper.tagline, now);
 
   const logFile = join(p.editionDir(draft.id), 'log.jsonl');
   const ctx: PipelineContext = {
@@ -76,9 +84,11 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     writerTimeoutMs: opts.writerTimeoutMs ?? 120_000,
     concurrency: opts.concurrency ?? 3,
     urgencyThreshold: newsroom.config.edition?.urgencyThreshold ?? 0.85,
+    tokenCap: opts.tokenCap ?? newsroom.config.edition?.tokenCap,
     log: new EditionLog(logFile),
     now,
   };
+  if (opts.brief) ctx.log.emit('ASSIGN', 'brief', { topic: opts.brief });
 
   const persist = () => saveDraft(opts.root, draft);
   persist();
@@ -94,6 +104,7 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
       draft.stage = 'DONE';
       persist();
       ctx.log.emit('PRESS', 'printed', { stories: edition.stories.length, dir: editionDir });
+      writeReel(opts.root, draft, edition, ctx.tokenCap);
       return { edition, editionDir, editionId: draft.id, warnings: draft.warnings };
     }
 
@@ -138,6 +149,84 @@ function newDraft(
     tokenUsage: [],
     warnings: [],
   };
+}
+
+/** Seed one synthetic story from a free-text brief and start at ASSIGN (skips WIRE). */
+function briefDraft(root: string, newsroom: Newsroom, topic: string, now: Date): EditionDraft {
+  const date = now.toISOString().slice(0, 10);
+  const { id, number } = nextEditionId(root, date);
+  const beat = newsroom.beats[0];
+  const beatId = beat?.id ?? 'brief';
+  const beatName = beat?.name ?? 'The Newsdesk';
+  const reporterName = beat?.reporter ?? 'The Newsdesk';
+  const hash = shortHash('brief', topic, date);
+  const signal: Signal = {
+    id: makeSignalId('brief', hash),
+    sourceId: 'brief',
+    sourceType: 'brief',
+    timestamp: now.toISOString(),
+    title: topic,
+    body: `Editor's brief — front-page it: "${topic}". Investigate, tie every claim to a source, and file what stands up.`,
+    hash,
+  };
+  return {
+    id,
+    number,
+    date,
+    paperName: newsroom.config.paper.name,
+    tagline: newsroom.config.paper.tagline,
+    stage: 'ASSIGN',
+    stories: [
+      {
+        slug: slugify(topic),
+        beatId,
+        beatName,
+        signals: [signal],
+        reporterName,
+        reporterProviderId: '',
+        reports: [],
+      },
+    ],
+    briefs: [],
+    editorsLog: [],
+    tokenUsage: [],
+    warnings: [],
+  };
+}
+
+/** Project the timed log + edition into a self-contained `reel.json` the animation can replay. */
+function writeReel(root: string, draft: EditionDraft, edition: Edition, cap?: number): void {
+  const dir = paths(root).editionDir(draft.id);
+  let events: unknown[] = [];
+  try {
+    events = readFileSync(join(dir, 'log.jsonl'), 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+  } catch {
+    /* no log to project */
+  }
+  const byRole: Record<string, number> = {};
+  for (const u of draft.tokenUsage) {
+    byRole[u.role] = (byRole[u.role] ?? 0) + (u.inputTokens ?? 0) + (u.outputTokens ?? 0);
+  }
+  const reel = {
+    edition: draft.id,
+    date: draft.date,
+    paper: draft.paperName,
+    topic: draft.stories[0]?.signals[0]?.title ?? edition.stories[0]?.headline ?? '',
+    stories: edition.stories.map((s) => ({
+      slug: s.slug,
+      headline: s.headline,
+      standfirst: s.standfirst,
+      byline: s.byline,
+      stopThePress: s.stopThePress ?? false,
+    })),
+    tokens: { total: sumTokens(draft), cap: cap ?? null, byRole },
+    warnings: draft.warnings,
+    events,
+  };
+  writeFileSync(join(dir, 'reel.json'), JSON.stringify(reel, null, 2), 'utf8');
 }
 
 function draftFile(root: string, id: string): string {

@@ -30,6 +30,9 @@ Options:
   --newsroom <dir>       Newsroom root (dir containing newsroom/). Default: current dir.
   --provider <id>        Force a provider for every role (e.g. fake).
   --resume <editionId>   Resume an in-flight edition from its last completed stage.
+  --brief "<topic>"      Brief the Chief: put this topic on the front page (seeds one
+                         story and runs ASSIGN → PRESS; no sources needed).
+  --cap <tokens>         Hard token budget for the edition; work is curtailed once hit.
   --distribute           After printing, send to configured channels (opt-in).
   --dry-run              With --distribute/distribute: preview sends without sending.
   --once                 With watch: poll a single time and exit.
@@ -106,16 +109,27 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
   const root = resolve(typeof flags.newsroom === 'string' ? flags.newsroom : '.');
   const forceProvider = typeof flags.provider === 'string' ? flags.provider : undefined;
   const resumeId = typeof flags.resume === 'string' ? flags.resume : undefined;
+  const brief = typeof flags.brief === 'string' ? flags.brief : undefined;
+  const tokenCap = typeof flags.cap === 'string' ? Number(flags.cap) : undefined;
 
   console.log(
-    `Running an edition from ${root}${forceProvider ? ` (provider: ${forceProvider})` : ''}…\n`,
+    `Running an edition from ${root}${forceProvider ? ` (provider: ${forceProvider})` : ''}${
+      brief ? `\n  Brief for the Chief: "${brief}"` : ''
+    }${tokenCap ? `\n  Token cap: ${tokenCap}` : ''}…\n`,
   );
-  const result = await runEdition({ root, forceProvider, resumeId });
+  const result = await runEdition({ root, forceProvider, resumeId, brief, tokenCap });
 
+  const spent = result.edition.tokenUsage.reduce(
+    (n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0),
+    0,
+  );
   console.log(`Edition ${result.editionId} printed → ${result.editionDir}`);
   console.log(
-    `  ${result.edition.stories.length} stories, ${result.edition.briefs.length} briefs.`,
+    `  ${result.edition.stories.length} stories, ${result.edition.briefs.length} briefs, ${spent} tokens${
+      tokenCap ? ` / ${tokenCap} cap` : ''
+    }.`,
   );
+  console.log(`  Reel for the animation → ${result.editionDir}/reel.json`);
   if (result.edition.weatherLine) console.log(`  Weather line: ${result.edition.weatherLine}`);
   if (result.warnings.length) {
     console.log(`\n  ${result.warnings.length} warning(s):`);
