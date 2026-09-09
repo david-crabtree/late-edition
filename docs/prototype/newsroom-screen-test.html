@@ -34,6 +34,24 @@
   .nameline input{ font-family:var(--type); font-size:1rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:4px; padding:8px 10px; min-width:170px; flex:1; } .nameline input:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
   .foot{ margin-top:20px; padding-top:14px; border-top:1px solid var(--line); color:var(--bone-dim); font-size:.8rem; } .foot b{ color:var(--bone); font-weight:400 } .foot .k{ color:var(--amber) }
   @media (prefers-reduced-motion: reduce){ .chip,.card{ transition:none } }
+  .brief{ display:flex; gap:8px; flex-wrap:wrap; }
+  .brief input{ flex:1; min-width:220px; font-family:var(--type); font-size:1rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:4px; padding:9px 11px; } .brief input:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
+  .chip.primary{ background:var(--amber); color:#231a08; border-color:var(--amber); font-weight:700; } .chip.primary:hover{ background:#f2c15c; }
+  .chip.ex{ font-size:.5rem; color:var(--bone-dim); } .chip.ex:hover{ color:var(--bone); }
+  .pipeline{ display:flex; align-items:center; gap:6px; margin-top:9px; flex-wrap:wrap; font-family:var(--pixel); font-size:.5rem; }
+  .pipeline .stg{ padding:5px 7px; border:1px solid #3a2e1b; border-radius:3px; color:var(--bone-dim); letter-spacing:.04em; text-transform:uppercase; }
+  .pipeline .stg.done{ color:var(--amber-dim); border-color:#4a3a1e; }
+  .pipeline .stg.on{ background:var(--amber); color:#231a08; border-color:var(--amber); }
+  .pipeline .pbudget{ margin-left:auto; display:flex; align-items:center; gap:6px; color:var(--bone-dim); }
+  .pipeline .pbar{ display:inline-block; width:72px; height:6px; background:#1b1610; border:1px solid #3a2e1b; border-radius:3px; overflow:hidden; }
+  .pipeline .pbar i{ display:block; height:100%; width:0; background:var(--amber); transition:width .3s; }
+  .pipeline .pbudget.max i{ background:var(--red); }
+  .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:5% 8%; gap:10px; z-index:5; line-height:1.35; overflow:auto; }
+  .frontpage .fp-mast{ font-family:var(--display); font-weight:700; text-transform:uppercase; letter-spacing:.08em; line-height:1.1; font-size:clamp(1.1rem,4vw,2rem); color:#20180c; border-bottom:3px double #20180c; padding-bottom:5px; width:100%; }
+  .frontpage .fp-kicker{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.14em; line-height:1.4; color:#7a2d1d; }
+  .frontpage .fp-head{ font-family:var(--display); font-weight:700; text-transform:uppercase; line-height:1.1; font-size:clamp(1.05rem,4.2vw,2.1rem); margin:0; text-wrap:balance; color:#161009; }
+  .frontpage .fp-stand{ font-family:var(--type); font-size:clamp(.78rem,2.4vw,1rem); line-height:1.4; color:#3a3227; margin:0; max-width:44ch; }
+  .frontpage .chip{ background:#20180c; color:var(--bone); border-color:#20180c; margin-top:2px; }
 </style>
 
 <div class="wrap">
@@ -42,10 +60,40 @@
     <p>A walkable, parallax newsroom — all pixels drawn in code. Walk, sit, roll a scene, or see the Chief.</p>
   </header>
   <div class="cabinet">
-    <div class="stage"><canvas id="screen" width="470" height="180" tabindex="0" aria-label="Walkable pixel-art newsroom"></canvas></div>
+    <div class="stage">
+      <canvas id="screen" width="470" height="180" tabindex="0" aria-label="Walkable pixel-art newsroom"></canvas>
+      <div class="frontpage" id="frontpage" hidden>
+        <div class="fp-mast">THE DAILY BIT</div>
+        <div class="fp-kicker">LATE EDITION · CITY DESK</div>
+        <h2 class="fp-head" id="fpHead"></h2>
+        <p class="fp-stand" id="fpStand"></p>
+        <button class="chip" id="fpClose">◂ Back to the floor</button>
+      </div>
+    </div>
     <div class="marquee"><span id="mScene">ROAMING · ← → TO WALK</span><span><span class="on">●</span> REC · PARALLAX · 12 FPS</span></div>
+    <div class="pipeline" id="pipeline" hidden>
+      <span class="stg" data-stg="ASSIGN">Assign</span><span class="stg" data-stg="WIRE">Wire</span><span class="stg" data-stg="REPORT">Report</span><span class="stg" data-stg="CHECK">Check</span><span class="stg" data-stg="WRITE">Write</span><span class="stg" data-stg="PRESS">Press</span>
+      <span class="pbudget"><span class="pbar"><i id="spendBar"></i></span><b id="spendEl">0</b>/<span id="budgetEl">60k</span> tok</span>
+    </div>
   </div>
   <div class="deck">
+    <div>
+      <p class="label">Brief the Chief</p>
+      <div class="brief">
+        <input id="briefInput" type="text" autocomplete="off" placeholder="What's the front page? e.g. rumours of a leaked GTA 6 build">
+        <button class="chip primary" id="briefBtn">Send to the Chief ▸</button>
+      </div>
+      <div class="row" id="examples" style="margin-top:8px">
+        <button class="chip ex">rumours of a leaked GTA 6 build</button>
+        <button class="chip ex">a rival studio's quiet layoffs</button>
+        <button class="chip ex">who's really funding the new console</button>
+      </div>
+      <div class="row" style="margin-top:10px; gap:10px; align-items:center">
+        <label class="hint" for="budgetRange">Token budget</label>
+        <input id="budgetRange" type="range" min="10000" max="200000" step="5000" value="60000" style="flex:1; max-width:220px">
+        <span class="hint" id="budgetLabel">60k</span>
+      </div>
+    </div>
     <div>
       <p class="label">Move &amp; perform</p>
       <div class="row" id="scenes" role="group" aria-label="Controls">
@@ -73,10 +121,11 @@
     </div>
   </div>
   <p class="foot">
-    This pass: the <span class="k">Chief's office moved well left of Gus</span>, sitting alone in its no-desk strip (door beside
-    window, back wall barely parallaxes so no desk covers it). <span class="k">THE DAILY BIT</span> masthead is big and centred
-    over the office, clear of everything. The cabinet, door and background typers are spread out — nothing bunched. Women keep a
-    full head of hair walking. Rough on purpose — a moving reference to art over.
+    New: <span class="k">Brief the Chief</span> — type a topic (or pick an example) and the newsroom plays it out end to end.
+    The Chief assigns it, the reporter digs, the copy desk flags thin recon and <b>sends it back to verify</b>, the rewrite desk
+    runs it, then <b>stop the press</b> and a finished <span class="k">front page</span> lands — headline built from your topic.
+    One clean pipeline strip shows the stage; the <span class="k">token budget</span> slider caps the spend and holds the story
+    for the next edition if it runs dry. A scripted stand-in for the real agent staff. Rough on purpose — a moving reference to art over.
   </p>
 </div>
 
@@ -109,6 +158,7 @@
 
   const state = { mode:'roam', scene:'roam', castIdx:0, banter:true, facing:1, goto:null, phase:'none', timer:0, goneTotal:24, meeting:false, camFrozen:false, camVal:0, panMode:false, panX:0 };
   const player = { x:300, vx:0 }; const input = { left:false, right:false };
+  const brief = { active:false, topic:'', steps:[], step:-1, t:0, stage:'', spend:0, budget:60000, spot:null, line:'', capped:false };
   const smoke=[], steam=[], rain=[], pages=[]; const tw={line:0}, amb={next:90}, runner={x:-40,active:false}; const courier={active:false,x:0,dir:1,target:0,exit:0,phase:'',t:0}; let tick=0, acc=0, last=performance.now(), bubbleTimer=0, bubbleText='', cam=0, ringT=0, officeBlipT=0, cigLit=0, matchT=0;
   const NPC={ pal:{skin:'#cdb08a',skinSh:'#a98a64',hair:'#2a2018',hat:'#3a3630',band:'#241f18',suit:'#4a4a52',suitDk:'#343440',shirt:'#d8d2c0',tie:'#6a5a3a'}, hat:'fedora', prop:'none' };
   const CHIEF={ pal:{skin:'#d8b48a',skinSh:'#b4906a',hair:'#2a2018',hat:'#241a14',band:'#3a2a1a',suit:'#2b2f36',suitDk:'#1c2026',shirt:'#e0dac8',tie:'#7a2d1d'}, hat:'fedora', prop:'none' };
@@ -390,7 +440,8 @@
 
   function render(){ const sky=g.createLinearGradient(0,0,0,VH); sky.addColorStop(0,'#101826'); sky.addColorStop(1,'#0a0d13'); g.fillStyle=sky; g.fillRect(0,0,VW,VH);
     layerFar(cam*0.25); layerBack(cam*BP); layerMain(cam); layerFore(cam*1.15);
-    if(state.mode==='desk'&&state.banter&&bubbleText) bubble(AC()-cam, FLOOR-56, bubbleText);
+    if(brief.active&&brief.line) bubble((brief.spot==='office'?WINDOW_XB-cam*BP:AC()-cam), FLOOR-56, brief.line);
+    else if(state.mode==='desk'&&state.banter&&bubbleText) bubble(AC()-cam, FLOOR-56, bubbleText);
     if(state.mode==='desk'&&state.scene==='stop') stopOverlay(); }
   function newBanter(){ const c=CAST[state.castIdx]; bubbleText = state.scene==='stop'?'STOP THE PRESS!':c.lines[(Math.random()*c.lines.length)|0]; }
 
@@ -404,7 +455,7 @@
         } else if(state.panMode){ if(input.left)state.panX-=12; if(input.right)state.panX+=12; state.panX=Math.max(0,Math.min(WORLD-VW,state.panX)); player.vx=0; }
         else { let vx=0; if(input.left)vx-=7; if(input.right)vx+=7; player.vx=vx; if(vx!==0){ state.facing=vx>0?1:-1; player.x=Math.max(30,Math.min(WORLD-30,player.x+vx)); } }
       } else player.vx=0;
-      cam = state.camFrozen ? state.camVal : (state.panMode ? Math.max(0,Math.min(WORLD-VW,state.panX)) : Math.max(0,Math.min(WORLD-VW,(state.mode==='desk'?AC():player.x)-VW/2)));
+      cam = state.camFrozen ? state.camVal : brief.active ? Math.max(0,Math.min(WORLD-VW,((brief.spot==='office'?WINDOW_XB:AC()))-VW/2)) : (state.panMode ? Math.max(0,Math.min(WORLD-VW,state.panX)) : Math.max(0,Math.min(WORLD-VW,(state.mode==='desk'?AC():player.x)-VW/2)));
       if(!reduce&&tick%2===0){ for(const wx of [40,700]) rain.push({win:wx,x:(Math.random()*60)|0,y:0,life:16}); }
       for(let i=rain.length-1;i>=0;i--){ rain[i].y+=3; if(rain[i].y>58) rain.splice(i,1); }
       bubbleTimer--; if(bubbleTimer<=0){ if(state.mode==='desk') newBanter(); bubbleTimer=44; }
@@ -418,6 +469,7 @@
       if(canSmoke){ if(matchT>0){ matchT--; if(matchT===0) cigLit=170; } else if(cigLit>0) cigLit--; else if(tick%18===0&&Math.random()<0.14) matchT=9; }
       else { matchT=0; cigLit=0; }
       if(ringT>0)ringT--; if(officeBlipT>0)officeBlipT--;
+      if(brief.active){ if(--brief.t<=0) advanceBrief(); }
       if(runner.active){ runner.x+=10; if(runner.x>WORLD+40) runner.active=false; }
       if(courier.active){
         if(courier.phase==='walk'){ if(Math.abs(courier.target-courier.x)>5) courier.x+=6*courier.dir; else { courier.phase='drop'; courier.t=26; } }
@@ -471,6 +523,52 @@
     if(a.bowtie){ rr(cx-3,y+17,3,2,p.tie); rr(cx,y+17,3,2,p.tie); } else rr(cx-1,y+17,2,4,p.tie);
     if(a.camera){ rr(cx-3,y+19,6,3,'#17191d'); rr(cx-1,y+20,3,1,'#6a86a0'); }
     pg.drawImage(t,0,0,22,22,0,0,42,42); }
+
+  // ---- Brief the Chief: a scripted newsroom roleplay driven by a topic ----
+  const briefInput=document.getElementById('briefInput'), spendBar=document.getElementById('spendBar'),
+        spendEl=document.getElementById('spendEl'), budgetEl=document.getElementById('budgetEl'),
+        budgetRange=document.getElementById('budgetRange'), budgetLabel=document.getElementById('budgetLabel'),
+        frontpage=document.getElementById('frontpage'), fpHead=document.getElementById('fpHead'), fpStand=document.getElementById('fpStand');
+  const STAGES=['ASSIGN','WIRE','REPORT','CHECK','WRITE','PRESS'], fmtK=n=>Math.round(n/1000)+'k';
+  const tidy=t=>t.replace(/^\s*(rumou?rs?\s+(of|about|on)\s+|the\s+|a\s+|an\s+)/i,'').replace(/\s+/g,' ').trim();
+  const shortT=t=>{ const s=tidy(t); return s.length>44? s.slice(0,42)+'…':s; };
+  function runBrief(topic){ const T=(topic||'').trim(); if(!T||brief.active) return; frontpage.hidden=true;
+    brief.topic=T; brief.budget=+budgetRange.value; brief.spend=0; brief.capped=false; brief.step=-1; const s=shortT(T);
+    brief.steps=[
+      {stage:'ASSIGN', spot:'office', line:`Front page tonight: ${s}. Two sources, or it doesn't run.`, dur:70, spend:1500},
+      {stage:'ASSIGN', spot:0, scene:'phone', line:`On it, Chief — I know who to call about ${s}.`, dur:54, spend:2500},
+      {stage:'WIRE',   spot:2, scene:'idle', courier:true, line:`Wire's lighting up on ${s}, boss.`, dur:52, spend:3000},
+      {stage:'REPORT', spot:0, scene:'type', line:`Working ${s}. Chasing the paper trail.`, dur:78, spend:15000},
+      {stage:'CHECK',  spot:3, scene:'idle', line:`This ${s} tip is thin — send it back, verify it.`, dur:58, spend:6000},
+      {stage:'REPORT', spot:0, scene:'type', line:`Second source on ${s}. Now it stands up.`, dur:58, spend:12000},
+      {stage:'WRITE',  spot:1, scene:'type', line:`Cut it to the bone. ${s} runs page one.`, dur:56, spend:7000},
+      {stage:'PRESS',  spot:1, scene:'stop', line:`STOP THE PRESS!`, dur:48, spend:1500},
+    ];
+    brief.active=true; document.getElementById('pipeline').hidden=false; mScene.textContent='ON ASSIGNMENT'; advanceBrief(); }
+  function advanceBrief(){ if(brief.spend>=brief.budget && brief.step>=1){ brief.capped=true; finishBrief(); return; }
+    brief.step++; if(brief.step>=brief.steps.length){ finishBrief(); return; }
+    const st=brief.steps[brief.step]; brief.stage=st.stage; brief.spot=st.spot; brief.line=st.line; brief.t=st.dur;
+    brief.spend=Math.min(brief.budget, brief.spend+(st.spend||0)); clearGoto(); state.panMode=false;
+    if(st.spot==='office'){ officeBlipT=st.dur+8; }
+    else { state.castIdx=st.spot; state.mode='desk'; state.scene=st.scene||'idle'; player.x=AC(); nameInput.value=CAST[st.spot].name;
+      document.querySelectorAll('#cast .card').forEach((c,idx)=>c.setAttribute('aria-pressed',String(idx===st.spot))); }
+    if(st.courier && !courier.active) startCourier(); updatePipeline(); }
+  function finishBrief(){ brief.active=false; brief.line=''; brief.stage='PRESS'; updatePipeline();
+    const T=brief.topic, U=tidy(T).toUpperCase();
+    if(brief.capped){ fpHead.textContent=`${U} — HELD FOR THE NEXT EDITION`; fpStand.textContent=`The desk hit its token budget before the story stood up. What we have on ${tidy(T)} is filed; the Chief wants another pass before it runs.`; }
+    else { const heads=[`${U} — SOURCES SPLIT AS CITY DESK CHASES IT`,`INSIDE ${U}: WHAT THEY DIDN'T WANT PRINTED`,`${U} BREAKS — THE DAILY BIT STANDS IT UP`,`THE TRUTH ABOUT ${U}, PAGE ONE`];
+      fpHead.textContent=heads[U.length%heads.length];
+      fpStand.textContent=`Two sources, one long night. The Daily Bit's account of ${tidy(T)} — chased, corrected on the copy desk, and put to bed.`; }
+    frontpage.hidden=false; mScene.textContent='EDITION FILED'; }
+  function updatePipeline(){ const cur=STAGES.indexOf(brief.stage);
+    document.querySelectorAll('#pipeline .stg').forEach(el=>{ const i=STAGES.indexOf(el.dataset.stg); el.classList.toggle('on', i===cur && brief.active); el.classList.toggle('done', i<cur || (!brief.active&&i<=cur)); });
+    const pct=Math.min(100, brief.spend/brief.budget*100); spendBar.style.width=pct+'%'; spendEl.textContent=fmtK(brief.spend); budgetEl.textContent=fmtK(brief.budget);
+    document.querySelector('.pbudget').classList.toggle('max', brief.spend>=brief.budget); }
+  budgetRange.addEventListener('input',()=>{ budgetLabel.textContent=fmtK(+budgetRange.value); if(!brief.active) budgetEl.textContent=fmtK(+budgetRange.value); });
+  document.getElementById('briefBtn').addEventListener('click',()=>runBrief(briefInput.value));
+  briefInput.addEventListener('keydown',e=>{ if(e.key==='Enter') runBrief(briefInput.value); });
+  document.getElementById('examples').addEventListener('click',e=>{ const b=e.target.closest('.ex'); if(!b) return; briefInput.value=b.textContent; runBrief(b.textContent); });
+  document.getElementById('fpClose').addEventListener('click',()=>{ frontpage.hidden=true; setScene('roam'); });
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);
 })();
