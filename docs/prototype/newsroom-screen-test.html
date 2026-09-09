@@ -34,9 +34,28 @@
   .nameline input{ font-family:var(--type); font-size:1rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:4px; padding:8px 10px; min-width:170px; flex:1; } .nameline input:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
   .foot{ margin-top:20px; padding-top:14px; border-top:1px solid var(--line); color:var(--bone-dim); font-size:.8rem; } .foot b{ color:var(--bone); font-weight:400 } .foot .k{ color:var(--amber) }
   @media (prefers-reduced-motion: reduce){ .chip,.card{ transition:none } }
-  .brief{ display:flex; gap:8px; flex-wrap:wrap; }
-  .brief input{ flex:1; min-width:220px; font-family:var(--type); font-size:1rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:4px; padding:9px 11px; } .brief input:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
+  .brief{ display:flex; gap:8px; flex-wrap:wrap; align-items:stretch; }
+  .brief input{ flex:1 1 100%; font-family:var(--type); font-size:1.1rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:5px; padding:13px 15px; } .brief input:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; } .brief input::placeholder{ color:#7a7259; }
+  .brief .chip.primary{ padding:11px 16px; }
   .chip.primary{ background:var(--amber); color:#231a08; border-color:var(--amber); font-weight:700; } .chip.primary:hover{ background:#f2c15c; }
+  .staff{ display:grid; grid-template-columns:repeat(auto-fill,minmax(228px,1fr)); gap:8px; }
+  .staff .sc{ display:flex; gap:9px; align-items:center; text-align:left; background:#14100b; border:1px solid #322715; border-radius:6px; padding:7px 9px; cursor:pointer; color:inherit; transition:border-color .12s, background .12s; }
+  .staff .sc:hover{ border-color:var(--amber-dim); background:#1a150d; }
+  .staff .sc[aria-pressed="true"]{ border-color:var(--amber); background:#1e1710; }
+  .staff .sc.blk{ border-color:var(--red); }
+  .staff .sc:focus-visible{ outline:2px solid var(--bone); outline-offset:2px; }
+  .staff .sc canvas{ width:40px; height:40px; flex:none; image-rendering:pixelated; border-radius:4px; background:#0a0d12; }
+  .staff .sc .mid{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .staff .sc .nm{ font-family:var(--display); font-weight:600; text-transform:uppercase; letter-spacing:.02em; font-size:.86rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .staff .sc .rl{ font-size:.68rem; color:var(--bone-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .staff .sc .st{ font-family:var(--pixel); font-size:.46rem; color:var(--amber); letter-spacing:.03em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .staff .sc.blk .st{ color:var(--red); }
+  .staff .sc .br{ width:100%; height:6px; background:#0c0f14; border:1px solid #2c2519; border-radius:3px; overflow:hidden; margin-top:1px; }
+  .staff .sc .br i{ display:block; height:100%; width:0; background:var(--amber); }
+  .staff .sc.blk .br i{ background:var(--red); }
+  .staff .sc .end{ flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+  .staff .sc .tk{ font-family:var(--pixel); font-size:.46rem; color:var(--bone-dim); }
+  .staff .sc .bst{ font-family:var(--pixel); font-size:.46rem; padding:4px 6px; }
   .chip.ex{ font-size:.5rem; color:var(--bone-dim); } .chip.ex:hover{ color:var(--bone); }
   .pipeline{ display:flex; align-items:center; gap:6px; margin-top:9px; flex-wrap:wrap; font-family:var(--pixel); font-size:.5rem; }
   .pipeline .stg{ padding:5px 7px; border:1px solid #3a2e1b; border-radius:3px; color:var(--bone-dim); letter-spacing:.04em; text-transform:uppercase; }
@@ -47,6 +66,7 @@
   .pipeline .pbar i{ display:block; height:100%; width:0; background:var(--amber); transition:width .3s; }
   .pipeline .pbudget.max i{ background:var(--red); }
   .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:5% 8%; gap:10px; z-index:5; line-height:1.35; overflow:auto; }
+  .frontpage[hidden]{ display:none; }
   .frontpage .fp-mast{ font-family:var(--display); font-weight:700; text-transform:uppercase; letter-spacing:.08em; line-height:1.1; font-size:clamp(1.1rem,4vw,2rem); color:#20180c; border-bottom:3px double #20180c; padding-bottom:5px; width:100%; }
   .frontpage .fp-kicker{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.14em; line-height:1.4; color:#7a2d1d; }
   .frontpage .fp-head{ font-family:var(--display); font-weight:700; text-transform:uppercase; line-height:1.1; font-size:clamp(1.05rem,4.2vw,2.1rem); margin:0; text-wrap:balance; color:#161009; }
@@ -86,13 +106,16 @@
     </div>
     <div class="marquee"><span id="mScene">ROAMING · ← → TO WALK</span><span><span class="on">●</span> REC · PARALLAX · 12 FPS</span></div>
     <div class="approvals" id="approvals" hidden><span class="ap-hd">The Chief needs a call from you</span><div id="apList"></div></div>
-    <div class="roster" id="roster"></div>
   </div>
   <div class="deck">
     <div>
-      <p class="label">Brief the Chief</p>
+      <p class="label">The staff — click a card to follow them · <span class="k">+100k</span> to boost a budget</p>
+      <div class="staff" id="staff"></div>
+    </div>
+    <div>
+      <p class="label">Brief the Chief — what's the front page?</p>
       <div class="brief">
-        <input id="briefInput" type="text" autocomplete="off" placeholder="What's the front page? e.g. rumours of a leaked GTA 6 build">
+        <input id="briefInput" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. rumours of a leaked GTA 6 build — then Send (or press Enter)">
         <button class="chip primary" id="briefBtn">Send to the Chief ▸</button>
       </div>
       <div class="row" id="examples" style="margin-top:8px">
@@ -100,15 +123,15 @@
         <button class="chip ex">a rival studio's quiet layoffs</button>
         <button class="chip ex">who's really funding the new console</button>
       </div>
-      <div class="row" style="margin-top:10px; gap:10px; align-items:center">
+      <div class="row" style="margin-top:10px; gap:10px 12px; align-items:center; flex-wrap:wrap">
         <label class="hint" for="budgetRange">Budget / staffer</label>
-        <input id="budgetRange" type="range" min="10000" max="200000" step="5000" value="60000" style="flex:1; max-width:220px">
+        <input id="budgetRange" type="range" min="10000" max="300000" step="5000" value="60000" style="flex:1; min-width:160px; max-width:240px">
         <span class="hint" id="budgetLabel">60k</span>
-        <label class="chip" style="cursor:pointer">Load real edition ▸<input type="file" accept=".json,application/json" id="reelInput" hidden></label>
+        <label class="chip" style="cursor:pointer">Load a real edition ▸<input type="file" accept=".json,application/json" id="reelInput" hidden></label>
       </div>
     </div>
     <div>
-      <p class="label">Move &amp; perform</p>
+      <p class="label">Watch the floor</p>
       <div class="row" id="scenes" role="group" aria-label="Controls">
         <button class="chip" id="walkL" aria-label="Walk left">◀ Walk</button>
         <button class="chip" id="walkR" aria-label="Walk right">Walk ▶</button>
@@ -117,28 +140,19 @@
         <button class="chip" data-scene="type">Typing</button>
         <button class="chip" data-scene="coffee">Coffee</button>
         <button class="chip" data-scene="phone">Phone</button>
-        <button class="chip danger" data-scene="stop">Stop the press</button>
-      </div>
-      <div class="row" style="margin-top:8px">
         <button class="chip" id="chiefBtn">See the Chief ▸</button>
-        <button class="chip" id="exitBtn">Step out ▸door</button>
+        <button class="chip" id="banterBtn" aria-pressed="true">Banter</button>
+        <button class="chip" id="panBtn" aria-pressed="false">Free pan</button>
       </div>
-      <p class="hint">Keys: <b>← →</b> / <b>A D</b> to walk · <b>Space</b> to sit. The camera follows whoever's cast; hit <b>Free pan</b> to deselect and look around the office.</p>
-    </div>
-    <div><p class="label">The staff — click to cast</p><div class="cast" id="cast"></div></div>
-    <div><p class="label">Name this reporter</p>
-      <div class="nameline"><label for="nameInput">Byline</label>
-        <input id="nameInput" type="text" maxlength="18" autocomplete="off" spellcheck="false">
-        <div class="row" style="gap:8px"><button class="chip" id="banterBtn" aria-pressed="true">Banter</button><button class="chip" id="panBtn" aria-pressed="false">Free pan</button></div>
-      </div>
+      <p class="hint">Click a staff card to follow them · <b>← →</b> / <b>A D</b> walk · <b>Space</b> sits. Typing in the brief box won't move anyone.</p>
     </div>
   </div>
   <p class="foot">
     Now the newsroom runs as a <span class="k">live sim</span> (à la Munder Difflin): brief the Chief and the staff work it
     <b>concurrently on their own token budgets</b> — the reporter digs, the copy boy runs pages desk-to-desk, the copy desk bounces
     thin recon back to verify, the editor writes; idle staff banter across the room. The Chief escalates only <span class="k">the
-    few calls that need you</span> — “bump a budget?”, “run page one?”. The <span class="k">staff roster</span> shows each person's
-    role, status and spend; boost any budget with +100k. And it's <b>wired to the real engine</b>: run
+    few calls that need you</span> — “bump a budget?”, “run page one?”. Each <span class="k">staff card</span> (top) shows the
+    person's role, live status and spend; click one to follow them, or hit +100k to boost their budget. And it's <b>wired to the real engine</b>: run
     <code>late-edition run --brief "…" --cap N</code> to produce a real edition + <code>reel.json</code>, then <b>Load real
     edition</b> to replay it here with the true headline and real per-role token spend. Rough on purpose.
   </p>
@@ -509,25 +523,21 @@
   function goToDoor(backX,label,meeting){ state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam')));
     state.camFrozen=true; state.camVal=cam; state.goto=(backX+9)+state.camVal*(1-BP); state.phase='walk'; state.meeting=meeting; state.goneTotal=meeting?70:24; mScene.textContent=label; }
   document.getElementById('chiefBtn').addEventListener('click',()=>goToDoor(OFFICE_XB,'OFF TO SEE THE CHIEF',true));
-  document.getElementById('exitBtn').addEventListener('click',()=>goToDoor(player.x>AC()?DOOR_RB:DOOR_LB,'STEPPING OUT',false));
   function hold(btn,key){ const on=e=>{e.preventDefault(); clearGoto(); if(state.mode!=='roam') setScene('roam'); input[key]=true;}; const off=()=>input[key]=false; btn.addEventListener('pointerdown',on); btn.addEventListener('pointerup',off); btn.addEventListener('pointerleave',off); btn.addEventListener('pointercancel',off); }
   hold(document.getElementById('walkL'),'left'); hold(document.getElementById('walkR'),'right');
-  addEventListener('keydown',e=>{ const k=e.key.toLowerCase();
+  const typingInField=e=>{ const t=e.target; return t && /^(input|textarea|select)$/i.test(t.tagName); };
+  addEventListener('keydown',e=>{ if(typingInField(e)) return; const k=e.key.toLowerCase();
     if(k==='arrowleft'||k==='a'){ clearGoto(); if(state.mode!=='roam')setScene('roam'); input.left=true; e.preventDefault(); }
     if(k==='arrowright'||k==='d'){ clearGoto(); if(state.mode!=='roam')setScene('roam'); input.right=true; e.preventDefault(); }
     if(k===' '){ if(state.mode==='roam'&&Math.abs(player.x-AC())<44) setScene('idle'); else if(state.mode==='desk') setScene('roam'); e.preventDefault(); } });
-  addEventListener('keyup',e=>{ const k=e.key.toLowerCase(); if(k==='arrowleft'||k==='a')input.left=false; if(k==='arrowright'||k==='d')input.right=false; });
+  addEventListener('keyup',e=>{ if(typingInField(e)) return; const k=e.key.toLowerCase(); if(k==='arrowleft'||k==='a')input.left=false; if(k==='arrowright'||k==='d')input.right=false; });
   cv.addEventListener('pointerdown',()=>cv.focus());
 
-  const nameInput=document.getElementById('nameInput');
-  function selectCast(i){ state.castIdx=i; player.x=deskX(i); state.facing=1; state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } document.querySelectorAll('#cast .card').forEach((c,idx)=>c.setAttribute('aria-pressed',String(idx===i))); nameInput.value=CAST[i].name; }
-  nameInput.addEventListener('input',()=>{ CAST[state.castIdx].name=nameInput.value; });
+  function selectCast(i){ state.castIdx=i; player.x=deskX(i); state.facing=1; state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } renderRoster(); }
   const banterBtn=document.getElementById('banterBtn'); banterBtn.addEventListener('click',()=>{ state.banter=!state.banter; banterBtn.setAttribute('aria-pressed',String(state.banter)); });
   const panBtn=document.getElementById('panBtn');
   function setPan(on){ state.panMode=on; panBtn.setAttribute('aria-pressed',String(on)); if(on){ clearGoto(); state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam'))); state.panX=cam; mScene.textContent='FREE PAN · ← → TO LOOK'; } else mScene.textContent='ROAMING · ← → TO WALK'; }
   panBtn.addEventListener('click',()=>setPan(!state.panMode));
-  const castEl=document.getElementById('cast');
-  CAST.forEach((c,i)=>{ const card=document.createElement('button'); card.className='card'; card.type='button'; card.setAttribute('aria-pressed',String(i===0)); const pc=document.createElement('canvas'); pc.width=42; pc.height=42; const who=document.createElement('div'); who.className='who'; who.innerHTML='<b>'+c.name+'</b><span>'+c.role+'</span>'; card.append(pc,who); castEl.append(card); card.addEventListener('click',()=>selectCast(i)); portrait(pc,c); });
   function portrait(canvas,c){ const pg=canvas.getContext('2d'); pg.imageSmoothingEnabled=false; const t=document.createElement('canvas'); t.width=22;t.height=22; const o=t.getContext('2d'); const p=c.pal,cx=11,y=3,rr=(x,yy,w,h,col)=>{o.fillStyle=col;o.fillRect(x,yy,w,h);};
     rr(0,0,22,22,'#0a0d12'); rr(cx-6,y,12,11,p.hair); rr(cx-5,y+2,10,9,p.skin); rr(cx-5,y+2,10,2,'#eec79a'); rr(cx-3,y+9,6,1,p.skinSh); o.fillStyle='#111'; o.fillRect(cx-3,y+5,1,1); o.fillRect(cx+2,y+5,1,1); rr(cx-2,y+8,4,1,'#7a4a34');
     if(c.hat==='fedora'){ rr(cx-8,y+1,17,2,p.hat); rr(cx-5,y-4,11,6,p.hat); rr(cx-5,y,11,2,p.band); }
@@ -552,7 +562,7 @@
   const briefInput=document.getElementById('briefInput'), budgetRange=document.getElementById('budgetRange'),
         budgetLabel=document.getElementById('budgetLabel'), frontpage=document.getElementById('frontpage'),
         fpHead=document.getElementById('fpHead'), fpStand=document.getElementById('fpStand'),
-        rosterEl=document.getElementById('roster'), approvalsEl=document.getElementById('approvals'), apListEl=document.getElementById('apList');
+        staffEl=document.getElementById('staff'), approvalsEl=document.getElementById('approvals'), apListEl=document.getElementById('apList');
   const fmtK=n=>Math.round(n/1000)+'k';
   const tidy=t=>t.replace(/^\s*(rumou?rs?\s+(of|about|on)\s+|the\s+|a\s+|an\s+)/i,'').replace(/\s+/g,' ').trim();
   const shortT=t=>{ const s=tidy(t); return s.length>26? s.slice(0,24)+'…':s; };
@@ -630,10 +640,34 @@
   function statusText(s){ if(s.status==='blocked') return 'OUT OF BUDGET'; const st=stories.find(x=>x.owner===s.ci && !['done','held'].includes(x.stage));
     if(st) return (s.role==='copydesk'?'CHECKING ':s.role==='editor'?'WRITING ':'ON ')+st.short.toUpperCase();
     if(s.status==='briefing') return 'BRIEFING'; return 'IDLE'; }
-  function renderRoster(){ rosterEl.innerHTML = staff.map(s=>{ const pct=Math.min(100,s.spent/s.budget*100);
-    return `<div class="ag${s.status==='blocked'?' blk':''}"><b class="ag-name">${s.label}</b><span class="ag-role">${s.sub}</span>`+
-      `<span class="ag-stat">${statusText(s)}</span><span class="ag-bar"><i style="width:${pct}%"></i></span>`+
-      `<span class="ag-tok">${fmtK(s.spent)}/${fmtK(s.budget)}</span><button class="chip ag-boost" data-boost="${s.id}">+100k</button></div>`; }).join(''); }
+  function chiefPortrait(canvas){ const pg=canvas.getContext('2d'); pg.imageSmoothingEnabled=false; const t=document.createElement('canvas'); t.width=22;t.height=22; const o=t.getContext('2d'); const rr=(x,y,w,h,c)=>{o.fillStyle=c;o.fillRect(x,y,w,h);};
+    rr(0,0,22,22,'#0a0d12'); const cx=11,y=5;
+    rr(cx-4,y+2,8,7,'#160f09'); rr(cx-2,y+9,4,8,'#160f09');                                  // head + torso silhouette
+    rr(cx-6,y+1,13,2,'#2a1f12'); rr(cx-4,y-3,9,4,'#160f09'); rr(cx-4,y-1,9,2,'#3a2a1a');      // fedora + band
+    rr(cx-5,y-2,11,1,'#160f09'); pg.drawImage(t,0,0,22,22,0,0,40,40); }
+  function buildStaffCards(){ staffEl.innerHTML=''; for(const s of staff){
+    const card=document.createElement('div'); card.className='sc'; card.tabIndex=0; card.setAttribute('role','button'); card.dataset.ci=String(s.ci);
+    const pc=document.createElement('canvas'); pc.width=40; pc.height=40;
+    const mid=document.createElement('div'); mid.className='mid';
+    const nm=document.createElement('b'); nm.className='nm'; nm.textContent=s.label;
+    const rl=document.createElement('span'); rl.className='rl'; rl.textContent=s.sub;
+    const st=document.createElement('span'); st.className='st';
+    const br=document.createElement('span'); br.className='br'; const bi=document.createElement('i'); br.append(bi);
+    mid.append(nm,rl,st,br);
+    const end=document.createElement('div'); end.className='end';
+    const tk=document.createElement('span'); tk.className='tk';
+    const bst=document.createElement('button'); bst.className='chip bst'; bst.type='button'; bst.textContent='+100k'; bst.dataset.boost=s.id;
+    end.append(tk,bst);
+    card.append(pc,mid,end); staffEl.append(card);
+    if(s.ci>=0) portrait(pc,CAST[s.ci]); else chiefPortrait(pc);
+    s.el={ card, st, bi, tk };
+    card.addEventListener('click',e=>{ if(e.target.closest('[data-boost]')) return; if(s.ci>=0) selectCast(s.ci); else { clearGoto(); state.panMode=false; focusOn(chief); } });
+    card.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&!e.target.closest('[data-boost]')){ e.preventDefault(); if(s.ci>=0) selectCast(s.ci); else focusOn(chief); } });
+    bst.addEventListener('click',e=>{ e.stopPropagation(); boost(s.id,100000); });
+  } renderRoster(); }
+  function renderRoster(){ for(const s of staff){ if(!s.el) continue; const pct=Math.min(100,s.spent/s.budget*100);
+    s.el.st.textContent=statusText(s); s.el.bi.style.width=pct+'%'; s.el.tk.textContent=fmtK(s.spent)+'/'+fmtK(s.budget);
+    s.el.card.classList.toggle('blk', s.status==='blocked'); s.el.card.setAttribute('aria-pressed', String(s.ci===state.castIdx)); } }
   function renderApprovals(){ approvalsEl.hidden=!approvals.length; apListEl.innerHTML = !approvals.length?'':approvals.map(a=> a.kind==='budget'
     ? `<div class="ap"><span>${a.text}</span><button class="chip primary" data-ap="${a.id}" data-ok="1">Bump +100k</button><button class="chip" data-ap="${a.id}" data-ok="0">Hold</button></div>`
     : `<div class="ap"><span>${a.text}</span><button class="chip danger2" data-ap="${a.id}" data-ok="1">Run it ▸</button><button class="chip" data-ap="${a.id}" data-ok="0">Hold</button></div>`).join(''); }
@@ -644,9 +678,8 @@
   document.getElementById('examples').addEventListener('click',e=>{ const b=e.target.closest('.ex'); if(b){ briefInput.value=b.textContent; briefChief(b.textContent); } });
   document.getElementById('fpClose').addEventListener('click',()=>{ frontpage.hidden=true; });
   document.getElementById('reelInput').addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ loadReel(JSON.parse(String(fr.result))); }catch(_){ logEvent('could not read that reel.json'); } }; fr.readAsText(f); e.target.value=''; });
-  rosterEl.addEventListener('click',e=>{ const b=e.target.closest('[data-boost]'); if(b) boost(b.dataset.boost,100000); });
   approvalsEl.addEventListener('click',e=>{ const b=e.target.closest('[data-ap]'); if(b) resolveApproval(+b.dataset.ap, b.dataset.ok==='1'); });
-  budgetLabel.textContent=fmtK(+budgetRange.value); renderRoster();
+  budgetLabel.textContent=fmtK(+budgetRange.value); buildStaffCards();
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);
 })();
