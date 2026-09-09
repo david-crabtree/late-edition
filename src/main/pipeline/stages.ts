@@ -5,9 +5,11 @@ import { writeStoryFile } from '../store/edition-store.js';
 import { paths } from '../store/paths.js';
 import { appendToWire } from '../store/wire.js';
 import {
+  type ResolvedRole,
   resolveCopyDesk,
   resolveEditor,
   resolveReporter,
+  resolveReporterPool,
   resolveWriter,
   runJob,
 } from './agents.js';
@@ -96,58 +98,149 @@ export async function stageAssign(draft: EditionDraft, ctx: PipelineContext): Pr
   ctx.log.emit('ASSIGN', 'stage_done', { stories: draft.stories.length });
 }
 
-/** REPORT — each reporter investigates their story and files a report (JSON). */
+interface ReportTask {
+  story: StoryDraft;
+  resolved: ResolvedRole;
+  label: string;
+  index: number;
+  total: number;
+}
+
+/** REPORT — one or more reporters investigate each story and file independent reports. */
 export async function stageReport(draft: EditionDraft, ctx: PipelineContext): Promise<void> {
   ctx.log.emit('REPORT', 'stage_start');
   const template = await loadPrompt(ctx.root, 'reporter');
-  await mapLimit(draft.stories, ctx.concurrency, async (story) => {
-    ctx.log.emit('reporter', 'leave_desk', { story: story.slug, reporter: story.reporterName });
-    const resolved = resolveReporter(ctx.newsroom, story.beatId, ctx.forceProvider);
+
+  // Build every (story × reporter) job up front so concurrency is bounded globally.
+  const tasks: ReportTask[] = [];
+  for (const story of draft.stories) {
+    const beat = ctx.newsroom.beats.find((b) => b.id === story.beatId);
+    const pool = resolveReporterPool(ctx.newsroom, story.beatId, {
+      count: beat?.angles ?? 1,
+      mixProviders: beat?.mixProviders ?? false,
+      force: ctx.forceProvider,
+    });
+    const providersDistinct = new Set(pool.map((r) => r.providerId)).size === pool.length;
+    if (pool.length > 1 && beat?.mixProviders && !providersDistinct) {
+      draft.warnings.push(
+        `Beat "${story.beatId}" asked to mix providers but only "${pool[0]?.providerId}" is available; angles will vary by directive only.`,
+      );
+    }
+    pool.forEach((resolved, index) => {
+      // Distinct providers label by provider; same-provider desks label by desk number.
+      const label =
+        pool.length <= 1
+          ? story.reporterName
+          : providersDistinct
+            ? `${story.reporterName} · ${resolved.providerId}`
+            : `${story.reporterName} · desk ${index + 1}`;
+      tasks.push({ story, resolved, label, index, total: pool.length });
+    });
+  }
+
+  const filed = await mapLimit(tasks, ctx.concurrency, async (t) => {
+    ctx.log.emit('reporter', 'leave_desk', { story: t.story.slug, reporter: t.label });
     const systemPrompt = renderTemplate(template, {
-      reporterName: story.reporterName,
+      reporterName: t.label,
       paperName: draft.paperName,
-      beatName: story.beatName,
+      beatName: t.story.beatName,
       style: ctx.newsroom.style,
-      persona: personaBlock(ctx, story.reporterName),
+      persona: personaBlock(ctx, t.story.reporterName),
+      angleDirective: angleDirective(t.index, t.total),
     });
     try {
       const outcome = await runJob<FiledReport>({
         role: 'reporter',
-        resolved,
+        resolved: t.resolved,
         systemPrompt,
-        userPrompt: formatSignals(story.signals),
-        signals: story.signals,
+        userPrompt: formatSignals(t.story.signals),
+        signals: t.story.signals,
         timeoutMs: ctx.reporterTimeoutMs,
         wantJson: true,
       });
       recordUsage(draft, outcome.providerId, 'reporter', outcome.usage);
-      const report = normalizeReport(outcome.data, story);
-      story.reports.push(report);
+      const report = normalizeReport(outcome.data, t.story);
+      report.reporter = t.label;
       writeStoryFile(
         ctx.root,
         draft.id,
-        story.slug,
-        `reports/${slugify(story.reporterName)}.md`,
+        t.story.slug,
+        `reports/${slugify(t.label)}.md`,
         reportToMarkdown(report),
       );
-      ctx.log.emit('reporter', 'filed', { story: story.slug, confidence: report.confidence });
+      ctx.log.emit('reporter', 'filed', {
+        story: t.story.slug,
+        reporter: t.label,
+        confidence: report.confidence,
+        angle: report.proposedAngle,
+      });
+      return { story: t.story, report };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      draft.warnings.push(`Reporter failed on "${story.slug}": ${msg}`);
-      ctx.log.emit('reporter', 'error', { story: story.slug, error: msg });
+      draft.warnings.push(
+        `Reporter (${t.resolved.providerId}) failed on "${t.story.slug}": ${msg}`,
+      );
+      ctx.log.emit('reporter', 'error', { story: t.story.slug, error: msg });
+      return null;
     }
   });
+
+  for (const f of filed) if (f) f.story.reports.push(f.report);
   // Drop stories that produced no report at all.
   draft.stories = draft.stories.filter((s) => s.reports.length > 0);
   ctx.log.emit('REPORT', 'stage_done', { stories: draft.stories.length });
 }
 
-/** ANGLES — M1 runs a single angle per story, so this stage just records that. */
+function angleDirective(index: number, total: number): string {
+  if (total <= 1) return 'Report it straight, in your own voice.';
+  if (index === 0) {
+    return 'You are the first desk on this story. Give your best straight read of what happened.';
+  }
+  return (
+    'You are an independent second desk. You have NOT seen the other desk’s report. ' +
+    'Look hard for the angle an obvious read would miss — a skeptical, contrarian, or ' +
+    'overlooked take. Do not converge on the safe story; if you think it is being over-read, say so.'
+  );
+}
+
+/** ANGLES — collect the independent angle memos and note where reporters disagree. */
 export async function stageAngles(draft: EditionDraft, ctx: PipelineContext): Promise<void> {
-  ctx.log.emit('ANGLES', 'stage_done', {
-    note: 'single-angle mode (M1)',
-    stories: draft.stories.length,
-  });
+  ctx.log.emit('ANGLES', 'stage_start');
+  for (const story of draft.stories) {
+    const angles = story.reports.map((r) => ({
+      reporter: r.reporter,
+      angle: r.proposedAngle,
+      confidence: r.confidence,
+      urgency: r.urgency,
+    }));
+    const disagreement = story.reports.length > 1 && detectDisagreement(story.reports);
+    writeStoryFile(
+      ctx.root,
+      draft.id,
+      story.slug,
+      'angles.json',
+      JSON.stringify({ angles, disagreement }, null, 2),
+    );
+    ctx.log.emit('ANGLES', 'angles', {
+      story: story.slug,
+      count: angles.length,
+      disagreement,
+    });
+  }
+  ctx.log.emit('ANGLES', 'stage_done', { stories: draft.stories.length });
+}
+
+/** Do the reporters propose materially different angles? */
+function detectDisagreement(reports: FiledReport[]): boolean {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, '')
+      .trim();
+  const angles = new Set(reports.map((r) => norm(r.proposedAngle)));
+  if (angles.size >= 2) return true;
+  const confidences = reports.map((r) => r.confidence);
+  return Math.max(...confidences) - Math.min(...confidences) >= 0.25;
 }
 
 /** CALL — the managing editor sets headline, angle and placement, then the front page. */
@@ -174,13 +267,31 @@ export async function stageCall(draft: EditionDraft, ctx: PipelineContext): Prom
       });
       recordUsage(draft, outcome.providerId, 'editor', outcome.usage);
       story.call = normalizeCall(outcome.data, story);
-      writeStoryFile(ctx.root, draft.id, story.slug, 'call.md', callToMarkdown(story.call));
-      ctx.log.emit('editor', 'call', { story: story.slug, placement: story.call.placement });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       draft.warnings.push(`Editor failed on "${story.slug}": ${msg}`);
       story.call = fallbackCall(story);
     }
+    // Never silently merge a genuine disagreement: if the desks split, run both takes.
+    if (
+      story.call &&
+      !story.call.competingTakes &&
+      story.reports.length > 1 &&
+      detectDisagreement(story.reports)
+    ) {
+      story.call.competingTakes = true;
+      story.call.rationale =
+        `${story.call.rationale} The desks split on the angle, so this runs as Competing Takes.`.trim();
+      if (story.call.placement === 'brief' || story.call.placement === 'spike') {
+        story.call.placement = 'below_fold';
+      }
+    }
+    writeStoryFile(ctx.root, draft.id, story.slug, 'call.md', callToMarkdown(story.call));
+    ctx.log.emit('editor', 'call', {
+      story: story.slug,
+      placement: story.call.placement,
+      competingTakes: story.call.competingTakes,
+    });
   }
 
   // Spiked stories leave the run; brief-placement ones become briefs at PRESS.
@@ -264,6 +375,11 @@ export async function stageCheck(draft: EditionDraft, ctx: PipelineContext): Pro
   const resolved = resolveCopyDesk(ctx.newsroom, ctx.forceProvider);
   const toCheck = draft.stories.filter((s) => s.copy);
   await mapLimit(toCheck, ctx.concurrency, async (story) => {
+    // Deterministic verification always runs: every [signalId] cited in the copy must
+    // resolve to a real signal for this story. This holds even if the LLM copy desk is
+    // weak or unavailable, and it catches links/citations injected by source material.
+    const deterministic = verifyCopyCitations(story);
+    let check = deterministic;
     try {
       const outcome = await runJob<CopyCheck>({
         role: 'copydesk',
@@ -275,21 +391,69 @@ export async function stageCheck(draft: EditionDraft, ctx: PipelineContext): Pro
         wantJson: true,
       });
       recordUsage(draft, outcome.providerId, 'copydesk', outcome.usage);
-      story.check = normalizeCheck(outcome.data);
-      writeStoryFile(
-        ctx.root,
-        draft.id,
-        story.slug,
-        'check.json',
-        JSON.stringify(story.check, null, 2),
-      );
-      ctx.log.emit('copydesk', 'checked', { story: story.slug, pass: story.check.pass });
+      check = mergeChecks(normalizeCheck(outcome.data), deterministic);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      draft.warnings.push(`Copy desk failed on "${story.slug}": ${msg}`);
+      draft.warnings.push(
+        `Copy desk (LLM) failed on "${story.slug}"; kept deterministic check: ${msg}`,
+      );
     }
+    story.check = check;
+    writeStoryFile(ctx.root, draft.id, story.slug, 'check.json', JSON.stringify(check, null, 2));
+    ctx.log.emit('copydesk', 'checked', {
+      story: story.slug,
+      pass: check.pass,
+      corrections: check.corrections.length,
+    });
   });
   ctx.log.emit('CHECK', 'stage_done', { checked: toCheck.length });
+}
+
+/** Verify every `[signalId]` cited in the copy resolves to a real signal for this story. */
+export function verifyCopyCitations(story: StoryDraft): CopyCheck {
+  const validIds = new Set(story.signals.map((s) => s.id));
+  const copy = story.copy ?? '';
+  const cited = new Set<string>();
+  for (const m of copy.matchAll(/\[([^\]\s]+:[0-9a-f]{6,})\]/g)) {
+    if (m[1]) cited.add(m[1]);
+  }
+  const corrections: CopyCheck['corrections'] = [];
+  const injectionFlags: string[] = [];
+  for (const id of cited) {
+    if (!validIds.has(id)) {
+      corrections.push({
+        claim: `Citation [${id}]`,
+        reason: 'cited source is not in this story’s materials',
+      });
+      injectionFlags.push(`Unknown citation [${id}] — possible fabricated or injected source.`);
+    }
+  }
+  // A story that makes claims but cites nothing verifiable is itself worth flagging.
+  if (cited.size === 0 && copy.trim().length > 0 && story.signals.length > 0) {
+    injectionFlags.push('Copy cited no verifiable signal ids.');
+  }
+  return {
+    pass: corrections.length === 0,
+    verifiedClaims: [...cited].map((id) => ({
+      claim: `cited [${id}]`,
+      signalId: id,
+      supported: validIds.has(id),
+    })),
+    corrections,
+    injectionFlags,
+  };
+}
+
+/** Combine the LLM copy check with the deterministic one; the deterministic one wins on `pass`. */
+function mergeChecks(llm: CopyCheck, det: CopyCheck): CopyCheck {
+  const seen = new Set(det.corrections.map((c) => c.claim));
+  const corrections = [...det.corrections, ...llm.corrections.filter((c) => !seen.has(c.claim))];
+  return {
+    pass: det.pass && llm.pass,
+    verifiedClaims: [...det.verifiedClaims, ...llm.verifiedClaims],
+    corrections,
+    injectionFlags: [...new Set([...det.injectionFlags, ...llm.injectionFlags])],
+  };
 }
 
 /** PROOF — headless auto-approval (the app's Editor's Office replaces this later). */
@@ -376,12 +540,16 @@ function reportsForEditor(story: StoryDraft): string {
 }
 
 function writerMaterials(story: StoryDraft): string {
+  const competing = story.call?.competingTakes;
   return [
     `Chosen angle: ${story.call?.chosenAngle ?? ''}`,
     `Headline: ${story.call?.headline ?? ''}`,
+    competing
+      ? 'NOTE: the desks disagreed. Write the body straight down the middle and let both\nreads stand — do not pick a winner; the paper runs the takes side by side.'
+      : '',
     '',
-    'Filed report:',
-    JSON.stringify(story.reports[0] ?? {}, null, 2),
+    `Filed report(s) (${story.reports.length}):`,
+    story.reports.map((r) => JSON.stringify(r, null, 2)).join('\n\n'),
     '',
     'Signals (cite these ids):',
     formatSignals(story.signals),
@@ -393,8 +561,8 @@ function checkMaterials(story: StoryDraft): string {
     'COPY:',
     story.copy ?? '',
     '',
-    'REPORT (with cited signal ids):',
-    JSON.stringify(story.reports[0] ?? {}, null, 2),
+    'REPORT(S) (with cited signal ids):',
+    story.reports.map((r) => JSON.stringify(r, null, 2)).join('\n\n'),
     '',
     'SIGNALS available:',
     formatSignals(story.signals),

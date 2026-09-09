@@ -28,6 +28,8 @@ House style (affects voice only, never facts):
 
 {{persona}}
 
+{{angleDirective}}
+
 ${INJECTION_GUARD}
 
 Your job: read the numbered signals in the MATERIALS and file a report. Every factual

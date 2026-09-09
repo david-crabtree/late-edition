@@ -61,6 +61,29 @@ describe('runEdition (fake provider, offline)', () => {
     expect(pipeline.stage).toBe('DONE');
   });
 
+  it('runs a story as Competing Takes when two desks disagree', async () => {
+    // Commission two angles on the beat; the fake provider makes the second desk contrarian.
+    writeFileSync(
+      join(paths(root).beatsDir, 'desk.yaml'),
+      `id: customer_desk\nname: "Customer Desk"\nreporter: "Sam Vance"\nangles: 2\nsources:\n  - id: inbox\n    type: folder\n    path: ${JSON.stringify(inbox)}\n    ext: ".txt"\n`,
+    );
+    const result = await runEdition({
+      root,
+      forceProvider: 'fake',
+      now: new Date('2026-09-09T12:00:00Z'),
+    });
+    const competing = result.edition.stories.filter(
+      (s) => s.competingTakes && s.competingTakes.length > 1,
+    );
+    expect(competing.length).toBeGreaterThan(0);
+    const takes = competing[0]?.competingTakes ?? [];
+    const angles = new Set(takes.map((t) => t.angle));
+    expect(angles.size).toBeGreaterThan(1); // the two takes genuinely differ
+
+    const md = readFileSync(join(result.editionDir, 'edition.md'), 'utf8');
+    expect(md).toContain('Competing Takes');
+  });
+
   it('is idempotent on a second run: no new signals, no stories', async () => {
     await runEdition({ root, forceProvider: 'fake', now: new Date('2026-09-09T12:00:00Z') });
     // Second run: the folder adapter has already seen both tickets.

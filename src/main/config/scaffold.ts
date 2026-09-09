@@ -1,6 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { defaultPrompts } from '../pipeline/prompts.js';
 import { paths } from '../store/paths.js';
 
 /**
@@ -22,11 +21,28 @@ export function scaffoldNewsroom(root: string): void {
   writeFileSync(join(p.beatsDir, 'the-codebase.yaml'), BEAT_CODEBASE);
   writeFileSync(join(p.personasDir, 'sam-vance.md'), PERSONA_SAM);
 
-  const prompts = defaultPrompts();
-  for (const [name, body] of Object.entries(prompts)) {
-    writeFileSync(join(p.newsroom, 'prompts', `${name}.md`), body);
-  }
+  // We deliberately do NOT pre-copy the prompt templates: a newsroom tracks the
+  // latest built-in prompts automatically. Drop a <name>.md here only to override one.
+  writeFileSync(join(p.newsroom, 'prompts', 'README.md'), PROMPTS_README);
 }
+
+const PROMPTS_README = `# Prompt overrides
+
+Late Edition ships built-in prompt templates for each role (reporter, editor, writer,
+copydesk, frontpage). This newsroom uses them automatically — you don't need copies here.
+
+To customise one, create a file named after the role and it will override the built-in:
+
+    newsroom/prompts/reporter.md
+    newsroom/prompts/editor.md
+    newsroom/prompts/writer.md
+    newsroom/prompts/copydesk.md
+    newsroom/prompts/frontpage.md
+
+Templates use \`{{placeholders}}\` such as {{style}}, {{persona}}, {{beatName}} and
+{{angleDirective}}. See the built-in defaults in the source
+(src/main/pipeline/prompts.ts) for the full list and shape.
+`;
 
 const CONFIG_YAML = `paper:
   name: "The Daily Bit"
@@ -79,7 +95,11 @@ sources:
 const BEAT_CODEBASE = `id: the_codebase
 name: "The Codebase"
 reporter: "Sam Vance"
-angles: 1
+# Commission two independent angles on each story. When they disagree, the paper runs
+# a "Competing Takes" box instead of quietly picking one. Set mix_providers: true (and
+# configure two real providers in staff.yaml) to have different models file the angles.
+angles: 2
+mix_providers: false
 sources:
   # Point this at any local git repo. Defaults to the current directory.
   - id: this_repo

@@ -102,3 +102,36 @@ copy-desk work.
 `renderMarkdown` / `renderHtml` are pure functions over an `Edition`. The HTML is a
 self-contained newspaper page with an inlined noir palette and system serif — no external
 fonts or assets — so it works offline and as a future static export.
+
+## Milestone 2 — Angles and the call
+
+### D2.1 — Reporter pool: N angles, optional provider mixing
+`resolveReporterPool` returns one reporter per commissioned angle (`beat.angles`, 1-3).
+With `mix_providers: true` and more than one provider configured in staff.yaml, the angles
+come from **different** providers (distinct ids across all desk assignments, base first);
+otherwise the same desk is repeated. A forced provider (`--provider`) can't be mixed. Each
+desk gets a distinct **angle directive** (first desk = straight read; later desks = "you
+are an independent second desk, find the overlooked/contrarian take"), which makes real
+models diverge and lets the offline fake provider produce a deterministic disagreement for
+tests. When mixing is asked for but only one provider is available, we warn and fall back to
+directive-only variation rather than failing.
+
+### D2.2 — Disagreement is surfaced, never silently merged
+After the editor's call, `detectDisagreement` (distinct normalized angles, or a confidence
+spread ≥ 0.25 across reports) forces `competingTakes` on even if the editor didn't set it,
+and lifts the story off "brief"/"spike". The renderer then runs a **Competing Takes** box
+showing each desk's take side by side. This is the trust feature from the plan (§4.4/§12).
+
+### D2.3 — Copy desk = deterministic check ∪ LLM check
+Every `[signalId]` cited in the final copy must resolve to a real signal for that story.
+`verifyCopyCitations` enforces this deterministically (regex over the copy, set-membership
+against the story's signals) — it runs even when the LLM copy desk is weak or unavailable,
+and it catches citations/links injected by source material. The LLM `CopyCheck` is merged
+in; the deterministic result wins on `pass`. Unsupported citations become **Corrections**
+with the reporter's name.
+
+### D2.4 — Prompt overrides are opt-in, not pre-copied
+Reversed part of D1.7: `init` no longer copies the prompt templates into each newsroom
+(they went stale when the built-in defaults improved). Instead it writes a
+`newsroom/prompts/README.md` explaining that a `<role>.md` dropped there overrides the
+built-in. Newsrooms now track the latest prompts automatically and stay customisable.
