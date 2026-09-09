@@ -188,79 +188,115 @@ so the artist has a living reference for timing, layout, and the specific action
 - **[`docs/prototype/newsroom-screen-test.html`](docs/prototype/newsroom-screen-test.html)** —
   a single self-contained HTML file. **Every pixel is drawn procedurally in `<canvas>` — no
   image assets.** Open it in a browser. It's a *representation of the actions*, deliberately
-  rough, to nail relationships and timing — not final art. Also published as a private Claude
-  Artifact (David has the link).
+  rough, to nail relationships and timing — not final art. Iterated as a live private Claude
+  Artifact that David plays with; **republish to the same URL each pass** so his link stays
+  valid: <https://claude.ai/code/artifact/3f3bab13-c6f1-49b8-b4c9-7da3d4d1f415> (owned by
+  demo@lodid.co.uk; an earlier one lives on David's own login).
 
 ### 6.2 What the prototype currently shows
-- A **walkable, 4-layer parallax** newsroom (320×180 logical, integer-scaled, `image-rendering:
-  pixelated`): far city+moon (0.25) → back wall w/ windows, clock, sign, doors, office window,
-  a colleague typing (0.55) → floor + hero desk + player (1.0) → foreground bulbs + ticker
-  (1.15).
-- **Controls:** ← →/A-D walk; **Space** to sit at the desk; on-screen scene buttons (Idle·smoke,
-  Typing, Coffee, Phone, Stop the press) seat & perform; **See the Chief** / **Step out** walk
-  the character through a **back-wall door** (camera freezes so they line up, then they fade
-  through).
-- **Cast:** 3 palette-swapped characters (Sam/Dot/Gus), **click to cast**, **rename the byline**
-  (updates the desk nameplate live). Front-view idle/seated, **side-profile walk**.
-- **Ambient life:** the colleague typing, rain on the blinds, wire ticker, swaying bulbs,
-  ceiling fan, wall clock, a cat that flicks its tail.
-- **The Chief's office:** an interior **window in the back wall** where the Chief sits behind his
-  desk (upper body only — a sill hides the rest), **dim while he's alone; the light snaps on and
-  a visitor silhouette appears, arms waving, when a reporter walks through his door**.
+It has grown from a single-desk bust into a **whole newsroom floor**:
+- A **zoomed-out, walkable, 4-layer parallax** newsroom (**470×180** logical, integer-scaled,
+  `image-rendering: pixelated`): far city+moon (0.25) → back wall — windows, clock, big masthead,
+  doors, the office window, background typers (**`BP` = 0.85, near-flat on purpose**) → desks +
+  characters (1.0) → foreground bulbs + ticker (1.15).
+- **A desk per staffer, personalised for the job:** Sam (reporter — typewriter + rotary phone),
+  Dot (editor — paper spike + pencil cup), Gus (copy boy — big central paper stack + call bell),
+  Mac (copy desk — galleys + loupe + glue pot), Iris (photo desk — plate camera + a hanging
+  photo-line + a red safelight). Plus a few anonymous **background typers** for depth.
+- **Camera follows whoever's cast** — click a staff card and it glides to their desk; **Free pan**
+  deselects to look around. ← →/A-D walk the active character; **Space** to sit; scene buttons
+  (Sit·smoke, Typing, Coffee, Phone, Stop the press) drive the active character; **See the Chief**
+  / **Step out** walk them through a door.
+- **Cast of 5**, palette-swapped **plus per-character accessories for personality**: Sam
+  stubble + loose tie, Dot pencil-behind-the-ear, Gus bow tie + freckles, Mac green eyeshade +
+  specs, Iris beret + long hair. Front idle/seated **and** a side-profile walk whose head carries
+  the right hat + accessories (women keep a full head of hair; the mouth sits on the face front).
+- **The Chief's office:** a **window in the back wall in its own no-desk strip** (door beside the
+  window) so a foreground desk can never slide over it; a big centred **"THE DAILY BIT"** masthead
+  above it. Chief silhouette (fedora) is dim until a reporter enters (See the Chief) or an ambient
+  blip fires — then the **light snaps on and a visitor silhouette appears**, arms waving.
+- **Ambient life fires on a timer:** the rotary phone rings (spinning dial, red light, buzz
+  lines), a finished page **ejects from the active typewriter** and flutters off, **staff
+  couriers — usually the Chief out of his own door — carry work between desks and drop it**, a
+  copy-boy runner sprints the back row, the office light blips, and **smoking is an occasional
+  idle beat** (strike a match → a slow lazy curl → done). Plus rain on the blinds, wire ticker,
+  swaying bulbs, ceiling fans, wall clock, a cat on the filing cabinet.
+- **Props:** rotary phone, a **solid animated typewriter** (platen, ribbon spools, striking
+  typebars, paper feed + eject); **background typers are hands-free** (the machine animates).
 - **Stop the press:** red overlay + banner + vignette.
 
 ### 6.3 Art-direction notes locked so far (from David)
 - **Chunky/iconic proportions**, not lanky — big head, wide torso, stubby limbs, low pixel
   density. Locked into the art brief.
-- **Zoomed out** for a sense of space; **fuller** rooms.
-- **Side-profile walk** (not the front sprite sliding); walk speed felt good after tuning.
-- **Seated arms are short stubs**, not long shoulder→hand limbs; desk props are **centred** in
-  front of the sitter so hands land on them.
-- **Smoke** must be a slow lazy curl, not a fast exhaust.
-- **Doors on the back wall** (flush, not floating); water cooler kept off the doors.
-- **Chief's office = a window** with **silhouettes** (not full-colour close-up characters), Chief
-  seated behind a desk, upper-body only, light turns on with a visitor when a reporter enters.
-- **Flat 2D desk** (no drawers/faux-depth).
-- **Female characters must not read as bearded** — the jaw-shadow band was removed; hatless
-  characters get longer side hair.
+- **Comfortable zoom** (470 logical wide — see ~2 desks at once) and **snappy walking**; the room
+  is fuller and spread out (nothing bunched around a door).
+- **Camera follows the selected character; free-pan when none is selected.**
+- **Every character gets a distinct desk kit + accessories** — it's a noir newsroom, they must
+  read as individuals, not palette clones.
+- **The Chief's office lives in the back wall in its own strip**, with the door beside the window
+  and a big centred masthead; the back wall barely parallaxes so no desk covers the window.
+- **Smoke** is an occasional idle beat (light up, slow curl), **never constant**.
+- **Background typers have no visible hands** — the typewriter does the work.
+- **Side-profile heads carry the character's hat + accessories**; women keep a full head of hair
+  (down the back **and** framing the side — no mohawk/mullet), and the **mouth is on the front of
+  the face**, not the centre of the head.
+- **Coffee** is a cup held for a few sips — **no steam**.
+- **Chief's office = a window** with **silhouettes** (not full-colour close-ups), Chief seated
+  behind a desk, upper-body only, light-on-with-visitor.
+- **Flat 2D desk**; **female characters must not read as bearded** (jaw-shadow band removed).
 - Production characters are **autonomous** (event-log driven); the prototype's manual controls
   stand in for that.
 
-### 6.4 Still open / next tweaks on the prototype (David's running list)
-These are the items last raised — verify against the live prototype and keep iterating:
-1. **Typing hands vs. typewriter** — this has been the stubbornest note. Latest fix (v7) moves
-   the typewriter **body up/back** and makes the **keyboard a separate front slab**, with the
-   fingertips a couple of px **below** the body so they can't overlap it. If it *still* reads as
-   "hands through the typewriter," the reliable fallback is to **hide the hands entirely behind
-   the machine** and sell typing via the machine (key pop + carriage nudge + paper wiggle) plus a
-   body bob — do that rather than nudging pixels again.
-2. **Chief's office** — was too cramped; door & window now spaced and the window enlarged with
-   the Chief seated + light-on-on-entry. Confirm it reads and isn't behind the hero desk.
-3. Possible polish David floated: angrier office silhouettes (slam/thrown paper/third figure); a
-   "pose inspector" mode to step frame-by-frame through a single animation.
+### 6.4 Still open / next tweaks
+- **Scene buttons are generic.** Firing "Typing" on the photo desk (Iris, no typewriter) looks
+  odd — in the real build each character's actions should come from their **role/event-log**, not
+  a shared button bar. Could gate the buttons per desk in the prototype too if David wants.
+- **"Pose inspector"** mode (step frame-by-frame through a single animation) — floated, not built.
+- Keep sanity-checking the **side-profile heads** and the **office framing** on David's screen;
+  the preview pane in Claude Code often collapses, so verify at full size (a JS-drawn magnifier
+  overlay is a handy trick for inspecting a tiny walking sprite).
 
 ### 6.5 How to continue the prototype (mechanics)
-- It's plain HTML+canvas, no build step — open the file, edit the `<script>`, reload.
+- Plain HTML+canvas, **no build step** — open the file, edit the `<script>`, reload. Then
+  **republish to the same Artifact URL** (see §6.1) so David's link updates.
 - Helpers: `R(x,y,w,h,color)` fills a rect; `P(x,y,color)` a pixel; `limb(x0,y0,x1,y1,w,color)` a
-  thick connected line (used for connected arms/legs). Everything draws on a 320×180 logical
-  canvas scaled up with smoothing off.
-- Layers are drawn in `layerFar/layerBack/layerMain/layerFore`, each `g.translate(-cam*factor)`.
-  **Anything drawn inside a layer is in world space** — the speech bubble bug was from drawing
-  it inside a translated layer, so screen-space UI (bubbles) is drawn in `render()` after the
-  layers using `DC - cam`.
-- Character rig: `headFront` / `headSide`, `drawStand` / `drawWalk` (profile), `drawSeated` +
-  `drawSeatedHands`. Palette swap is per-character `pal` objects; `hatOn` handles fedora/cap/none.
-- **When David delivers real Aseprite sheets**, the plan is to switch the app's renderer (M3,
-  PixiJS) to consume `sheets/*.png` + `*.json` atlases per the art brief's pipeline section; the
-  prototype's procedural drawing is throwaway reference, not shipping code.
+  thick connected line. Everything draws on a **470×180** logical canvas scaled up, smoothing off.
+- **Layout constants:** `DESKX` (one desk-x per cast member, indices match `CAST`), `deskX(i)`,
+  `AC()` (active character's desk centre), `BP` (back-wall parallax, 0.85), `OFFICE_XB`/
+  `WINDOW_XB` (the office in its no-desk strip). Two desks sit left of the office, three to the
+  right — that split + near-flat `BP` is *why* no desk slides over the window; keep it if you move
+  things.
+- Layers: `layerFar(0.25)/layerBack(BP)/layerMain(1)/layerFore(1.15)`, each
+  `g.translate(-cam*factor)`. **Anything drawn inside a layer is world-space**; screen-space UI
+  (speech bubbles) is drawn in `render()` after the layers using `AC()-cam`.
+- **`drawNewsroom()`** loops every desk: draws the light pool, the occupant (active char =
+  `drawSeated`/`drawRoamer` per `state.scene`; the rest = `drawIdleSitter`), then
+  **`drawDeskProps(c,x,scene)`** which dresses the desk by `c.desk` (`reporter`/`editor`/
+  `copyboy`/`copydesk`/`photo`), the desk front, and the nameplate.
+- Character rig: `headFront`/`headSide` (+ `drawAcc` for accessories), `drawStand`/`drawWalk`,
+  `drawSeated`/`drawSeatedHands`; `hatOn` handles fedora/cap/**beret**/none. Camera follows `AC()`
+  when seated / `player.x` when roaming; `state.panMode` is free-pan.
+- **When David delivers real Aseprite sheets**, M3 (PixiJS) consumes `sheets/*.png` + `*.json`
+  atlases per the art brief's pipeline; the prototype's procedural drawing is throwaway reference.
 
-### 6.6 Iteration history (so a fresh session has the arc)
-The prototype went through several passes, each addressing David's notes: (1) single-desk bust
-demo → (2) walkable parallax room → (3) chunky/zoomed-out proportions + side-walk → (4) stub
-arms + doors + first office cutaway → (5) slow smoke + wall-mounted doors + de-bearded women →
-(6) flat desk + office **window** with silhouettes → (7, current) keyboard-slab typewriter +
-**Chief-seated-in-office, light-on-with-visitor**. Git log messages ("docs: prototype pass — …")
-capture each.
+### 6.6 Progress log (newest first)
+Each line is one "docs: prototype pass — …" commit; see `git log` for the exact SHAs.
+- **Full newsroom + fixes** (`c13f840`, this session's big rework): per-character desks, camera
+  follows the cast selection + Free-pan, Mac & Iris added with accessories; Chief's office moved
+  into its own back-wall strip (near-flat parallax so no desk covers it), door beside window, big
+  centred masthead; rotary phone, animated typewriter, staff couriers, smoking-as-idle-beat,
+  hands-free background typers; side-profile heads fixed (full hair + mouth on the face), coffee
+  steam removed, props spread out, comfortable zoom, snappier walking.
+  *(This landed as one commit but was many play-test rounds with David: solid typewriter →
+  rotary phone/couriers/light-up smoke → camera-follow + 5 desks → zoom + big work-objects →
+  cards/spacing/no-bg-hands → office-in-back-wall-strip + hair → profile heads.)*
+- **Keyboard-slab typewriter + Chief-in-office** (`283e319`)
+- **Flat desk + office window silhouettes** (`9d4ae23`)
+- **Slow smoke, wall-mounted doors, de-bearded women** (`4e9a25c`)
+- **Stub arms, doors, first office cutaway** (`b7434b3`)
+- **Chunky/zoomed-out proportions + side-walk** (`681a453`)
+- **Art brief + walkable parallax newsroom** (`4e8cba9`)
+- *(Earliest: single-desk bust demo.)*
 
 ---
 
