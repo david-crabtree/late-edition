@@ -288,7 +288,8 @@ Each prop is its own sheet. "frames" lists animation states.
 | `prop_ticker` | 64 × 8 tile | 1 tileable | wire ticker strip; text scrolls via bitmap font |
 | `prop_nameplate` | 64 × 10 | 1 | engraved plate; byline text via bitmap font |
 | `prop_door_plain` | 22 × 42 | closed 1 (+2 open opt) | actors walk through to leave/return (fade at the threshold) |
-| `prop_door_office` | 32 × 50 | frame 1 + **silhouette loop** | the Chief's door: frosted amber pane with **two silhouettes** behind it, one gesturing (~4-frame loop) — a "meeting in progress" told entirely in silhouette |
+| `prop_door_office` | 32 × 50 | frame 1 + pane glow | the Chief's door: frosted pane, dim normally, **glows amber while a meeting is on**. The meeting itself plays as a close-up cutaway (below), not tiny door silhouettes |
+| `cutaway_office` | ~170 × 92 inset | talk loop | **illuminated close-up** shown when a reporter goes through the Chief's door: framed office interior with two **upper-body busts at near-normal scale** (the Chief + the reporter) talking — alternating mouth flaps, an occasional hand gesture/nod. Fades in/out. This is the payoff, not the door pane |
 | `prop_cabinet` | 40 × 56 | closed 1 + open 2 | filing cabinet (Morgue); drawer sliding out |
 | `prop_coatrack` | 20 × 60 | 1 | flavour |
 | `prop_tube_capsule` | 8 × 12 | 2 | pneumatic-tube capsule zip (flavour) |
