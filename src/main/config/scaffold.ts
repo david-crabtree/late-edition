@@ -100,6 +100,13 @@ const BEAT_WIRE = `id: the_wire
 name: "The Wire"
 reporter: "Sam Vance"
 angles: 1
+# Between editions, \`late-edition watch\` polls these sources and fires a one-story
+# "Late Extra" bulletin the moment a signal trips one of these tripwires.
+tripwires:
+  - match: "security"      # case-insensitive keyword; add \`regex: true\` for a pattern
+    label: "Security"
+  - match: "outage|breach|incident"
+    regex: true
 sources:
   - id: hn_frontpage
     type: rss

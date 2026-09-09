@@ -6,6 +6,7 @@ import type { DistributionConfig } from '../main/config/types.js';
 import { distributeEdition } from '../main/distribute/run.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { detectAll } from '../main/providers/registry.js';
+import { runWatchOnce } from '../main/watch/run.js';
 
 const VERSION = '0.0.1';
 
@@ -19,6 +20,7 @@ Commands:
   init <dir>             Scaffold a new newsroom folder with sample config.
   run                    Run one edition through the pipeline (WIRE → PRESS).
   distribute <editionId> Send an already-printed edition to configured channels.
+  watch                  Poll sources for tripwires; fire Late Extra bulletins.
   help                   Show this help.
   version                Print the version.
 
@@ -28,6 +30,8 @@ Options:
   --resume <editionId>   Resume an in-flight edition from its last completed stage.
   --distribute           After printing, send to configured channels (opt-in).
   --dry-run              With --distribute/distribute: preview sends without sending.
+  --once                 With watch: poll a single time and exit.
+  --interval <seconds>   With watch: poll every N seconds (default 300).
   -h, --help             Show help.
 
 Examples:
@@ -36,6 +40,7 @@ Examples:
   late-edition run --newsroom ./my-newsroom --provider fake
   late-edition run --newsroom ./my-newsroom --provider fake --distribute --dry-run
   late-edition distribute 2026-09-09-001 --newsroom ./my-newsroom
+  late-edition watch --once --newsroom ./my-newsroom --provider fake
 `;
 
 interface ParsedArgs {
@@ -165,6 +170,37 @@ async function distribute(
   console.log('');
 }
 
+async function cmdWatch(flags: Record<string, string | boolean>): Promise<number> {
+  const root = resolve(typeof flags.newsroom === 'string' ? flags.newsroom : '.');
+  const forceProvider = typeof flags.provider === 'string' ? flags.provider : undefined;
+  const once = flags.once === true;
+  const intervalSec =
+    typeof flags.interval === 'string' && Number(flags.interval) > 0 ? Number(flags.interval) : 300;
+
+  const poll = async () => {
+    const r = await runWatchOnce({ root, forceProvider });
+    if (r.extra) {
+      console.log(
+        `[${new Date().toLocaleTimeString()}] Late Extra ${r.extra.id} → ${r.extra.dir} ` +
+          `(${r.extra.stories} story/ies, ${r.hits} hit(s) of ${r.polled} polled).`,
+      );
+    } else {
+      console.log(`[${new Date().toLocaleTimeString()}] ${r.polled} polled, no tripwires hit.`);
+    }
+  };
+
+  await poll();
+  if (once) return 0;
+  console.log(`Watching every ${intervalSec}s. Ctrl+C to stop.`);
+  setInterval(() => {
+    poll().catch((err) =>
+      console.error(`watch error: ${err instanceof Error ? err.message : err}`),
+    );
+  }, intervalSec * 1000);
+  await new Promise<void>(() => {}); // run until interrupted
+  return 0;
+}
+
 async function main(): Promise<number> {
   const { command, positionals, flags } = parseArgs(process.argv.slice(2));
 
@@ -185,6 +221,8 @@ async function main(): Promise<number> {
       return cmdRun(flags);
     case 'distribute':
       return cmdDistribute(positionals, flags);
+    case 'watch':
+      return cmdWatch(flags);
     default:
       console.error(`Unknown command: ${command}\n`);
       console.log(HELP);

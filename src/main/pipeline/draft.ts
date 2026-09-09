@@ -35,6 +35,8 @@ export interface StoryDraft {
   call?: EditorCall;
   copy?: string;
   check?: CopyCheck;
+  /** Set at CHECK when an urgent, corroborated finding stops the press. */
+  stopThePress?: boolean;
 }
 
 /** The whole edition in flight. Persisted to `pipeline.json` after every stage. */
@@ -47,6 +49,8 @@ export interface EditionDraft {
   stage: Stage;
   stories: StoryDraft[];
   briefs: Brief[];
+  /** True for a tripwire-fired Late Extra bulletin. */
+  lateExtra?: boolean;
   weatherLine?: string;
   editorsLog: string[];
   tokenUsage: TokenUsage[];

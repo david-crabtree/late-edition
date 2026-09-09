@@ -28,6 +28,8 @@ export interface PaperConfig {
   edition?: {
     /** Max lead stories on page one. */
     maxPageOne?: number;
+    /** Default urgency (0-1) at which a corroborated story stops the press. */
+    urgencyThreshold?: number;
   };
   distribution?: DistributionConfig;
 }
@@ -64,7 +66,22 @@ export interface BeatConfig {
   angles?: number;
   /** Prefer different providers across angles for the same story. */
   mixProviders?: boolean;
+  /** Per-beat override of the stop-the-press urgency threshold (0-1). */
+  urgencyThreshold?: number;
+  /** Between-edition tripwires that fire a Late Extra when matched. */
+  tripwires?: TripwireConfig[];
   sources: SourceConfig[];
+}
+
+/** A between-edition tripwire: when a matching signal appears, dispatch a Late Extra. */
+export interface TripwireConfig {
+  /** Keyword (case-insensitive substring) or, with `regex: true`, a regular expression. */
+  match: string;
+  regex?: boolean;
+  /** Restrict matching to these source ids (default: all sources on the beat). */
+  sources?: string[];
+  /** Short label for the bulletin. */
+  label?: string;
 }
 
 /** A fully-loaded newsroom, resolved from disk. */

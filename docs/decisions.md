@@ -152,6 +152,30 @@ failure (never throws) so one bad webhook can't block the rest, and `--dry-run` 
 exactly what would be sent without sending. Email/SMTP and clipboard are deferred:
 SMTP needs the keychain for credentials, and clipboard is UI-adjacent.
 
+## Milestone 4 — Stop the press & Late Extras (headless slice)
+
+_The interactive interrupt card (run it / fold it / not news) and the press-room animation
+are UI, deferred with M3. The mechanics underneath are headless and shipped here._
+
+### D4.1 — Stop the press = urgency ≥ threshold AND corroborated → auto-promote
+At CHECK (after the copy desk has run), a story whose max reporter urgency clears the
+beat's threshold (`urgency_threshold`, per-beat or the `edition.urgencyThreshold` default of
+0.85) **and** is corroborated (copy desk `pass` and no injection flags) is promoted to page
+one with a "STOP THE PRESS" kicker, plus an Editor's Log note and a logged event. Headless
+has no interactive card, so it auto-promotes rather than pausing; the interactive
+run/fold/not-news choice is a UI feature. The fake provider rates genuinely alarming signals
+(security/incident/outage/…) as urgent so this is demonstrable and testable offline.
+
+### D4.2 — Late Extras: tripwires + a `watch` poll, with separate seen-state
+`beat.tripwires` (keyword or regex, optionally source-scoped) are checked by
+`late-edition watch` (`--once`, or looping every `--interval` seconds). A tripped signal
+fires a one-off **Late Extra** bulletin — a full edition marked `lateExtra` with a masthead
+banner — built by reusing the pipeline stages (ASSIGN→CHECK) on the matched signals only.
+Watchers keep their **own** adapter seen-state (`wire/.watch-state`) so a Late Extra never
+consumes a signal the daily edition would otherwise report. Distribution/scheduling of the
+loop as a real daemon (node-cron, tray) arrives with the app; the CLI loop is the headless
+stand-in.
+
 ### D2.4 — Prompt overrides are opt-in, not pre-copied
 Reversed part of D1.7: `init` no longer copies the prompt templates into each newsroom
 (they went stale when the built-in defaults improved). Instead it writes a

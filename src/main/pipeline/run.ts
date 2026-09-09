@@ -75,6 +75,7 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     editorTimeoutMs: opts.editorTimeoutMs ?? 120_000,
     writerTimeoutMs: opts.writerTimeoutMs ?? 120_000,
     concurrency: opts.concurrency ?? 3,
+    urgencyThreshold: newsroom.config.edition?.urgencyThreshold ?? 0.85,
     log: new EditionLog(logFile),
     now,
   };

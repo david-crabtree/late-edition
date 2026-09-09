@@ -23,6 +23,8 @@ export interface Story {
   rationale: string;
   /** Present when reporters disagreed and the story runs as Competing Takes. */
   competingTakes?: { reporter: string; angle: string }[];
+  /** A corroborated, urgent finding that stopped the press — runs page one with a kicker. */
+  stopThePress?: boolean;
   sources: SourceRef[];
   /** Every filed report, kept for transparency and the morgue. */
   reports: FiledReport[];
@@ -62,6 +64,8 @@ export interface Edition {
   tagline?: string;
   /** The editor's one-line read on the day's mood. */
   weatherLine?: string;
+  /** True for a between-editions bulletin fired by a tripwire, not the daily cycle. */
+  lateExtra?: boolean;
   stories: Story[];
   briefs: Brief[];
   /** The managing editor's notes on judgement calls. */

@@ -6,9 +6,11 @@ export function renderMarkdown(ed: Edition): string {
   const date = new Date(ed.date).toDateString();
 
   out.push(`# ${ed.paperName}`);
+  if (ed.lateExtra) out.push('### 🗞️ LATE EXTRA');
   if (ed.tagline) out.push(`*${ed.tagline}*`);
   out.push('');
-  out.push(`**No. ${ed.number}** · ${date}${ed.weatherLine ? ` · ${ed.weatherLine}` : ''}`);
+  const label = ed.lateExtra ? 'Extra' : `No. ${ed.number}`;
+  out.push(`**${label}** · ${date}${ed.weatherLine ? ` · ${ed.weatherLine}` : ''}`);
   out.push('');
   out.push('---');
 
@@ -60,7 +62,9 @@ export function renderMarkdown(ed: Edition): string {
 }
 
 function storyMarkdown(s: Story): string {
-  const lines = [`### ${s.headline}`];
+  const lines = s.stopThePress
+    ? ['**🛑 STOP THE PRESS**', '', `### ${s.headline}`]
+    : [`### ${s.headline}`];
   if (s.standfirst) lines.push(`*${s.standfirst}*`);
   lines.push(`\nBy ${s.byline}\n`);
   lines.push(s.body);
@@ -149,10 +153,11 @@ export function renderHtml(ed: Edition): string {
 </head>
 <body>
 <main class="paper">
-  <header class="masthead">
+  <header class="masthead${ed.lateExtra ? ' late-extra' : ''}">
+    ${ed.lateExtra ? '<p class="extra-banner">🗞️ Late Extra</p>' : ''}
     <h1>${esc(ed.paperName)}</h1>
     ${ed.tagline ? `<p class="tagline">${esc(ed.tagline)}</p>` : ''}
-    <p class="dateline">No. ${ed.number} · ${esc(date)}${ed.weatherLine ? ` · ${esc(ed.weatherLine)}` : ''}</p>
+    <p class="dateline">${ed.lateExtra ? 'Extra' : `No. ${ed.number}`} · ${esc(date)}${ed.weatherLine ? ` · ${esc(ed.weatherLine)}` : ''}</p>
   </header>
   ${sections.join('\n  ')}
   <footer class="colophon">${esc(tokenLine(ed))}</footer>
@@ -169,7 +174,9 @@ function storyHtml(s: Story): string {
         .join(', ')}</p>`
     : '';
   const note = s.rationale ? `<p class="editor-note">Editor's note: ${esc(s.rationale)}</p>` : '';
-  return `<article class="story">
+  const kicker = s.stopThePress ? '<p class="stop-kicker">🛑 Stop the Press</p>' : '';
+  return `<article class="story${s.stopThePress ? ' stop-the-press' : ''}">
+    ${kicker}
     <h3>${esc(s.headline)}</h3>
     ${s.standfirst ? `<p class="standfirst">${esc(s.standfirst)}</p>` : ''}
     <p class="byline">By ${esc(s.byline)}</p>
@@ -215,6 +222,9 @@ section > h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .18e
 .sources { font-size: .74rem; color: #574f3f; }
 .sources a { color: #7a2d1d; }
 .editor-note { font-size: .8rem; font-style: italic; border-left: 3px solid #7a2d1d; padding-left: .6rem; color: #40382a; }
+.stop-kicker { display: inline-block; background: #7a2d1d; color: #f4efe2; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; font-size: .7rem; padding: .2rem .5rem; margin: 0 0 .4rem; }
+.story.stop-the-press { border-left: 4px solid #7a2d1d; padding-left: .8rem; }
+.extra-banner { display: inline-block; background: #7a2d1d; color: #f4efe2; font-weight: 800; text-transform: uppercase; letter-spacing: .2em; font-size: .8rem; padding: .25rem .8rem; margin: 0 0 .5rem; }
 .competing li, .briefs li, .corrections li, .editors-log li { margin: .3rem 0; line-height: 1.4; }
 .colophon { border-top: 3px double #1a1712; margin-top: 2rem; padding-top: .8rem; font-size: .72rem; color: #6a6250; text-align: center; }
 a { color: #7a2d1d; }

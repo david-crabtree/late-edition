@@ -406,7 +406,41 @@ export async function stageCheck(draft: EditionDraft, ctx: PipelineContext): Pro
       corrections: check.corrections.length,
     });
   });
+
+  applyStopThePress(draft, ctx);
   ctx.log.emit('CHECK', 'stage_done', { checked: toCheck.length });
+}
+
+/**
+ * STOP THE PRESS (headless). A finding whose urgency clears the beat's threshold AND is
+ * corroborated by the copy desk (claims supported, nothing flagged as injected) is
+ * promoted to page one with a kicker, and the event is logged. The app's interactive
+ * interrupt card (run it / fold it / not news) replaces this auto-promotion later.
+ */
+function applyStopThePress(draft: EditionDraft, ctx: PipelineContext): void {
+  for (const story of draft.stories) {
+    const beat = ctx.newsroom.beats.find((b) => b.id === story.beatId);
+    const threshold = beat?.urgencyThreshold ?? ctx.urgencyThreshold;
+    const maxUrgency = story.reports.reduce((m, r) => Math.max(m, r.urgency), 0);
+    const corroborated =
+      story.check !== undefined &&
+      story.check.pass !== false &&
+      story.check.injectionFlags.length === 0;
+    if (maxUrgency >= threshold && corroborated && story.copy) {
+      story.stopThePress = true;
+      if (story.call) story.call.placement = 'page_one';
+      draft.editorsLog.push(
+        `STOP THE PRESS: "${story.call?.headline ?? story.beatName}" cleared urgency ${maxUrgency.toFixed(
+          2,
+        )} (≥ ${threshold}) and was corroborated — promoted to page one.`,
+      );
+      ctx.log.emit('CHECK', 'stop_the_press', {
+        story: story.slug,
+        urgency: maxUrgency,
+        threshold,
+      });
+    }
+  }
 }
 
 /** Verify every `[signalId]` cited in the copy resolves to a real signal for this story. */
@@ -499,6 +533,7 @@ export function assembleEdition(draft: EditionDraft): Edition {
       competingTakes: call?.competingTakes
         ? story.reports.map((r) => ({ reporter: r.reporter, angle: r.proposedAngle }))
         : undefined,
+      stopThePress: story.stopThePress,
       sources,
       reports: story.reports,
     });
@@ -514,6 +549,7 @@ export function assembleEdition(draft: EditionDraft): Edition {
     paperName: draft.paperName,
     tagline: draft.tagline,
     weatherLine: draft.weatherLine,
+    lateExtra: draft.lateExtra,
     stories,
     briefs,
     editorsLog: draft.editorsLog,

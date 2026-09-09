@@ -84,6 +84,23 @@ describe('runEdition (fake provider, offline)', () => {
     expect(md).toContain('Competing Takes');
   });
 
+  it('stops the press for an urgent, corroborated finding (promotes to page one)', async () => {
+    writeFileSync(
+      join(inbox, 'ticket-3.txt'),
+      'SECURITY INCIDENT: customer data exposed via the export endpoint.',
+    );
+    const result = await runEdition({
+      root,
+      forceProvider: 'fake',
+      now: new Date('2026-09-09T12:00:00Z'),
+    });
+    const stop = result.edition.stories.find((s) => s.stopThePress);
+    expect(stop).toBeDefined();
+    expect(stop?.placement).toBe('page_one');
+    const md = readFileSync(join(result.editionDir, 'edition.md'), 'utf8');
+    expect(md).toContain('STOP THE PRESS');
+  });
+
   it('is idempotent on a second run: no new signals, no stories', async () => {
     await runEdition({ root, forceProvider: 'fake', now: new Date('2026-09-09T12:00:00Z') });
     // Second run: the folder adapter has already seen both tickets.

@@ -13,6 +13,8 @@ export interface PipelineContext {
   writerTimeoutMs: number;
   /** Max agent jobs to run in parallel. */
   concurrency: number;
+  /** Default urgency (0-1) at which a corroborated story stops the press. */
+  urgencyThreshold: number;
   log: EditionLog;
   now: Date;
 }

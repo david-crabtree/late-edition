@@ -19,6 +19,21 @@ export function nextEditionId(root: string, date: string): { id: string; number:
   return { id, number };
 }
 
+/** Allocate the next Late Extra id (e.g. "2026-09-09-x001"), distinct from daily editions. */
+export function nextExtraId(root: string, date: string): { id: string; number: number } {
+  const p = paths(root);
+  let count = 0;
+  try {
+    count = readdirSync(p.editionsDir, { withFileTypes: true }).filter(
+      (e) => e.isDirectory() && e.name.includes('-x'),
+    ).length;
+  } catch {
+    // no extras yet
+  }
+  const number = count + 1;
+  return { id: `${date}-x${String(number).padStart(3, '0')}`, number };
+}
+
 /** Ensure a story's directory exists and return it. */
 export function ensureStoryDir(root: string, editionId: string, slug: string): string {
   const dir = paths(root).storyDir(editionId, slug);

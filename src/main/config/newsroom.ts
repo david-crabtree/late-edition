@@ -12,6 +12,7 @@ import type {
   PaperConfig,
   RoleAssignment,
   StaffConfig,
+  TripwireConfig,
 } from './types.js';
 
 /** Thrown when a newsroom on disk is missing or malformed, with a user-facing message. */
@@ -74,7 +75,10 @@ function normalizePaper(raw: unknown, file: string): PaperConfig {
     },
     schedule: schedule ? { dailyAt: str(schedule.daily_at ?? schedule.dailyAt) } : undefined,
     edition: edition
-      ? { maxPageOne: num(edition.max_page_one ?? edition.maxPageOne) ?? 3 }
+      ? {
+          maxPageOne: num(edition.max_page_one ?? edition.maxPageOne) ?? 3,
+          urgencyThreshold: num(edition.urgency_threshold ?? edition.urgencyThreshold),
+        }
       : { maxPageOne: 3 },
     distribution: normalizeDistribution(r.distribution, file),
   };
@@ -171,8 +175,26 @@ function normalizeBeat(raw: unknown, file: string, fallbackId: string): BeatConf
     reporter: str(r.reporter),
     angles: num(r.angles) ?? 1,
     mixProviders: Boolean(r.mix_providers ?? r.mixProviders ?? false),
+    urgencyThreshold: num(r.urgency_threshold ?? r.urgencyThreshold),
+    tripwires: normalizeTripwires(r.tripwires, file),
     sources,
   };
+}
+
+function normalizeTripwires(raw: unknown, file: string): TripwireConfig[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  return raw.map((t, i) => {
+    const tr = asRecord(t, file);
+    if (typeof tr.match !== 'string' || tr.match === '') {
+      throw new NewsroomConfigError(`tripwires[${i}] in ${file} needs a \`match\` string.`);
+    }
+    return {
+      match: tr.match,
+      regex: Boolean(tr.regex),
+      sources: Array.isArray(tr.sources) ? (tr.sources as string[]) : undefined,
+      label: str(tr.label),
+    };
+  });
 }
 
 async function loadPersonas(dir: string): Promise<Map<string, string>> {
