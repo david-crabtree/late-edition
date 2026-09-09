@@ -104,6 +104,7 @@
         <label class="hint" for="budgetRange">Budget / staffer</label>
         <input id="budgetRange" type="range" min="10000" max="200000" step="5000" value="60000" style="flex:1; max-width:220px">
         <span class="hint" id="budgetLabel">60k</span>
+        <label class="chip" style="cursor:pointer">Load real edition ▸<input type="file" accept=".json,application/json" id="reelInput" hidden></label>
       </div>
     </div>
     <div>
@@ -133,12 +134,13 @@
     </div>
   </div>
   <p class="foot">
-    New: the newsroom runs as a <span class="k">live sim</span> (à la Munder Difflin). Brief the Chief with a topic and the staff
-    work it <b>concurrently, each on their own token budget</b> — the reporter digs, the copy desk flags thin recon and bounces it
-    back to verify, the editor writes. It's event-driven, not a fixed script, so the floor stays alive with banter and passed work.
-    The Chief only escalates <span class="k">the few calls that need you</span> — “bump a reporter's budget?” or “run this on page
-    one?” — in the approvals bar. The <span class="k">staff roster</span> shows each person's role, status and spend; boost any
-    budget with +100k. A scripted stand-in for real agent staff — maps onto the engine's WIRE→PRESS pipeline. Rough on purpose.
+    Now the newsroom runs as a <span class="k">live sim</span> (à la Munder Difflin): brief the Chief and the staff work it
+    <b>concurrently on their own token budgets</b> — the reporter digs, the copy boy runs pages desk-to-desk, the copy desk bounces
+    thin recon back to verify, the editor writes; idle staff banter across the room. The Chief escalates only <span class="k">the
+    few calls that need you</span> — “bump a budget?”, “run page one?”. The <span class="k">staff roster</span> shows each person's
+    role, status and spend; boost any budget with +100k. And it's <b>wired to the real engine</b>: run
+    <code>late-edition run --brief "…" --cap N</code> to produce a real edition + <code>reel.json</code>, then <b>Load real
+    edition</b> to replay it here with the true headline and real per-role token spend. Rough on purpose.
   </p>
 </div>
 
@@ -572,24 +574,24 @@
   function simBeat(){
     for(const st of stories){ if(['done','held','press'].includes(st.stage) || Math.random()>0.74) continue;
       if(st.stage==='assigned'){ if(!canAfford(chief,1500)){ escalate('budget',chief); continue; }
-        spend(chief,1500); chief.status='idle'; const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; rep.status='working';
+        if(!st.real) spend(chief,1500); chief.status='idle'; const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; rep.status='working';
         agentSay(chief,`${rep.label.split(' ')[0]}, chase ${st.short}.`,44); agentSay(rep,`On it, Chief.`,34);
         handoff(WINDOW_XB, deskX(rep.ci)); logEvent(`Chief → ${rep.label}: cover ${st.short}`); focusOn(rep); }
       else if(st.stage==='reporting'){ const rep=staff.find(s=>s.ci===st.owner); if(rep.status==='blocked') continue;
         if(!canAfford(rep,4500)){ rep.status='blocked'; escalate('budget',rep,st); logEvent(`${rep.label} is out of budget on ${st.short}`); continue; }
-        spend(rep,3500+((Math.random()*3000)|0)); st.quality+=30+((Math.random()*28)|0); rep.status='working'; focusOn(rep); setSceneFor(rep,'type');
+        if(!st.real) spend(rep,3500+((Math.random()*3000)|0)); st.quality+=30+((Math.random()*28)|0); rep.status='working'; focusOn(rep); setSceneFor(rep,'type');
         if(Math.random()<0.5) agentSay(rep, reporterLine(st),40);
         if(st.quality>=100){ st.stage='checking'; rep.status='idle'; handoff(deskX(rep.ci), deskX(roleAgent('copydesk').ci));
           logEvent(`${rep.label} files on ${st.short}`); agentSay(rep,`Filed — ${st.short}.`,34); } }
       else if(st.stage==='checking'){ const mac=roleAgent('copydesk'); if(!canAfford(mac,3000)){ escalate('budget',mac,st); continue; }
-        spend(mac,3000); focusOn(mac); setSceneFor(mac,'idle');
-        if(Math.random()<0.42 && st.checks<2){ st.checks++; st.quality=Math.max(40,st.quality-45); st.stage='reporting';
+        if(!st.real) spend(mac,3000); focusOn(mac); setSceneFor(mac,'idle');
+        if(Math.random()<0.42 && st.checks<2 && !st.real){ st.checks++; st.quality=Math.max(40,st.quality-45); st.stage='reporting';
           const rep=staff.find(s=>s.ci===st.owner); rep.status='working'; handoff(deskX(mac.ci), deskX(st.owner));
           agentSay(mac,`Thin recon on ${st.short}. Verify it.`,48); logEvent(`${mac.label}: ${st.short} needs a 2nd source — back to ${rep.label}`); }
         else { st.stage='writing'; handoff(deskX(mac.ci), deskX(roleAgent('editor').ci)); agentSay(mac,`Stands up — ${st.short}.`,34); logEvent(`${mac.label} clears ${st.short}`); } }
       else if(st.stage==='writing'){ const ed=roleAgent('editor'); if(!canAfford(ed,4000)){ escalate('budget',ed,st); continue; }
-        spend(ed,4000); focusOn(ed); setSceneFor(ed,'type'); st.t++;
-        if(st.t>=2){ st.stage='press'; escalate('press',ed,st); agentSay(ed,`${st.short} — ready for page one.`,46); logEvent(`${ed.label} has ${st.short} ready — the Chief wants your call`); } }
+        if(!st.real) spend(ed,4000); focusOn(ed); setSceneFor(ed,'type'); st.t++;
+        if(st.t>=2){ if(st.real){ st.stage='done'; runFrontPage(st); } else { st.stage='press'; escalate('press',ed,st); agentSay(ed,`${st.short} — ready for page one.`,46); logEvent(`${ed.label} has ${st.short} ready — the Chief wants your call`); } } }
     }
     aliveBeat(); }
   function reporterLine(st){ const L=['Chasing the paper trail…',`Who leaked ${st.short}?`,'Two sources, then it runs.','This one has legs.']; return L[(tick+st.id)%L.length]; }
@@ -611,8 +613,19 @@
 
   function headlineFor(st){ if(st.headline) return st.headline; const U=tidy(st.topic).toUpperCase();
     const heads=[`${U} — SOURCES SPLIT AS CITY DESK CHASES IT`,`INSIDE ${U}: WHAT THEY DIDN'T WANT PRINTED`,`${U} BREAKS — THE DAILY BIT STANDS IT UP`,`THE TRUTH ABOUT ${U}, PAGE ONE`]; return st.headline=heads[U.length%heads.length]; }
-  function runFrontPage(st){ fpHead.textContent=headlineFor(st); fpStand.textContent=`Two sources, one long night. The Daily Bit's account of ${tidy(st.topic)} — chased, corrected on the copy desk, and put to bed.`;
-    frontpage.hidden=false; const ed=roleAgent('editor'); focusOn(ed); setSceneFor(ed,'stop'); logEvent(`STOP THE PRESS — ${st.short} runs page one`); mScene.textContent='EDITION FILED'; }
+  function runFrontPage(st){
+    if(st.real&&st.realBudget){ const b=st.realBudget, set=(role,v)=>{ const a=roleAgent(role); if(a) a.spent=v; };  // lock in the real per-role spend from the loaded reel
+      set('reporter',b.reporter||0); set('copydesk',b.copydesk||0); const ed=roleAgent('editor'); if(ed) ed.spent=(b.editor||0)+(b.writer||0); if(b.chief!=null) chief.spent=b.chief; renderRoster(); }
+    fpHead.textContent=headlineFor(st); fpStand.textContent=st.standfirst||`Two sources, one long night. The Daily Bit's account of ${tidy(st.topic)} — chased, corrected on the copy desk, and put to bed.`;
+    frontpage.hidden=false; const ed=roleAgent('editor'); focusOn(ed); setSceneFor(ed,'stop'); logEvent(`STOP THE PRESS — ${st.short} runs page one`); mScene.textContent=st.real?'REAL EDITION FILED':'EDITION FILED'; }
+  // Load a real edition's reel.json (produced by `late-edition run --brief … `) and replay it here.
+  function loadReel(reel){ if(!reel||!reel.stories||!reel.stories[0]) return; const s0=reel.stories[0], br=(reel.tokens&&reel.tokens.byRole)||{};
+    const topic=(reel.topic||s0.headline||'a real edition');
+    const set=(role,v)=>{ const a=roleAgent(role); if(a){ a.spent=Math.min(v,a.budget); if(v>a.budget) a.budget=v+20000; } };
+    set('reporter',br.reporter||0); set('copydesk',br.copydesk||0); const ed=roleAgent('editor'); if(ed){ const w=(br.editor||0)+(br.writer||0); ed.spent=Math.min(w,ed.budget); if(w>ed.budget) ed.budget=w+20000; }
+    briefChief(topic); const st=stories[stories.length-1]; st.real=true; st.headline=s0.headline; st.standfirst=s0.standfirst;
+    st.realBudget={ reporter:br.reporter||0, editor:br.editor||0, writer:br.writer||0, copydesk:br.copydesk||0, chief:Math.round(((reel.tokens&&reel.tokens.total)||0)*0.03) };
+    logEvent(`Loaded real edition ${reel.edition||''} — ${(reel.tokens&&reel.tokens.total)||0} tokens`); renderRoster(); }
 
   function statusText(s){ if(s.status==='blocked') return 'OUT OF BUDGET'; const st=stories.find(x=>x.owner===s.ci && !['done','held'].includes(x.stage));
     if(st) return (s.role==='copydesk'?'CHECKING ':s.role==='editor'?'WRITING ':'ON ')+st.short.toUpperCase();
@@ -630,6 +643,7 @@
   briefInput.addEventListener('keydown',e=>{ if(e.key==='Enter') briefChief(briefInput.value); });
   document.getElementById('examples').addEventListener('click',e=>{ const b=e.target.closest('.ex'); if(b){ briefInput.value=b.textContent; briefChief(b.textContent); } });
   document.getElementById('fpClose').addEventListener('click',()=>{ frontpage.hidden=true; });
+  document.getElementById('reelInput').addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ loadReel(JSON.parse(String(fr.result))); }catch(_){ logEvent('could not read that reel.json'); } }; fr.readAsText(f); e.target.value=''; });
   rosterEl.addEventListener('click',e=>{ const b=e.target.closest('[data-boost]'); if(b) boost(b.dataset.boost,100000); });
   approvalsEl.addEventListener('click',e=>{ const b=e.target.closest('[data-ap]'); if(b) resolveApproval(+b.dataset.ap, b.dataset.ok==='1'); });
   budgetLabel.textContent=fmtK(+budgetRange.value); renderRoster();
