@@ -24,12 +24,12 @@
   .chip[aria-pressed="true"]{ background:var(--amber); color:#231a08; border-color:var(--amber); }
   .chip.danger[aria-pressed="true"]{ background:var(--red); color:var(--bone); border-color:var(--red); }
   .chip:focus-visible{ outline:2px solid var(--bone); outline-offset:2px; } .hint{ color:var(--bone-dim); font-size:.8rem; }
-  .cast{ display:grid; grid-template-columns:repeat(auto-fit,minmax(115px,1fr)); gap:9px; }
+  .cast{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:9px; }
   .card{ display:flex; gap:9px; align-items:center; text-align:left; background:#14100b; border:1px solid #322715; border-radius:5px; padding:7px; cursor:pointer; color:inherit; transition:border-color .12s, background .12s; }
   .card:hover{ border-color:var(--amber-dim); background:#1a150d; } .card[aria-pressed="true"]{ border-color:var(--amber); background:#1e1710; }
   .card:focus-visible{ outline:2px solid var(--bone); outline-offset:2px; }
   .card canvas{ width:42px; height:42px; image-rendering:pixelated; border-radius:3px; background:#0a0d12; flex:none; }
-  .card .who b{ font-family:var(--display); font-weight:600; text-transform:uppercase; letter-spacing:.03em; font-size:.86rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .card .who span{ font-size:.7rem; color:var(--bone-dim); }
+  .card .who{ min-width:0; flex:1; } .card .who b{ font-family:var(--display); font-weight:600; text-transform:uppercase; letter-spacing:.02em; font-size:.78rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .card .who span{ font-size:.68rem; color:var(--bone-dim); display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .nameline{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; } .nameline label{ font-size:.85rem; color:var(--bone-dim); }
   .nameline input{ font-family:var(--type); font-size:1rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:4px; padding:8px 10px; min-width:170px; flex:1; } .nameline input:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
   .foot{ margin-top:20px; padding-top:14px; border-top:1px solid var(--line); color:var(--bone-dim); font-size:.8rem; } .foot b{ color:var(--bone); font-weight:400 } .foot .k{ color:var(--amber) }
@@ -42,7 +42,7 @@
     <p>A walkable, parallax newsroom — all pixels drawn in code. Walk, sit, roll a scene, or see the Chief.</p>
   </header>
   <div class="cabinet">
-    <div class="stage"><canvas id="screen" width="320" height="180" tabindex="0" aria-label="Walkable pixel-art newsroom"></canvas></div>
+    <div class="stage"><canvas id="screen" width="470" height="180" tabindex="0" aria-label="Walkable pixel-art newsroom"></canvas></div>
     <div class="marquee"><span id="mScene">ROAMING · ← → TO WALK</span><span><span class="on">●</span> REC · PARALLAX · 12 FPS</span></div>
   </div>
   <div class="deck">
@@ -62,46 +62,56 @@
         <button class="chip" id="chiefBtn">See the Chief ▸</button>
         <button class="chip" id="exitBtn">Step out ▸door</button>
       </div>
-      <p class="hint">Keys: <b>← →</b> / <b>A D</b> to walk · <b>Space</b> to sit. The Chief sits in his office; walk in and the light snaps on.</p>
+      <p class="hint">Keys: <b>← →</b> / <b>A D</b> to walk · <b>Space</b> to sit. The camera follows whoever's cast; hit <b>Free pan</b> to deselect and look around the office.</p>
     </div>
     <div><p class="label">The staff — click to cast</p><div class="cast" id="cast"></div></div>
     <div><p class="label">Name this reporter</p>
       <div class="nameline"><label for="nameInput">Byline</label>
         <input id="nameInput" type="text" maxlength="18" autocomplete="off" spellcheck="false">
-        <div class="row" style="gap:8px"><button class="chip" id="banterBtn" aria-pressed="true">Banter</button></div>
+        <div class="row" style="gap:8px"><button class="chip" id="banterBtn" aria-pressed="true">Banter</button><button class="chip" id="panBtn" aria-pressed="false">Free pan</button></div>
       </div>
     </div>
   </div>
   <p class="foot">
-    This pass: typewriter body sits up-and-back with the keyboard as a front slab, so the fingers land on the keys and
-    never overlap the machine. The Chief's office is a bigger <span class="k">window</span> — he's behind his desk
-    (upper body only, dim) until a reporter steps through the door and the <b>light snaps on</b> for the argument.
-    Door &amp; window spaced out, water cooler moved off the door. Rough on purpose — a representation to art over.
+    This pass: the <span class="k">Chief's office moved well left of Gus</span>, sitting alone in its no-desk strip (door beside
+    window, back wall barely parallaxes so no desk covers it). <span class="k">THE DAILY BIT</span> masthead is big and centred
+    over the office, clear of everything. The cabinet, door and background typers are spread out — nothing bunched. Women keep a
+    full head of hair walking. Rough on purpose — a moving reference to art over.
   </p>
 </div>
 
 <script>
 (() => {
   const cv = document.getElementById('screen'); const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
-  const VW = cv.width, VH = cv.height, WORLD = 760, FLOOR = 150, DC = 400, DTOP = FLOOR-16;
-  const OFFICE_XB = 470, WINDOW_XB = 512, DOOR_LB = 180, DOOR_RB = 640;
+  const VW = cv.width, VH = cv.height, WORLD = 1400, FLOOR = 150, DTOP = FLOOR-16, BP = 0.85;  // BP = back-wall parallax (near 1 so desks can't slide over the office window)
+  const DESKX = [120, 320, 780, 1020, 1260];                           // 2 desks left of the office, 3 to its right — a genuine no-desk strip in the middle
+  const deskX = i => DESKX[i] ?? 320, AC = () => DESKX[state.castIdx];  // active character's desk centre
+  const OFFICE_XB = 454, WINDOW_XB = 480, DOOR_LB = 250, DOOR_RB = 1160;   // Chief's office: door + window, well left of Gus in the no-desk strip
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const CAST = [
     { id:'sam', name:'Sam Vance', role:'Hardboiled reporter',
       pal:{skin:'#d3a06f',skinSh:'#a97b4e',hair:'#241812',hat:'#4a3826',band:'#2a1f14',suit:'#3d4954',suitDk:'#2b333c',shirt:'#dcd6c6',tie:'#7a2d1d'},
-      hat:'fedora', prop:'cig', lines:['Ink’s cheap. The truth runs extra.','Get me rewrite — and a match.','Every quiet night’s a headline that ain’t broke yet.','Facts don’t care what time it is, kid.'] },
+      hat:'fedora', prop:'cig', acc:{stubble:1,loosetie:1}, desk:'reporter', lines:['Ink’s cheap. The truth runs extra.','Get me rewrite — and a match.','Every quiet night’s a headline that ain’t broke yet.','Facts don’t care what time it is, kid.'] },
     { id:'dot', name:'Dot Kowalski', role:'Managing editor',
       pal:{skin:'#e0b184',skinSh:'#c79a72',hair:'#3a1d12',hat:'#6a2740',band:'#4a1a2c',suit:'#5a2338',suitDk:'#401828',shirt:'#e6dccb',tie:'#c9a24b'},
-      hat:'none', prop:'coffee', lines:['Cut it to the bone, then cut the bone.','Two sources or it’s a rumor with a byline.','I’ve spiked better copy before breakfast.','Hold page one. I feel one coming.'] },
+      hat:'none', prop:'coffee', acc:{pencil:1,earrings:1}, desk:'editor', lines:['Cut it to the bone, then cut the bone.','Two sources or it’s a rumor with a byline.','I’ve spiked better copy before breakfast.','Hold page one. I feel one coming.'] },
     { id:'gus', name:'Gus Moreno', role:'Copy boy',
       pal:{skin:'#c88a56',skinSh:'#9c6a3e',hair:'#1c130c',hat:'#3a5060',band:'#233542',suit:'#495a3a',suitDk:'#33422a',shirt:'#d8cbb0',tie:'#8a6a2a'},
-      hat:'cap', prop:'cig', lines:['Presses are hungry tonight, boss.','I run faster’n the deadline, watch me.','Coffee’s fresh — the coffee’s a lie.','Extra! Extra! …once you write it.'] },
+      hat:'cap', prop:'none', acc:{bowtie:1,freckles:1,young:1}, desk:'copyboy', lines:['Presses are hungry tonight, boss.','I run faster’n the deadline, watch me.','Coffee’s fresh — the coffee’s a lie.','Extra! Extra! …once you write it.'] },
+    { id:'mac', name:'Mac McHale', role:'Copy desk',
+      pal:{skin:'#c9a07a',skinSh:'#a07a56',hair:'#3a3a3a',hat:'#3a4a3a',band:'#2a3226',suit:'#3a4636',suitDk:'#2a3428',shirt:'#dcd6c6',tie:'#5a6b4a'},
+      hat:'none', prop:'coffee', acc:{eyeshade:1,glasses:1}, desk:'copydesk', lines:['Two sources, then we talk.','Spelled wrong? I spike it.','I read galleys in my sleep.','The record says otherwise, pal.'] },
+    { id:'iris', name:'Iris Vale', role:'Photo desk',
+      pal:{skin:'#e0b184',skinSh:'#c79a72',hair:'#2a1810',hat:'#6a2740',band:'#4a1a2c',suit:'#3a4657',suitDk:'#2a3442',shirt:'#e6dccb',tie:'#c98a3a'},
+      hat:'beret', prop:'none', acc:{camera:1,longhair:1}, desk:'photo', lines:['One frame tells the whole story.','Hold the front page for my shot.','Light’s bad; the truth isn’t.','Say cheese, city hall.'] },
   ];
 
-  const state = { mode:'roam', scene:'roam', castIdx:0, banter:true, facing:1, goto:null, phase:'none', timer:0, goneTotal:24, meeting:false, camFrozen:false, camVal:0 };
+  const state = { mode:'roam', scene:'roam', castIdx:0, banter:true, facing:1, goto:null, phase:'none', timer:0, goneTotal:24, meeting:false, camFrozen:false, camVal:0, panMode:false, panX:0 };
   const player = { x:300, vx:0 }; const input = { left:false, right:false };
-  const smoke=[], steam=[], rain=[]; let tick=0, acc=0, last=performance.now(), bubbleTimer=0, bubbleText='', cam=0;
+  const smoke=[], steam=[], rain=[], pages=[]; const tw={line:0}, amb={next:90}, runner={x:-40,active:false}; const courier={active:false,x:0,dir:1,target:0,exit:0,phase:'',t:0}; let tick=0, acc=0, last=performance.now(), bubbleTimer=0, bubbleText='', cam=0, ringT=0, officeBlipT=0, cigLit=0, matchT=0;
+  const NPC={ pal:{skin:'#cdb08a',skinSh:'#a98a64',hair:'#2a2018',hat:'#3a3630',band:'#241f18',suit:'#4a4a52',suitDk:'#343440',shirt:'#d8d2c0',tie:'#6a5a3a'}, hat:'fedora', prop:'none' };
+  const CHIEF={ pal:{skin:'#d8b48a',skinSh:'#b4906a',hair:'#2a2018',hat:'#241a14',band:'#3a2a1a',suit:'#2b2f36',suitDk:'#1c2026',shirt:'#e0dac8',tie:'#7a2d1d'}, hat:'fedora', prop:'none' };
 
   const R=(x,y,w,h,c)=>{ g.fillStyle=c; g.fillRect(x|0,y|0,Math.max(1,w|0),Math.max(1,h|0)); };
   const P=(x,y,c)=>{ g.fillStyle=c; g.fillRect(x|0,y|0,1,1); };
@@ -114,22 +124,23 @@
     R(120,14,12,12,'#d9d2b0'); R(120,14,12,1,'#eee7c6'); P(130,17,'#b9b090'); g.restore(); }
   function layerBack(off){ g.save(); g.translate(-off,0);
     R(0,0,WORLD,FLOOR,'#182231'); R(0,0,WORLD,70,'#141d29'); R(0,FLOOR-8,WORLD,1,'#0f1620'); R(0,FLOOR-7,WORLD,3,'#101a26');
-    wallSign(120,20);
-    for(const wx of [40,700]) windowBlinds(wx,44);
-    for(const fx of [96,320]) framedPage(fx,58);
-    wallClock(250,58); ceilingFan(300,16); ceilingTube(off);
-    plainDoor(DOOR_LB); officeDoor(OFFICE_XB); officeWindow(WINDOW_XB, state.meeting && state.phase==='gone'); plainDoor(DOOR_RB);
-    backDeskReporter(150);
+    wallSign(WINDOW_XB+42,20);                                  // THE DAILY BIT — big, centred over the office, clear of everything
+    for(const wx of [30,1360]) windowBlinds(wx,44);
+    for(const fx of [210,940,1300]) framedPage(fx,58); corkboard(120,24); corkboard(1080,24);
+    wallClock(760,58); ceilingFan(200,16); ceilingFan(900,16); ceilingFan(1220,16); ceilingTube(off);
+    backDeskReporter(630); backDeskReporter(1330);             // background typers, on clear floor
+    plainDoor(DOOR_LB); officeDoor(OFFICE_XB); officeWindow(WINDOW_XB, (state.meeting && state.phase==='gone')||officeBlipT>0); plainDoor(DOOR_RB);
+    if(runner.active) backRunner(runner.x);
     g.restore(); }
   function layerMain(off){ g.save(); g.translate(-off,0);
     R(0,FLOOR,WORLD,VH-FLOOR+20,'#241a10'); R(0,FLOOR,WORLD,1,'#3a2a1a');
     for(let x=0;x<WORLD;x+=34) R(x,FLOOR+7,1,VH-FLOOR,'#1a120a');
-    coatRack(110); filingCabinet(60); cat(60); plant(720);
-    heroDeskAndPlayer(); g.restore(); }
-  function layerFore(off){ g.save(); g.translate(-off,0); for(const bx of [40,300,520,720]) hangingBulb(bx); R(0,FLOOR+14,WORLD,VH,'#170f08'); g.restore(); tickerStrip(); }
+    plant(40); filingCabinet(180); cat(184); coatRack(400); wasteBin(880); waterCooler(940); newsStack(1100);
+    drawNewsroom(); if(courier.active) drawCourier(); drawPages(); g.restore(); }
+  function layerFore(off){ g.save(); g.translate(-off,0); for(const bx of [60,220,400,560,720]) hangingBulb(bx); R(0,FLOOR+14,WORLD,VH,'#170f08'); g.restore(); tickerStrip(); }
 
   // ---- Back set pieces ----------------------------------------------------
-  function wallSign(x,y){ g.fillStyle='rgba(232,176,75,.14)'; g.font='16px "Oswald",sans-serif'; g.textAlign='left'; g.textBaseline='top'; g.fillText('THE DAILY BIT',x,y); g.textBaseline='alphabetic'; }
+  function wallSign(x,y){ g.fillStyle='rgba(232,176,75,.34)'; g.font='700 26px "Oswald",sans-serif'; g.textAlign='center'; g.textBaseline='top'; g.fillText('THE DAILY BIT',x,y); g.textAlign='left'; g.textBaseline='alphabetic'; }
   function windowBlinds(x,y){ const w=60,h=58; R(x-2,y-2,w+4,h+4,'#0f1620'); R(x,y,w,h,'#20140a'); for(const r of rain){ if(r.win===x) P(x+(r.x%w),y+(r.y%h),'#5b6b74'); }
     for(let i=0;i<h;i+=4){ R(x,y+i,w,2,((tick>>4)&1)?'#e2a442':'#d69a3c'); R(x,y+i+2,w,2,'#3a2a17'); }
     const gr=g.createLinearGradient(x,0,x+90,0); gr.addColorStop(0,'rgba(232,164,66,.16)'); gr.addColorStop(1,'rgba(232,164,66,0)'); g.fillStyle=gr; g.fillRect(x,y,120,86); R(x+w/2-1,y,2,h,'#0f1620'); }
@@ -138,69 +149,167 @@
     const cx=x+10,cy=y+10,a=(tick*0.10)%(Math.PI*2); limb(cx,cy,cx+Math.round(Math.cos(a-1.57)*7),cy+Math.round(Math.sin(a-1.57)*7),1,'#c2412d'); limb(cx,cy,cx+4,cy-2,1,'#d9d2b0'); limb(cx,cy,cx-1,cy+5,1,'#d9d2b0'); }
   function ceilingFan(x,y){ R(x-1,0,2,y,'#20242a'); R(x-2,y,4,3,'#3d4247'); const bw=Math.round(Math.cos(tick*0.9)*12); R(x-bw,y+1,Math.abs(bw*2)||1,1,'#2b3036'); R(x-1,y,2,2,'#4a5057'); }
   function ceilingTube(off){ R(0,7,WORLD,3,'#2a2f35'); R(0,7,WORLD,1,'#3d444b'); const cap=((tick*5+off)%(WORLD+40))-20; R(cap,7,8,3,'#8a6a2a'); R(cap,7,8,1,'#caa15a'); }
-  function backDeskReporter(x){ R(x,FLOOR-54,36,4,'#0f1620'); R(x+2,FLOOR-50,32,16,'#12202c'); const bob=(tick%6<3)?0:1;
-    R(x+13,FLOOR-68+bob,10,15,'#0b1017'); R(x+14,FLOOR-77+bob,8,9,'#0b1017'); R(x+6,FLOOR-58,6,5,'#e7e1cf'); R(x+22,FLOOR-58,6,5,'#e7e1cf');
-    if((tick%2)===0) R(x+10,FLOOR-55,4,2,'#0b1017'); else R(x+22,FLOOR-55,4,2,'#0b1017'); }
+  function backDeskReporter(x){ const top=FLOOR-26, bob=(tick%8<4)?0:1, cy=top-14+bob, cn=(tick%4<2)?0:1, hit=(tick%2);
+    R(x+7,cy,16,15,'#101823'); R(x+7,cy,16,1,'#1a2836');       // seated colleague torso (subtle bob)
+    R(x+11,cy-9,9,9,'#0b121b'); R(x+10,cy-10,11,2,'#12202c');  // head + hat brim
+    R(x,top,34,FLOOR-8-top,'#141d29'); R(x,top,34,1,'#22303f'); // desk grounded to the floor
+    R(x-1,top-2,36,2,'#0f1620');                                // desk lip
+    // typewriter only — no hands; the carriage nudges, a key pops, the paper wiggles
+    R(x+8,top-6,16,5,'#1c222a'); R(x+8,top-6,16,1,'#2e3843'); R(x+8,top-2,16,2,'#141a20'); if(hit) P(x+10+((tick>>1)%12),top-3,'#fff2c4');
+    R(x+11-cn,top-9,10,3,'#39424b'); R(x+13-cn,top-13,6,Math.max(2,4-hit),'#e7e1cf'); R(x+13-cn,top-13,6,1,'#f2ecd8');
+    R(x+26,top-4,6,2,'#e7e1cf'); }                              // a stray sheet
 
   function plainDoor(x){ const y=FLOOR-45; R(x-2,y-1,22,44,'#140f0a'); R(x,y,18,43,'#2c2013'); R(x,y,18,1,'#3b2a1a'); R(x+3,y+3,12,10,'#1a130a'); R(x+13,y+24,3,4,'#c9b06a'); }
   function officeDoor(x){ const y=FLOOR-45; R(x-2,y-1,22,44,'#140f0a'); R(x,y,18,43,'#241a10'); R(x,y,18,1,'#3a2a1a'); R(x+3,y+3,12,7,'#3a2f16'); R(x+13,y+24,3,4,'#c9b06a'); }
 
   // Interior office WINDOW: Chief seated behind his desk (upper body only, desk hides the rest).
   // Dim while he's alone; light snaps ON and a visitor appears when a reporter is inside (meeting).
-  function officeWindow(x, lit){ const w=66, h=46, y=FLOOR-52;
-    R(x-3,y-3,w+6,h+6,'#120d08'); R(x-3,y-3,w+6,1,'#2a2016');
-    const c0 = lit?'#f2c86a':'#4e3c1c', c1 = lit?'#b0801f':'#2e2410';
+  function officeWindow(x, lit){ const w=84, h=52, y=FLOOR-58;
+    R(x-4,y-4,w+8,h+8,'#120d08'); R(x-4,y-4,w+8,1,'#2a2016'); R(x-4,y+h+3,w+8,1,'#0a0805');
+    const c0 = lit?'#f2c86a':'#4a3a1c', c1 = lit?'#b0801f':'#2a210f';
     const gl=g.createLinearGradient(x,y,x,y+h); gl.addColorStop(0,c0); gl.addColorStop(1,c1); g.fillStyle=gl; g.fillRect(x,y,w,h);
-    for(let i=3;i<h;i+=6) R(x,y+i,w,1, lit?'#e2b45a':'#3a2c14');
-    const deskY = y+h-13;                                   // office desk / window sill — cuts bodies off
-    chiefSil(x+22, deskY, lit);
-    if(lit) visitorSil(x+46, deskY);
-    R(x,deskY,w,13,'#160f08'); R(x,deskY,w,1,'#241a10');    // the desk (foreground, hides lower halves)
-    R(x+w/2-1,y,1,deskY-y,'#120d08');                       // mullion (upper only)
-    g.fillStyle='rgba(20,15,8,.8)'; g.font='5px "Press Start 2P",monospace'; g.textAlign='center'; g.fillText("CHIEF'S OFFICE",x+w/2,y-6); g.textAlign='left'; }
+    for(let i=3;i<h;i+=6) R(x,y+i,w,1, lit?'#e2b45a':'#37290f');            // blinds
+    const deskY = y+h-14;                                                   // office desk / sill
+    chiefSil(x+30, deskY, lit);
+    if(lit) visitorSil(x+58, deskY);
+    R(x,deskY,w,14,'#160f08'); R(x,deskY,w,1,'#241a10');                    // desk hides lower halves
+    R(x+w/2-1,y,1,deskY-y,'#120d08');                                       // mullion
+    const sx=x+w/2;                                                          // hanging plaque above the window
+    R(sx-3,y-8,6,3,'#3a2a1a'); R(sx-34,y-20,68,12,'#241a10'); R(sx-34,y-20,68,1,'#5a4028'); R(sx-34,y-8,68,1,'#120d08'); R(sx-35,y-20,1,12,'#3a2a1a'); R(sx+34,y-20,1,12,'#3a2a1a');
+    g.fillStyle='#e8b04b'; g.font='7px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('THE CHIEF',sx,y-13); g.textAlign='left'; g.textBaseline='alphabetic'; }
   function chiefSil(cx,deskY,lit){ const col='#160f09';
-    R(cx-6,deskY-15,13,15,col);                             // broad torso (cut by desk)
-    R(cx-4,deskY-24,9,9,col); R(cx-5,deskY-25,11,2,'#241a10'); // head + a hat brim hint
-    if(lit){ const jab=(tick%6<3)?-6:-2; R(cx+6,deskY-12+jab,7,3,col); }  // jabbing finger
-    else { R(cx+6,deskY-9,3,7,col); } }                     // arm resting on desk
-  function visitorSil(cx,deskY){ const col='#160f09', up=(tick%8<4)?-6:-1, lean=(tick%24<12)?0:1;
-    R(cx-6+lean,deskY-15,13,15,col); R(cx-4+lean,deskY-24,9,9,col);       // torso + head
-    R(cx-11+lean,deskY-13-((tick%8<4)?0:4),4,3,col);        // left hand up
-    R(cx+7+lean,deskY-13+up,4,3,col); }                     // right hand thrown up
+    R(cx-3,deskY-21,7,4,col);                               // head / jaw
+    R(cx-2,deskY-27,5,3,col); R(cx-4,deskY-25,9,2,col); R(cx-6,deskY-23,13,1,col);   // fedora: crown + widening brim (no robot line)
+    R(cx-5,deskY-17,11,4,col); R(cx-7,deskY-13,15,13,col);  // shoulders widening to the desk
+    if(lit){ const jab=(tick%9<4)?0:-6; limb(cx+6,deskY-12,cx+13,deskY-10+jab,3,col); }  // arm jabbing a finger
+    else limb(cx+6,deskY-12,cx+10,deskY-4,3,col); }         // arm resting on the desk
+  function visitorSil(cx,deskY){ const col='#160f09', up=(tick%12<6)?0:-7, lean=(tick%30<15)?0:1, c=cx+lean;
+    R(c-2,deskY-24,5,2,col); R(c-3,deskY-22,7,5,col);       // bare head — no neck
+    R(c-5,deskY-17,11,4,col); R(c-7,deskY-13,15,13,col);    // shoulders → torso
+    limb(c-6,deskY-12,c-13,deskY-15-((tick%12<6)?0:4),3,col);  // left arm up
+    limb(c+6,deskY-12,c+13,deskY-14+up,3,col); }               // right arm thrown up, waving
 
   // ---- Main set pieces ----------------------------------------------------
   function filingCabinet(x){ R(x,FLOOR-38,26,38,'#2b3036'); R(x,FLOOR-38,26,1,'#454b52'); for(let i=0;i<3;i++){ R(x+3,FLOOR-34+i*11,20,8,'#20252a'); R(x+11,FLOOR-31+i*11,4,2,'#6b7076'); } }
   function coatRack(x){ R(x+4,FLOOR-44,2,44,'#2c2013'); R(x-2,FLOOR-44,12,2,'#3b2a1a'); R(x-3,FLOOR-42,4,5,'#3d4954'); R(x+9,FLOOR-42,4,6,'#5a2338'); }
   function plant(x){ R(x+2,FLOOR-9,10,9,'#3a2a1a'); R(x+3,FLOOR-8,8,3,'#5a4028'); for(let i=0;i<5;i++) limb(x+7,FLOOR-9,x+2+i*2,FLOOR-22-((i*7)%6),1,'#2f5a3a'); }
-  function cat(x){ const flick=(tick%40<4); R(x+2,FLOOR-46,12,6,'#20242a'); R(x+2,FLOOR-48,4,3,'#20242a'); P(x+3,FLOOR-48,'#e8b04b'); P(x+5,FLOOR-48,'#e8b04b'); R(x+13,FLOOR-45,flick?2:3,flick?4:2,'#20242a'); }
+  function cat(x){ const flick=(tick%44<5), y=FLOOR-38; R(x+2,y-6,11,6,'#20242a'); R(x+2,y-9,4,4,'#20242a'); P(x+2,y-9,'#20242a'); P(x+5,y-9,'#20242a'); P(x+3,y-8,'#e8b04b'); P(x+5,y-8,'#e8b04b'); R(x+12,y-9,2,flick?7:4,'#20242a'); }  // sits on the cabinet top
+  function waterCooler(x){ R(x+2,FLOOR-28,10,28,'#2b3036'); R(x+2,FLOOR-28,10,1,'#454b52'); R(x+3,FLOOR-26,8,2,'#20242a'); R(x+1,FLOOR-40,12,12,'#7fb7d4'); R(x+1,FLOOR-40,12,1,'#a9d6ea'); R(x+2,FLOOR-40,10,10,'rgba(169,214,234,.5)'); if(!reduce&&tick%56<3) P(x+6,FLOOR-31,'#a9d6ea'); R(x+4,FLOOR-28,4,2,'#3d4247'); }
+  function newsStack(x){ for(let i=0;i<4;i++){ const o=i%2; R(x-o,FLOOR-4-i*3,16,3,o?'#cfc9b4':'#d8d2bd'); R(x-o,FLOOR-4-i*3,16,1,'#e6dfce'); P(x+3,FLOOR-3-i*3,'#7a2d1d'); } }
+  function wasteBin(x){ R(x,FLOOR-9,10,9,'#2b3036'); R(x,FLOOR-9,10,1,'#454b52'); R(x+1,FLOOR-8,8,7,'#20252a'); P(x+3,FLOOR-6,'#3a4048'); P(x+6,FLOOR-4,'#3a4048'); if(!reduce&&tick%90<45) R(x+3,FLOOR-11,3,2,'#e8e2d0'); }
+  function corkboard(x,y){ R(x-1,y-1,40,22,'#2a2016'); R(x,y,38,20,'#6a4a2a'); R(x,y,38,1,'#7d5a34'); for(const px of [4,16,28]){ R(x+px,y+3,8,10,'#d8d2bd'); R(x+px,y+3,8,1,'#e6dfce'); P(x+px+3,y+2,'#c2412d'); } }
   function hangingBulb(x){ const sway=reduce?0:Math.round(Math.sin(tick*0.12+x)*1); R(x,0,1,14,'#0c0c0c'); R(x-1+sway,14,3,3,'#c9c2a0'); const gr=g.createRadialGradient(x+sway,17,1,x+sway,17,22); gr.addColorStop(0,'rgba(232,176,75,.4)'); gr.addColorStop(1,'rgba(232,176,75,0)'); g.fillStyle=gr; g.fillRect(x-20+sway,0,44,46); }
 
-  // ---- Hero desk (flat 2D) + player --------------------------------------
-  function heroDeskAndPlayer(){ const c=CAST[state.castIdx];
-    const pool=g.createRadialGradient(DC,DTOP,6,DC,DTOP,120); pool.addColorStop(0,'rgba(232,176,75,.24)'); pool.addColorStop(1,'rgba(232,176,75,0)'); g.fillStyle=pool; g.fillRect(DC-80,DTOP-70,240,80);
-    const seated=state.mode==='desk';
-    if(seated) drawSeated(c,DC); else drawRoamer(c);
-    drawTypewriterAndProps(c,DC,!seated);                   // machine sits up/back on the desk
-    R(DC-48,DTOP,96,16,'#3b2a1a'); R(DC-48,DTOP,96,1,'#5a4028'); // flat desk front
-    R(DC-15,FLOOR-5,30,4,'#20242c'); R(DC-15,FLOOR-5,30,1,'#3a4450'); nameplate(DC,FLOOR-3);
-    if(seated) drawSeatedHands(c,DC);                        // hands last, on the front keyboard slab
-    if(seated){ updateParticles(steam); updateParticles(smoke); } }
-  function nameplate(cx,y){ const name=(CAST[state.castIdx].name||'').toUpperCase().slice(0,15); g.fillStyle='#c9b06a'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(name,cx,y); g.textAlign='left'; g.textBaseline='alphabetic'; }
+  // ---- The newsroom: one desk per character, camera on whoever's cast -----
+  function drawNewsroom(){
+    for(let i=0;i<DESKX.length;i++){ const c=CAST[i], x=DESKX[i], active=(i===state.castIdx), seatHere=active?(state.mode==='desk'):true;
+      deskPool(x);
+      if(seatHere){ if(active) drawSeated(c,x); else drawIdleSitter(c,x); }
+      drawDeskProps(c,x, (active&&seatHere)?state.scene:'idle');
+      R(x-48,DTOP,96,16,'#3b2a1a'); R(x-48,DTOP,96,1,'#5a4028');                         // desk front
+      R(x-15,FLOOR-5,30,4,'#20242c'); R(x-15,FLOOR-5,30,1,'#3a4450'); nameplate(c,x,FLOOR-3);
+      if(seatHere&&active) drawSeatedHands(c,x);
+    }
+    if(state.mode==='roam') drawRoamer(CAST[state.castIdx]);   // the active character up and walking
+    updateParticles(smoke); }
+  function deskPool(x){ const pool=g.createRadialGradient(x,DTOP-46,4,x,DTOP-46,150); pool.addColorStop(0,'rgba(232,176,75,.15)'); pool.addColorStop(.6,'rgba(232,176,75,.04)'); pool.addColorStop(1,'rgba(232,176,75,0)'); g.fillStyle=pool; g.fillRect(x-170,0,340,DTOP+40); }
+  function nameplate(c,cx,y){ const name=(c.name||'').toUpperCase().slice(0,15); g.fillStyle='#c9b06a'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(name,cx,y); g.textAlign='left'; g.textBaseline='alphabetic'; }
+  // A colleague sitting idle at their own desk (no visible hands — they tuck behind the desk).
+  function drawIdleSitter(c,x){ const p=c.pal, ph=tick+((x*7)%97), bob=reduce?0:((ph%40)<20?0:1), shY=FLOOR-40+bob, headTop=FLOOR-51+bob;
+    R(x-9,shY,18,24,p.suit); R(x-9,shY,18,2,p.suitDk); R(x-3,shY,6,12,p.shirt); R(x-1,shY+1,2,11,p.tie);
+    { const a=c.acc||{}; if(a.bowtie){ R(x-3,shY+1,3,2,p.tie); R(x,shY+1,3,2,p.tie); P(x,shY+1,p.shirt); } if(a.camera){ R(x-6,shY+4,12,1,'#20242a'); R(x-4,shY+8,8,4,'#17191d'); R(x-1,shY+9,3,2,'#6a86a0'); } }
+    const h=headFront(c,x,headTop,(ph%150)<3,false);
+    if(c.prop==='cig'&&!reduce&&(ph%640)<100){ R(h.mouthX-5,h.mouthY,5,1,'#e8e2d0'); P(h.mouthX-6,h.mouthY,'#ff7a2a'); if(ph%24===0) smoke.push({x:h.mouthX-6,y:h.mouthY-1,life:44,rise:0.15,c:'#9aa3a8'}); } }
+  // Each desk is dressed for the person who sits at it.
+  function drawDeskProps(c,x,scene){ drawLamp(x-26); const idleMug=c.prop==='coffee'&&scene!=='coffee';
+    if(c.desk==='reporter'){ drawPhone(x-47); drawTypewriter(x); if(idleMug) drawMug(x+34,DTOP-6); R(x+16,DTOP-6,15,4,'#e8e2d0'); R(x+16,DTOP-6,15,1,'#f2ecd8'); ashtray(x+40); }
+    else if(c.desk==='editor'){ drawTypewriter(x); paperSpike(x-44); pencilCup(x+30); if(idleMug) drawMug(x+40,DTOP-6); deskStack(x+16); }
+    else if(c.desk==='copyboy'){ bigStack(x); deskBell(x+36); bundles(x-48); }
+    else if(c.desk==='copydesk'){ drawTypewriter(x); loupe(x-42); galleys(x+16); gluePot(x+36); if(idleMug) drawMug(x-30,DTOP-6); }
+    else if(c.desk==='photo'){ plateCamera(x); photoLine(x); redSafelight(x+40); trays(x-44); }
+    else { drawTypewriter(x); } }
+  function bigStack(x){ for(let i=0;i<8;i++){ const o=(i%2)?1:0, w=22-((i>5)?4:0); R(x-11+o,DTOP-2-i*2,w,2,(i%2)?'#cfc9b4':'#dcd6c6'); R(x-11+o,DTOP-2-i*2,w,1,'#efe9d8'); } R(x-9,DTOP-3,18,1,'#3a2e1b'); P(x-2,DTOP-15,'#7a2d1d'); P(x+4,DTOP-11,'#7a2d1d'); }
+  function plateCamera(x){ R(x-10,DTOP-16,20,14,'#17191d'); R(x-10,DTOP-16,20,1,'#3a4048'); R(x-10,DTOP-3,20,3,'#0e1116'); R(x-4,DTOP-13,11,10,'#0e1116'); R(x-2,DTOP-11,7,6,'#6a86a0'); R(x-2,DTOP-11,7,1,'#a9c6da'); R(x-7,DTOP-19,7,3,'#20242a'); if(!reduce&&tick%80<3) R(x-12,DTOP-20,4,3,'#fff2c4'); R(x-3,DTOP-2,6,2,'#20242a'); }
+  // desk prop kit
+  function ashtray(x){ R(x,DTOP-2,8,2,'#20242a'); R(x,DTOP-3,8,1,'#3a4048'); R(x+2,DTOP-4,4,1,'#e8e2d0'); P(x+2,DTOP-5,'#ff7a2a'); }
+  function paperSpike(x){ R(x+2,DTOP-11,1,11,'#8f959c'); R(x-2,DTOP-6,9,4,'#e8e2d0'); R(x-2,DTOP-6,9,1,'#f2ecd8'); R(x-1,DTOP-9,7,3,'#dcd6c6'); }
+  function pencilCup(x){ R(x,DTOP-7,5,7,'#3a2f16'); R(x,DTOP-7,5,1,'#4a3d1e'); R(x+1,DTOP-11,1,5,'#c2412d'); R(x+3,DTOP-10,1,4,'#d9a441'); }
+  function deskStack(x){ for(let i=0;i<3;i++){ R(x-(i%2),DTOP-4-i*2,13,2,i%2?'#cfc9b4':'#dcd6c6'); R(x-(i%2),DTOP-4-i*2,13,1,'#efe9d8'); } }
+  function bundles(x){ R(x,DTOP-9,17,9,'#cfc9b4'); R(x,DTOP-9,17,1,'#e6dfce'); R(x+7,DTOP-9,1,9,'#3a2e1b'); R(x,DTOP-5,17,1,'#3a2e1b'); P(x+4,DTOP-7,'#7a2d1d'); R(x,DTOP-18,15,8,'#dcd6c6'); R(x+6,DTOP-18,1,8,'#3a2e1b'); }
+  function deskBell(x){ R(x,DTOP-3,7,3,'#8a6a1e'); R(x+1,DTOP-6,5,3,'#c9a24b'); R(x+1,DTOP-6,5,1,'#e8cf88'); P(x+3,DTOP-7,'#e8e2d0'); }
+  function loupe(x){ R(x,DTOP-2,5,2,'#20242a'); R(x+1,DTOP-1,3,1,'#8fb0c0'); R(x+4,DTOP-4,1,3,'#20242a'); }
+  function galleys(x){ R(x,DTOP-6,16,5,'#dcd6c6'); R(x,DTOP-6,16,1,'#efe9d8'); for(let i=1;i<5;i++) R(x+2,DTOP-6+i,12,1, i%2?'#b9b39c':'#a89f86'); }
+  function gluePot(x){ R(x,DTOP-6,5,6,'#2f6a4a'); R(x,DTOP-6,5,1,'#3f8a60'); R(x+1,DTOP-8,3,2,'#8a7a30'); P(x+2,DTOP-9,'#c9a24b'); }
+  function deskCamera(x){ R(x,DTOP-9,12,9,'#17191d'); R(x,DTOP-9,12,1,'#3a4048'); R(x+3,DTOP-7,6,6,'#0e1116'); R(x+4,DTOP-6,4,4,'#6a86a0'); R(x+4,DTOP-6,4,1,'#a9c6da'); R(x+8,DTOP-11,3,2,'#20242a'); if(!reduce&&tick%70<3) R(x+2,DTOP-12,3,2,'#fff2c4'); }
+  function photoLine(x){ R(x-30,DTOP-42,60,1,'#3a2e1b'); for(let k=0;k<4;k++){ const px=x-26+k*15; R(px,DTOP-41,10,7,'#12161b'); R(px+1,DTOP-40,8,5,'#3a4650'); P(px+4,DTOP-42,'#c9b06a'); } }
+  function redSafelight(x){ R(x,DTOP-11,4,4,'#7a1a10'); R(x,DTOP-11,4,1,'#c2412d'); R(x+1,DTOP-7,2,7,'#20242a'); const gr=g.createRadialGradient(x+2,DTOP-9,1,x+2,DTOP-9,14); gr.addColorStop(0,'rgba(194,65,45,.5)'); gr.addColorStop(1,'rgba(194,65,45,0)'); g.fillStyle=gr; g.fillRect(x-12,DTOP-22,28,22); }
+  function trays(x){ R(x,DTOP-3,14,3,'#20303a'); R(x,DTOP-3,14,1,'#2e3f4a'); R(x+1,DTOP-2,12,1,'#39515e'); R(x-2,DTOP-6,7,2,'#20303a'); }
 
   function drawTypewriterAndProps(c,x,idleMug){
-    // banker's lamp far left
-    R(x-46,DTOP-8,2,8,'#c8b34a'); R(x-49,DTOP-1,8,2,'#8a7a30'); R(x-51,DTOP-14,18,6,'#2f6a4a'); R(x-51,DTOP-14,18,2,'#3f8a60');
-    const lg=g.createRadialGradient(x-42,DTOP-10,1,x-42,DTOP-10,16); lg.addColorStop(0,'rgba(255,214,120,.4)'); lg.addColorStop(1,'rgba(255,214,120,0)'); g.fillStyle=lg; g.fillRect(x-56,DTOP-18,34,22);
-    // typewriter: paper + carriage sit UP/BACK; keyboard is a slab at the FRONT edge of the desk
-    R(x-8,DTOP-15,16,5,'#e8e2d0'); R(x-8,DTOP-15,16,1,'#bdb79f'); R(x-3,DTOP-17,6,2,'#6b7076');   // paper + platen (back-top)
-    R(x-11,DTOP-11,22,7,'#3d4247'); R(x-11,DTOP-11,22,1,'#5b6167');                                // carriage/body (back-upper)
-    R(x-12,DTOP-4,24,4,'#2b2f34'); R(x-11,DTOP-3,22,1,'#3a4048');                                  // keyboard slab (front-lower)
-    // phone left, mug right, papers
-    drawPhone(x-32,DTOP); if(idleMug) drawMug(x+34,DTOP-6,c.prop==='coffee'); R(x+16,DTOP-6,16,4,'#e8e2d0'); P(x+19,DTOP-6,'#7a2d1d'); }
-  function drawPhone(x,y){ const jit=(state.scene==='phone'&&(tick%20<8))?1:0; R(x+3+jit,y-2,10,4,'#20242a'); R(x+6+jit,y-12,4,10,'#2b3036'); R(x+4+jit,y-16,8,4,'#3d4247'); R(x+5+jit,y-17,6,2,'#111');
-    if(state.scene!=='phone'){ R(x+11,y-14,5,2,'#3d4247'); R(x+15,y-13,2,6,'#2b3036'); }
-    if(state.scene==='phone'&&tick%20<8){ const cc='#e8b04b'; P(x-1,y-12,cc);P(x-2,y-14,cc);P(x-3,y-16,cc);P(x-1,y-8,cc);P(x-2,y-6,cc); } }
-  function drawMug(x,y,steamOn){ R(x,y,8,6,'#c9c2b0'); R(x,y,8,1,'#e6dfce'); R(x+8,y+1,2,3,'#9a917c'); R(x+1,y+1,6,2,'#3a2b1e'); if(steamOn&&!reduce&&tick%7===0) steam.push({x:x+3,y:y-1,life:34,rise:0.3,seed:Math.random()*6,c:'#cdd6da'}); }
+    drawPhone(x-47);                 // rotary phone, far-left of the desk
+    drawLamp(x-26);                  // banker's lamp, sitting on the desk
+    drawTypewriter(x);               // centre
+    if(idleMug) drawMug(x+34,DTOP-6,c.prop==='coffee'); R(x+16,DTOP-6,15,4,'#e8e2d0'); R(x+16,DTOP-6,15,1,'#f2ecd8'); P(x+19,DTOP-6,'#7a2d1d'); }  // spare sheet, right
+  function drawLamp(x){
+    R(x,DTOP-8,2,8,'#c8b34a'); R(x-3,DTOP-1,8,2,'#8a7a30'); R(x-5,DTOP-14,16,6,'#2f6a4a'); R(x-5,DTOP-14,16,2,'#3f8a60');
+    const lg=g.createRadialGradient(x+3,DTOP-10,1,x+3,DTOP-10,16); lg.addColorStop(0,'rgba(255,214,120,.4)'); lg.addColorStop(1,'rgba(255,214,120,0)'); g.fillStyle=lg; g.fillRect(x-11,DTOP-18,30,22); }
+
+  // Solid typewriter that reads as one machine and animates: keys, striking typebars,
+  // a nudging carriage, a sheet that feeds up in the platen, and a page that flies out.
+  function drawTypewriter(x){
+    const typing=state.scene==='type', strike=typing?tick%2:-1, cn=typing?(tick%4<2?0:1):0, wig=typing?(tick%2?0:1):0;
+    // solid base + angled keyboard deck (front)
+    R(x-13,DTOP-3,26,3,'#191d22'); R(x-13,DTOP-3,26,1,'#2b3036');
+    R(x-12,DTOP-6,24,4,'#2b2f34'); R(x-12,DTOP-6,24,1,'#3a4048');
+    for(let r=0;r<2;r++) for(let k=0;k<7;k++){ const lit=typing&&strike===r&&k===((tick>>1)%7); P(x-9+k*3, DTOP-5+r*2, lit?'#fff2c4':'#141820'); }
+    // solid body block
+    R(x-11-cn,DTOP-14,22,9,'#3d4247'); R(x-11-cn,DTOP-14,2,9,'#2b3036'); R(x+9-cn,DTOP-14,2,9,'#333a40'); R(x-11-cn,DTOP-14,22,1,'#5b6167'); R(x-11-cn,DTOP-6,22,1,'#20242a');
+    // ribbon spools on top
+    R(x-8-cn,DTOP-16,5,3,'#5b6167'); R(x-7-cn,DTOP-16,3,2,'#20242a'); R(x+3-cn,DTOP-16,5,3,'#5b6167'); R(x+4-cn,DTOP-16,3,2,'#20242a');
+    // carriage + platen roller (slides with the nudge), sitting just above the body
+    R(x-11-cn,DTOP-15,22,2,'#20242a'); R(x-10-cn,DTOP-16,20,3,'#6b7076'); R(x-10-cn,DTOP-16,20,1,'#868c92');
+    R(x-12-cn,DTOP-17,2,5,'#4a5057'); R(x+10-cn,DTOP-17,2,5,'#4a5057');   // platen knobs
+    // a sheet feeding through the platen — feeds up as you type, stays clear of the typist's face
+    const ph=6+Math.min(tw.line,2); const px=x-6-cn+wig, py=DTOP-16-ph;
+    R(px,py,13,ph,'#e8e2d0'); R(px,py,13,1,'#fbf6e6'); R(px,py,1,ph,'#cfc9b4'); R(px+12,py,1,ph,'#cfc9b4');
+    for(let i=2;i<ph-1;i+=2) R(px+2,py+i,9,1,'#b9b39c');
+    // typebars flick up to the platen while typing
+    if(strike===0) R(x-2-cn,DTOP-13,2,3,'#20242a'); if(strike===1) R(x+1-cn,DTOP-13,2,3,'#20242a'); }
+
+  // A finished page that flutters up off the desk and sails away.
+  function ejectPage(wx,wy){ if(reduce) return; pages.push({x:wx,y:wy,vx:1.5+Math.random()*1.1,vy:-1.5-Math.random()*0.8,rot:Math.random()*6,vr:0.28,life:64}); }
+  function stepPages(){ for(let i=pages.length-1;i>=0;i--){ const p=pages[i]; p.life--; p.x+=p.vx; p.y+=p.vy; p.vy+=0.06; p.rot+=p.vr; if(p.life<=0||p.x>WORLD+24) pages.splice(i,1); } }
+  function drawPages(){ for(const p of pages){ g.save(); g.translate(p.x,p.y); g.rotate(Math.sin(p.rot)*0.5); R(-5,-6,10,12,'#e8e2d0'); R(-5,-6,10,1,'#fbf6e6'); R(-3,-3,6,1,'#b9b39c'); R(-3,0,6,1,'#b9b39c'); g.restore(); } }
+  // A copy boy sprints across the far desks with a page.
+  function backRunner(x){ const y=FLOOR-6, f=tick%4, up=(f===1||f===3)?2:0, sw=[3,0,-3,0][f];
+    R(x-5,y-18-up,11,13,'#16232f'); R(x-3,y-29-up,9,10,'#0b1017'); R(x-2,y-31-up,7,2,'#12202c');   // torso + head + cap
+    R(x-5+sw,y-5,4,5,'#0b1017'); R(x+2-sw,y-5,4,5,'#0b1017');                                       // legs
+    R(x+6,y-22,9,5,'#e8e2d0'); R(x+6,y-22,9,1,'#f2ecd8'); }                                          // the page he's carrying
+  // A staffer walking work between desks — enters, drops a page on a desk, heads back out.
+  function drawCourier(){ drawWalk(courier.who||NPC,courier.x|0,FLOOR,courier.dir);
+    if(courier.phase==='walk'){ const hx=(courier.x|0)+courier.dir*5; R(hx-3,FLOOR-20,6,7,'#e8e2d0'); R(hx-3,FLOOR-20,6,1,'#f2ecd8'); R(hx-2,FLOOR-17,4,1,'#b9b39c'); } }
+  function startCourier(){ if(reduce) return; const fromOffice=Math.random()<0.6;   // usually the Chief, out of his own door
+    courier.who = fromOffice ? CHIEF : NPC;
+    courier.x = fromOffice ? OFFICE_XB+9 : (Math.random()<0.5? 40 : WORLD-40);
+    courier.exit = courier.x; courier.target = deskX((Math.random()*DESKX.length)|0)-4;   // drops on somebody's desk
+    courier.dir = courier.target>courier.x?1:-1; courier.phase='walk'; courier.t=0; courier.active=true; }
+  function dropPages(wx){ if(reduce) return; for(let i=0;i<3;i++) pages.push({x:wx+(i-1)*3,y:DTOP-10,vx:(Math.random()-0.5)*1.1,vy:-0.5+Math.random()*0.4,rot:Math.random()*6,vr:0.2,life:34}); }
+  // Fire a small ambient beat now and then, so the room is never dead.
+  function fireAmbient(){ if(reduce) return; const r=Math.random();
+    if(r<0.2) ejectPage(deskX((Math.random()*DESKX.length)|0),DTOP-26);
+    else if(r<0.4) ringT=36;
+    else if(r<0.56){ if(!state.meeting) officeBlipT=52; }
+    else if(r<0.76){ if(!runner.active){ runner.active=true; runner.x=-40; } }
+    else { if(!courier.active) startCourier(); } }
+  // Rotary desk phone: black body with a gold dial that spins, a bright red light, buzz lines while ringing.
+  function drawPhone(px){ const ringing=(state.scene==='phone')||ringT>0, jit=(ringing&&tick%6<3)?1:0, bx=px+jit;
+    R(bx+1,DTOP-5,14,5,'#17191d'); R(bx,DTOP-4,16,3,'#1d2024'); R(bx,DTOP-4,16,1,'#5b636c'); R(bx+1,DTOP-2,14,1,'#0b0c0e');   // rounded black base w/ metallic top edge
+    const dcx=bx+7,dcy=DTOP-2, sp=ringing?tick*0.6:0.6; R(dcx-4,dcy-2,9,4,'#8a6a1e'); R(dcx-3,dcy-1,7,2,'#c9a24b'); R(dcx-1,dcy-1,3,2,'#1d2024');   // gold dial ring
+    for(let i=0;i<6;i++){ const a=sp+i*1.047; P(dcx+Math.round(Math.cos(a)*3), dcy-1+Math.round(Math.sin(a)), '#241a08'); }   // finger-holes spin when ringing
+    if(state.scene!=='phone'){ R(bx+1,DTOP-9,14,3,'#20242a'); R(bx+1,DTOP-9,14,1,'#5b636c'); R(bx-1,DTOP-10,4,4,'#20242a'); R(bx-1,DTOP-10,4,1,'#5b636c'); R(bx+13,DTOP-10,4,4,'#20242a'); R(bx+13,DTOP-10,4,1,'#5b636c'); }  // handset on the cradle
+    const on=ringing&&tick%6<3; R(bx+12,DTOP-8,2,2,on?'#ff3b30':'#6a1f18'); if(on) P(bx+12,DTOP-9,'#ffb0a8');   // bright red light
+    if(on){ const c='#ffd36a'; P(bx-3,DTOP-8,c);P(bx-4,DTOP-9,c);P(bx-4,DTOP-7,c); P(bx+18,DTOP-8,c);P(bx+19,DTOP-9,c);P(bx+19,DTOP-7,c); } }   // buzz lines
+  function drawMug(x,y){ R(x,y,8,6,'#c9c2b0'); R(x,y,8,1,'#e6dfce'); R(x+8,y+1,2,3,'#9a917c'); R(x+1,y+1,6,2,'#3a2b1e'); }
 
   // ---- Character rig ------------------------------------------------------
   function headFront(c,cx,topY,blink,shock){ const p=c.pal,y=topY;
@@ -208,56 +317,80 @@
     R(cx-4,y+4,2,1,p.hair); R(cx+2,y+4,2,1,p.hair);
     if(shock){ R(cx-4,y+5,2,2,'#e8e2d0'); R(cx+2,y+5,2,2,'#e8e2d0'); P(cx-3,y+5,'#111'); P(cx+3,y+5,'#111'); }
     else if(!blink){ P(cx-3,y+5,'#111'); P(cx+2,y+5,'#111'); } else { R(cx-4,y+5,2,1,p.skinSh); R(cx+2,y+5,2,1,p.skinSh); }
-    P(cx,y+7,p.skinSh); R(cx-2,y+8,4,1,shock?'#5a2a1a':'#7a4a34'); hatOn(c,cx,y); return { mouthX:cx-1, mouthY:y+8 }; }
+    P(cx,y+7,p.skinSh); R(cx-2,y+8,4,1,shock?'#5a2a1a':'#7a4a34'); hatOn(c,cx,y); drawAcc(c,cx,y); return { mouthX:cx-1, mouthY:y+8 }; }
   function hatOn(c,cx,y){ const p=c.pal;
     if(c.hat==='fedora'){ R(cx-8,y+1,17,2,p.hat); R(cx-8,y+1,17,1,'#0f0f0f'); R(cx-5,y-4,11,6,p.hat); R(cx-5,y-4,11,2,'#0f0f0f'); R(cx-5,y,11,2,p.band); }
     else if(c.hat==='cap'){ R(cx-6,y-1,13,4,p.hat); R(cx-6,y-1,13,1,'#0f1a20'); R(cx-11,y+2,7,2,p.hat); }
+    else if(c.hat==='beret'){ R(cx-6,y-2,13,4,p.hat); R(cx-6,y+1,13,1,'#0f0f0f'); R(cx+6,y-3,2,2,p.hat); }   // slouchy beret + stalk
     else { R(cx-6,y-1,12,4,p.hair); R(cx-7,y+2,3,10,p.hair); R(cx+5,y+2,3,10,p.hair); P(cx-6,y,'#c9a24b'); P(cx+6,y,'#c9a24b'); } }
+  // Per-character accessories — this is where the personalities live.
+  function drawAcc(c,cx,y){ const p=c.pal, a=c.acc||{};
+    if(a.longhair){ R(cx-7,y+3,3,13,p.hair); R(cx+5,y+3,3,13,p.hair); }                                           // hair past the jaw
+    if(a.eyeshade){ R(cx-7,y+1,15,2,'#2f6a4a'); R(cx-7,y+1,15,1,'#3f8a60'); R(cx-7,y+3,15,1,'#1c3f2a'); }         // green copy-desk visor on the brow
+    if(a.glasses){ R(cx-5,y+4,4,3,'#20242a'); R(cx+2,y+4,4,3,'#20242a'); P(cx-1,y+5,'#20242a'); R(cx-4,y+5,2,1,'#8fb0c0'); R(cx+3,y+5,2,1,'#8fb0c0'); }  // spectacles
+    if(a.stubble){ R(cx-4,y+9,3,1,p.skinSh); R(cx+2,y+9,3,1,p.skinSh); P(cx-1,y+10,p.skinSh); }
+    if(a.freckles){ P(cx-3,y+7,p.skinSh); P(cx+3,y+7,p.skinSh); }
+    if(a.pencil){ R(cx+5,y-1,1,5,'#d9a441'); P(cx+5,y-2,'#7a2d1d'); }                                             // red pencil behind the ear
+    if(a.earrings){ P(cx-6,y+9,'#c9a24b'); P(cx+6,y+9,'#c9a24b'); } }
 
   function drawRoamer(c){ const walking=Math.abs(player.vx)>0.01;
     let a=1; if(state.goto!=null){ const d=Math.abs(state.goto-player.x); if(state.phase==='gone') a=0; else if(state.phase==='return') a=1-(state.timer/8); else if(d<12) a=Math.max(0,d/12); }
     if(a<=0) return; g.globalAlpha=a;
     if(walking) drawWalk(c,player.x,FLOOR,state.facing); else drawStand(c,player.x,FLOOR); g.globalAlpha=1;
-    if(state.mode==='roam'&&state.goto==null&&Math.abs(player.x-DC)<30){ g.fillStyle='#e8b04b'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.fillText('SPACE',DC,FLOOR-42); g.textAlign='left'; } }
+    if(state.mode==='roam'&&state.goto==null&&Math.abs(player.x-AC())<30){ g.fillStyle='#e8b04b'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.fillText('SPACE',AC(),FLOOR-42); g.textAlign='left'; } }
   function drawStand(c,fx,fy){ const p=c.pal,bob=reduce?0:(Math.sin(tick*0.2)<0?0:1); const hipY=fy-9,shY=fy-22-bob,headTop=fy-33-bob;
     R(fx-4,hipY,4,9,p.suitDk); R(fx+1,hipY,4,9,p.suit); R(fx-4,fy-2,5,2,'#1a120a'); R(fx+1,fy-2,5,2,'#1a120a');
     R(fx-8,shY,16,hipY-shY+2,p.suit); R(fx-8,shY,16,2,p.suitDk); R(fx-2,shY,4,8,p.shirt); R(fx-1,shY+1,2,7,p.tie);
     R(fx-9,shY+2,3,8,p.suitDk); R(fx+6,shY+2,3,8,p.suit); R(fx-9,shY+9,3,2,p.skin); R(fx+6,shY+9,3,2,p.skin);
-    const h=headFront(c,fx,headTop,(tick%70)<3,false); puff(c,h.mouthX,h.mouthY); updateParticles(smoke); }
+    const h=headFront(c,fx,headTop,(tick%70)<3,false); puff(c,h.mouthX,h.mouthY); }
   function drawWalk(c,fx,fy,d){ const p=c.pal,f=tick%4,stride=[3,0,-3,0][f],sw=[3,0,-3,0][f],up=(f===1||f===3)?1:0; const hipY=fy-9,shY=fy-21-up,headTop=fy-32-up;
     R(fx-1+d*stride,hipY,4,9,p.suitDk); R(fx-1-d*stride,hipY,4,9,p.suit); R(fx-2+d*stride+(d>0?2:-2),fy-2,5,2,'#1a120a'); R(fx-2-d*stride+(d>0?-2:2),fy-2,5,2,'#1a120a');
     R(fx-4,shY,10,hipY-shY+2,p.suit); R(fx-4,shY,10,2,p.suitDk); R(fx-1+d*sw,shY+3,3,7,p.suitDk); R(fx-1+d*sw,shY+9,3,2,p.skin); headSide(c,fx,headTop,d); }
-  function headSide(c,cx,y,d){ const p=c.pal; R(cx-5,y,11,11,p.hair); R(cx-4,y+2,9,9,p.skin); R(cx-4,y+2,9,2,'#eec79a'); R(cx-3,y+9,7,1,p.skinSh);
-    P(cx+d*4,y+6,'#111'); P(cx+d*5,y+6,p.skin); P(cx+d*6,y+6,p.skinSh); R(cx-1,y+8,3,1,'#7a4a34');
-    if(c.hat==='fedora'){ R(cx-6+d*2,y+1,15,2,p.hat); R(cx-4,y-4,10,6,p.hat); R(cx-4,y,10,2,p.band); } else if(c.hat==='cap'){ R(cx-5,y-1,11,4,p.hat); R(cx-9+(d<0?0:6),y+2,7,2,p.hat); } else { R(cx-5,y-1,11,4,p.hair); R(cx-5+d*4,y+2,3,9,p.hair); } }
-  function puff(c,mx,my){ if(c.prop!=='cig') return; R(mx-5,my,5,1,'#e8e2d0'); P(mx-6,my,'#ff7a2a'); if(!reduce&&tick%7===0) smoke.push({x:mx-6,y:my-1,life:34,rise:0.28,seed:Math.random()*6.28,c:'#9aa3a8'}); }
+  function headSide(c,cx,y,d){ const p=c.pal, a=c.acc||{}, back=(d>0?cx-6:cx+3);
+    R(cx-5,y,11,11,p.hair); R(cx-4,y+2,9,9,p.skin); R(cx-4,y+2,9,2,'#eec79a'); R(cx-3,y+9,7,1,p.skinSh);
+    P(cx+d*4,y+6,'#111'); P(cx+d*5,y+6,p.skin); P(cx+d*6,y+6,p.skinSh);                    // eye + nose at the front
+    R(d>0?cx+2:cx-3,y+8,2,1,'#7a4a34');                                                    // mouth on the front of the face
+    if(c.hat==='fedora'){ R(cx-6+d*2,y+1,15,2,p.hat); R(cx-4,y-4,10,6,p.hat); R(cx-4,y,10,2,p.band); }
+    else if(c.hat==='cap'){ R(cx-5,y-1,11,4,p.hat); R(cx-9+(d<0?0:6),y+2,7,2,p.hat); }
+    else { R(cx-5,y-1,11,3,p.hair); R(back,y,4,14,p.hair);                                 // rounded crown + full hair down the back & side (no mohawk)
+      if(c.hat==='beret'){ R(cx-6,y-3,13,4,p.hat); R(cx+(d<0?-6:9),y-4,2,2,p.hat); }
+      if(a.longhair){ R(back,y+1,5,21,p.hair); R(d>0?cx+3:cx-6,y+11,3,10,p.hair); } }       // long hair: down the back AND framing the near side (not a mullet)
+    if(a.eyeshade){ R(cx-5,y+1,11,2,'#2f6a4a'); R(cx-5,y+1,11,1,'#3f8a60'); }
+    if(a.glasses) P(cx+d*4,y+5,'#8fb0c0');
+    if(a.stubble) R(cx-2,y+9,5,1,p.skinSh); }
+  function puff(c,mx,my){ if(c.prop!=='cig'||(matchT<=0&&cigLit<=0)) return; R(mx-5,my,5,1,'#e8e2d0');
+    if(matchT>0){ P(mx-6,my,'#fff2c4'); P(mx-8,my-1,'#ffb02a'); P(mx-8,my,'#ff7a2a'); return; }  // match flare while lighting up
+    P(mx-6,my,'#ff7a2a');                                                                          // lit ember
+    if(!reduce&&tick%24===0) smoke.push({x:mx-6,y:my-1,life:46,rise:0.15,curl:0.25,seed:Math.random()*6.28,c:'#9aa3a8'}); }
 
-  function drawSeated(c,cx){ const p=c.pal,bob=reduce?0:(state.scene==='idle'?(Math.sin(tick*0.22)<0?0:1):(tick%8<4?0:1)); const shY=FLOOR-34+bob,headTop=FLOOR-45+bob,shock=state.scene==='stop';
-    R(cx-9,shY,18,22,p.suit); R(cx-9,shY,18,2,p.suitDk); R(cx-3,shY,6,11,p.shirt); R(cx-1,shY+1,2,10,p.tie);
-    if(state.scene==='phone'){ R(cx+4,FLOOR-40,4,3,p.suit); R(cx+5,FLOOR-42,4,3,'#2b3036'); R(cx+6,FLOOR-41,2,9,'#20242a'); }
-    else if(state.scene==='stop'){ R(cx-9,FLOOR-40,4,3,p.suitDk); R(cx-10,FLOOR-43,4,3,p.skin); R(cx+5,FLOOR-40,4,3,p.suit); R(cx+6,FLOOR-43,4,3,p.skin); }
+  function drawSeated(c,cx){ const p=c.pal,bob=reduce?0:(state.scene==='idle'?(Math.sin(tick*0.22)<0?0:1):(tick%8<4?0:1)); const shY=FLOOR-40+bob,headTop=FLOOR-51+bob,shock=state.scene==='stop';
+    R(cx-9,shY,18,24,p.suit); R(cx-9,shY,18,2,p.suitDk); R(cx-3,shY,6,12,p.shirt); R(cx-1,shY+1,2,11,p.tie);
+    { const a=c.acc||{}; if(a.bowtie){ R(cx-3,shY+1,3,2,p.tie); R(cx,shY+1,3,2,p.tie); P(cx,shY+1,p.shirt); } if(a.camera){ R(cx-6,shY+4,12,1,'#20242a'); R(cx-4,shY+8,8,4,'#17191d'); R(cx-4,shY+8,8,1,'#3a4048'); R(cx-1,shY+9,3,2,'#6a86a0'); } }
+    if(state.scene==='phone'){ R(cx+4,FLOOR-46,4,3,p.suit); R(cx+5,FLOOR-48,4,3,'#2b3036'); R(cx+6,FLOOR-47,2,9,'#20242a'); }
+    else if(state.scene==='stop'){ R(cx-9,FLOOR-46,4,3,p.suitDk); R(cx-10,FLOOR-49,4,3,p.skin); R(cx+5,FLOOR-46,4,3,p.suit); R(cx+6,FLOOR-49,4,3,p.skin); }
+    else if(state.scene==='type'){ const t=reduce?0:tick%2; R(cx-8,shY+9,4,8,p.suitDk); R(cx+4,shY+9,4,8,p.suit); R(cx-7,shY+16+t,3,2,p.skin); R(cx+5,shY+16+(1-t),3,2,p.skin); }  // forearms to the keys — hands tuck behind the machine
     const h=headFront(c,cx,headTop,(tick%64)<3,shock);
     if(c.prop==='cig'&&state.scene!=='coffee'&&!shock) puff(c,h.mouthX,h.mouthY); if(shock) smoke.length=0; }
 
   // Hands after the desk. Typing = fingertips on the FRONT keyboard slab (DTOP-2), well below the machine body.
   function drawSeatedHands(c,cx){ const p=c.pal;
-    if(state.scene==='type'){ const hit=tick%2; R(cx-7,DTOP-2-hit,3,2,p.skin); R(cx+4,DTOP-2-(1-hit),3,2,p.skin); if(hit&&tick%4===0) P(cx,DTOP-6,'#fff2c4'); }
-    else if(state.scene==='coffee'){ const f=((tick/4)|0)%3, mx=[cx+6,cx+3,cx][f], my=[DTOP-6,FLOOR-24,FLOOR-33][f]; R(mx-4,my+2,4,3,p.suit); drawMug(mx,my,f===2); R(cx-12,DTOP-2,4,2,p.skin); }
+    if(state.scene==='type'){ /* hands tuck behind the machine; typing is sold by the typewriter + body bob */ }
+    else if(state.scene==='coffee'){ const atMouth=(tick%40)<18, mx=cx-1, my=atMouth?FLOOR-43:FLOOR-34; R(mx-3,my+2,4,4,p.suit); drawMug(mx,my,true); R(cx-12,DTOP-2,4,2,p.skin); }  // cup held in hand, a few sips
     else if(state.scene==='idle'){ R(cx-16,DTOP-2,4,2,p.skin); R(cx+13,DTOP-2,4,2,p.skin); } }
 
   // ---- Particles / bubble / ticker / stop --------------------------------
-  function updateParticles(arr){ for(let i=arr.length-1;i>=0;i--){ const s=arr[i]; s.life--; s.y-=(s.rise||0.3); s.x+=Math.sin(s.seed+tick*0.18)*0.35; if(s.life<=0){arr.splice(i,1);continue;} g.globalAlpha=Math.min(1,s.life/26)*0.85; const sz=s.life>24?2:1; g.fillStyle=s.c; g.fillRect(s.x|0,s.y|0,sz,sz); g.globalAlpha=1; } }
-  function bubble(cx,topY,text){ g.font='6px "Press Start 2P",monospace'; const words=text.split(' '),lines=[]; let ln=''; for(const w of words){ const t=ln?ln+' '+w:w; if(g.measureText(t).width>150){lines.push(ln);ln=w;} else ln=t; } if(ln) lines.push(ln);
-    const lh=9,padX=5,padY=4; let bw=0; for(const l of lines) bw=Math.max(bw,g.measureText(l).width); bw=Math.ceil(bw)+padX*2; const bh=lines.length*lh+padY*2; let bx=Math.round(cx-bw/2); bx=Math.max(4,Math.min(VW-bw-4,bx)); const by=Math.max(2,topY-bh-6);
-    R(bx-1,by-1,bw+2,bh+2,'#0b0b0b'); R(bx,by,bw,bh,'#efe9d8'); R(bx,by,bw,1,'#fff'); R(bx,by+bh-1,bw,1,'#c7c1af'); R(cx-2,by+bh,4,3,'#efe9d8'); P(cx-1,by+bh+2,'#0b0b0b');
-    g.fillStyle='#1a1a1a'; g.textAlign='center'; g.textBaseline='top'; lines.forEach((l,i)=>g.fillText(l,bx+bw/2,by+padY+i*lh)); g.textAlign='left'; g.textBaseline='alphabetic'; }
+  function updateParticles(arr){ for(let i=arr.length-1;i>=0;i--){ const s=arr[i]; s.life--; s.y-=(s.rise||0.3); s.x+=Math.sin(s.y*0.16+tick*0.03)*0.3; if(s.life<=0){arr.splice(i,1);continue;} g.globalAlpha=Math.min(1,s.life/34)*0.7; const sz=s.life>34?2:1; g.fillStyle=s.c; g.fillRect(s.x|0,s.y|0,sz,sz); g.globalAlpha=1; } }
+  function bubble(cx,topY,text){ g.font='6px "Press Start 2P",monospace'; const words=text.split(' '),lines=[]; let ln=''; for(const w of words){ const t=ln?ln+' '+w:w; if(g.measureText(t).width>108){lines.push(ln);ln=w;} else ln=t; } if(ln) lines.push(ln);
+    const lh=8,padX=4,padY=3; let bw=0; for(const l of lines) bw=Math.max(bw,g.measureText(l).width); bw=Math.ceil(bw)+padX*2; if(bw&1)bw++; const bh=lines.length*lh+padY*2; let bx=Math.round(cx-bw/2); bx=Math.max(4,Math.min(VW-bw-4,bx)); const by=Math.max(2,topY-bh-5); const tx=bx+bw/2;
+    R(bx-1,by-1,bw+2,bh+2,'#0b0b0b'); R(bx,by,bw,bh,'#efe9d8'); R(bx,by,bw,1,'#fff'); R(bx,by+bh-1,bw,1,'#c7c1af'); R(cx-2,by+bh,3,2,'#efe9d8'); P(cx-1,by+bh+2,'#0b0b0b');
+    g.fillStyle='#1a1a1a'; g.textAlign='center'; g.textBaseline='top'; lines.forEach((l,i)=>g.fillText(l,tx,by+padY+i*lh)); g.textAlign='left'; g.textBaseline='alphabetic'; }
   const TICK_TXT='  LATE EDITION WIRE  ///  PRESS ROOM QUIET, TOO QUIET  ///  COMPETING TAKES ON PAGE ONE  ///  COFFEE POT EMPTY AGAIN  ///  ';
   function tickerStrip(){ R(0,VH-9,VW,9,'#12100c'); R(0,VH-9,VW,1,'#3a2e1b'); g.fillStyle='#e8b04b'; g.font='6px "Press Start 2P",monospace'; g.textBaseline='middle'; const tw=g.measureText(TICK_TXT).width,x=-((tick*2)%tw); g.fillText(TICK_TXT,x,VH-4); g.fillText(TICK_TXT,x+tw,VH-4); g.textBaseline='alphabetic'; }
   function stopOverlay(){ g.fillStyle='rgba(6,6,10,.4)'; g.fillRect(0,0,VW,VH); const down=(tick%16)<8; g.font='8px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; R(40,VH-40,VW-80,20,'#7a1a10'); R(40,VH-40,VW-80,1,'#c2412d'); g.fillStyle='#f4e7c8'; g.fillText('STOP THE PRESS',VW/2,VH-30); if(down&&tick%16===0){ g.fillStyle='rgba(194,65,45,.2)'; g.fillRect(0,0,VW,VH); } g.textAlign='left'; g.textBaseline='alphabetic'; const gr=g.createRadialGradient(VW/2,VH/2,40,VW/2,VH/2,180); gr.addColorStop(0,'rgba(194,65,45,0)'); gr.addColorStop(1,'rgba(194,65,45,.26)'); g.fillStyle=gr; g.fillRect(0,0,VW,VH); }
 
   function render(){ const sky=g.createLinearGradient(0,0,0,VH); sky.addColorStop(0,'#101826'); sky.addColorStop(1,'#0a0d13'); g.fillStyle=sky; g.fillRect(0,0,VW,VH);
-    layerFar(cam*0.25); layerBack(cam*0.55); layerMain(cam); layerFore(cam*1.15);
-    if(state.mode==='desk'&&state.banter&&bubbleText) bubble(DC-cam, FLOOR-56, bubbleText);
+    layerFar(cam*0.25); layerBack(cam*BP); layerMain(cam); layerFore(cam*1.15);
+    if(state.mode==='desk'&&state.banter&&bubbleText) bubble(AC()-cam, FLOOR-56, bubbleText);
     if(state.mode==='desk'&&state.scene==='stop') stopOverlay(); }
   function newBanter(){ const c=CAST[state.castIdx]; bubbleText = state.scene==='stop'?'STOP THE PRESS!':c.lines[(Math.random()*c.lines.length)|0]; }
 
@@ -265,45 +398,79 @@
     while(acc>=step){ acc-=step; tick++;
       if(state.mode==='roam'){
         if(state.goto!=null){
-          if(state.phase==='walk'){ const dx=state.goto-player.x; if(Math.abs(dx)>3){ const d=dx>0?1:-1; state.facing=d; player.vx=4*d; player.x+=4*d; } else { player.vx=0; state.phase='gone'; state.timer=state.goneTotal; } }
+          if(state.phase==='walk'){ const dx=state.goto-player.x; if(Math.abs(dx)>4){ const d=dx>0?1:-1; state.facing=d; player.vx=7*d; player.x+=7*d; } else { player.vx=0; state.phase='gone'; state.timer=state.goneTotal; } }
           else if(state.phase==='gone'){ player.vx=0; state.timer--; if(state.timer<=0){ state.phase='return'; state.timer=8; player.x=state.goto; } }
           else if(state.phase==='return'){ player.vx=0; state.timer--; if(state.timer<=0){ state.phase='none'; state.goto=null; state.meeting=false; state.camFrozen=false; } }
-        } else { let vx=0; if(input.left)vx-=4; if(input.right)vx+=4; player.vx=vx; if(vx!==0){ state.facing=vx>0?1:-1; player.x=Math.max(30,Math.min(WORLD-30,player.x+vx)); } }
+        } else if(state.panMode){ if(input.left)state.panX-=12; if(input.right)state.panX+=12; state.panX=Math.max(0,Math.min(WORLD-VW,state.panX)); player.vx=0; }
+        else { let vx=0; if(input.left)vx-=7; if(input.right)vx+=7; player.vx=vx; if(vx!==0){ state.facing=vx>0?1:-1; player.x=Math.max(30,Math.min(WORLD-30,player.x+vx)); } }
       } else player.vx=0;
-      cam = state.camFrozen ? state.camVal : Math.max(0,Math.min(WORLD-VW,(state.mode==='desk'?DC:player.x)-VW/2));
+      cam = state.camFrozen ? state.camVal : (state.panMode ? Math.max(0,Math.min(WORLD-VW,state.panX)) : Math.max(0,Math.min(WORLD-VW,(state.mode==='desk'?AC():player.x)-VW/2)));
       if(!reduce&&tick%2===0){ for(const wx of [40,700]) rain.push({win:wx,x:(Math.random()*60)|0,y:0,life:16}); }
       for(let i=rain.length-1;i>=0;i--){ rain[i].y+=3; if(rain[i].y>58) rain.splice(i,1); }
       bubbleTimer--; if(bubbleTimer<=0){ if(state.mode==='desk') newBanter(); bubbleTimer=44; }
+      // ambient life + typewriter paper feed
+      if(--amb.next<=0){ amb.next=150+((Math.random()*170)|0); fireAmbient(); }
+      const typingNow=state.mode==='desk'&&state.scene==='type';
+      if(typingNow&&!reduce){ if(tick%14===0){ tw.line++; if(tw.line>9){ tw.line=0; ejectPage(AC(),DTOP-26); } } }
+      else if(tw.line>0&&tick%20===0) tw.line--;
+      // cigarette as an occasional idle beat: strike a match, then a slow smoke, then it's done
+      const cc0=CAST[state.castIdx], canSmoke=!reduce&&cc0.prop==='cig'&&((state.mode==='roam'&&Math.abs(player.vx)<0.01)||state.scene==='idle');
+      if(canSmoke){ if(matchT>0){ matchT--; if(matchT===0) cigLit=170; } else if(cigLit>0) cigLit--; else if(tick%18===0&&Math.random()<0.14) matchT=9; }
+      else { matchT=0; cigLit=0; }
+      if(ringT>0)ringT--; if(officeBlipT>0)officeBlipT--;
+      if(runner.active){ runner.x+=10; if(runner.x>WORLD+40) runner.active=false; }
+      if(courier.active){
+        if(courier.phase==='walk'){ if(Math.abs(courier.target-courier.x)>5) courier.x+=6*courier.dir; else { courier.phase='drop'; courier.t=26; } }
+        else if(courier.phase==='drop'){ courier.t--; if(courier.t===14) dropPages(courier.target); if(courier.t<=0){ courier.phase='leave'; courier.target=courier.exit; courier.dir=courier.target>courier.x?1:-1; } }
+        else { if(Math.abs(courier.target-courier.x)>5) courier.x+=6*courier.dir; else courier.active=false; }
+      }
+      stepPages();
     } render(); requestAnimationFrame(frame); }
 
   // ---- Controls -----------------------------------------------------------
   const mScene=document.getElementById('mScene'); const sceneLabel={roam:'ROAMING · ← → TO WALK',idle:'AT THE DESK · SMOKE',type:'TYPING',coffee:'COFFEE BREAK',phone:'THE PHONE',stop:'STOP THE PRESS'};
   function clearGoto(){ state.goto=null; state.phase='none'; state.meeting=false; state.camFrozen=false; }
-  function setScene(s){ clearGoto(); if(s==='roam'){ state.mode='roam'; state.scene='roam'; } else { state.mode='desk'; state.scene=s; player.x=DC; bubbleTimer=1; } document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===s))); mScene.textContent='SCENE — '+(sceneLabel[s]||s); }
+  function setScene(s){ clearGoto(); state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } if(s==='roam'){ state.mode='roam'; state.scene='roam'; } else { state.mode='desk'; state.scene=s; player.x=AC(); bubbleTimer=1; } document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===s))); mScene.textContent='SCENE — '+(sceneLabel[s]||s); }
   document.getElementById('scenes').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(!b||!b.dataset.scene) return; setScene(b.dataset.scene); });
   function goToDoor(backX,label,meeting){ state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam')));
-    state.camFrozen=true; state.camVal=cam; state.goto=(backX+9)+state.camVal*0.45; state.phase='walk'; state.meeting=meeting; state.goneTotal=meeting?70:24; mScene.textContent=label; }
+    state.camFrozen=true; state.camVal=cam; state.goto=(backX+9)+state.camVal*(1-BP); state.phase='walk'; state.meeting=meeting; state.goneTotal=meeting?70:24; mScene.textContent=label; }
   document.getElementById('chiefBtn').addEventListener('click',()=>goToDoor(OFFICE_XB,'OFF TO SEE THE CHIEF',true));
-  document.getElementById('exitBtn').addEventListener('click',()=>goToDoor(player.x>DC?DOOR_RB:DOOR_LB,'STEPPING OUT',false));
+  document.getElementById('exitBtn').addEventListener('click',()=>goToDoor(player.x>AC()?DOOR_RB:DOOR_LB,'STEPPING OUT',false));
   function hold(btn,key){ const on=e=>{e.preventDefault(); clearGoto(); if(state.mode!=='roam') setScene('roam'); input[key]=true;}; const off=()=>input[key]=false; btn.addEventListener('pointerdown',on); btn.addEventListener('pointerup',off); btn.addEventListener('pointerleave',off); btn.addEventListener('pointercancel',off); }
   hold(document.getElementById('walkL'),'left'); hold(document.getElementById('walkR'),'right');
   addEventListener('keydown',e=>{ const k=e.key.toLowerCase();
     if(k==='arrowleft'||k==='a'){ clearGoto(); if(state.mode!=='roam')setScene('roam'); input.left=true; e.preventDefault(); }
     if(k==='arrowright'||k==='d'){ clearGoto(); if(state.mode!=='roam')setScene('roam'); input.right=true; e.preventDefault(); }
-    if(k===' '){ if(state.mode==='roam'&&Math.abs(player.x-DC)<44) setScene('idle'); else if(state.mode==='desk') setScene('roam'); e.preventDefault(); } });
+    if(k===' '){ if(state.mode==='roam'&&Math.abs(player.x-AC())<44) setScene('idle'); else if(state.mode==='desk') setScene('roam'); e.preventDefault(); } });
   addEventListener('keyup',e=>{ const k=e.key.toLowerCase(); if(k==='arrowleft'||k==='a')input.left=false; if(k==='arrowright'||k==='d')input.right=false; });
   cv.addEventListener('pointerdown',()=>cv.focus());
 
   const nameInput=document.getElementById('nameInput');
-  function selectCast(i){ state.castIdx=i; document.querySelectorAll('#cast .card').forEach((c,idx)=>c.setAttribute('aria-pressed',String(idx===i))); nameInput.value=CAST[i].name; }
+  function selectCast(i){ state.castIdx=i; player.x=deskX(i); state.facing=1; state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } document.querySelectorAll('#cast .card').forEach((c,idx)=>c.setAttribute('aria-pressed',String(idx===i))); nameInput.value=CAST[i].name; }
   nameInput.addEventListener('input',()=>{ CAST[state.castIdx].name=nameInput.value; });
   const banterBtn=document.getElementById('banterBtn'); banterBtn.addEventListener('click',()=>{ state.banter=!state.banter; banterBtn.setAttribute('aria-pressed',String(state.banter)); });
+  const panBtn=document.getElementById('panBtn');
+  function setPan(on){ state.panMode=on; panBtn.setAttribute('aria-pressed',String(on)); if(on){ clearGoto(); state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam'))); state.panX=cam; mScene.textContent='FREE PAN · ← → TO LOOK'; } else mScene.textContent='ROAMING · ← → TO WALK'; }
+  panBtn.addEventListener('click',()=>setPan(!state.panMode));
   const castEl=document.getElementById('cast');
   CAST.forEach((c,i)=>{ const card=document.createElement('button'); card.className='card'; card.type='button'; card.setAttribute('aria-pressed',String(i===0)); const pc=document.createElement('canvas'); pc.width=42; pc.height=42; const who=document.createElement('div'); who.className='who'; who.innerHTML='<b>'+c.name+'</b><span>'+c.role+'</span>'; card.append(pc,who); castEl.append(card); card.addEventListener('click',()=>selectCast(i)); portrait(pc,c); });
   function portrait(canvas,c){ const pg=canvas.getContext('2d'); pg.imageSmoothingEnabled=false; const t=document.createElement('canvas'); t.width=22;t.height=22; const o=t.getContext('2d'); const p=c.pal,cx=11,y=3,rr=(x,yy,w,h,col)=>{o.fillStyle=col;o.fillRect(x,yy,w,h);};
     rr(0,0,22,22,'#0a0d12'); rr(cx-6,y,12,11,p.hair); rr(cx-5,y+2,10,9,p.skin); rr(cx-5,y+2,10,2,'#eec79a'); rr(cx-3,y+9,6,1,p.skinSh); o.fillStyle='#111'; o.fillRect(cx-3,y+5,1,1); o.fillRect(cx+2,y+5,1,1); rr(cx-2,y+8,4,1,'#7a4a34');
-    if(c.hat==='fedora'){ rr(cx-8,y+1,17,2,p.hat); rr(cx-5,y-4,11,6,p.hat); rr(cx-5,y,11,2,p.band); } else if(c.hat==='cap'){ rr(cx-6,y-1,13,4,p.hat); rr(cx-11,y+2,7,2,p.hat); } else { rr(cx-6,y-1,12,4,p.hair); rr(cx-7,y+2,3,10,p.hair); rr(cx+5,y+2,3,10,p.hair); }
-    rr(cx-7,y+18,14,4,p.suit); pg.drawImage(t,0,0,22,22,0,0,42,42); }
+    if(c.hat==='fedora'){ rr(cx-8,y+1,17,2,p.hat); rr(cx-5,y-4,11,6,p.hat); rr(cx-5,y,11,2,p.band); }
+    else if(c.hat==='cap'){ rr(cx-6,y-1,13,4,p.hat); rr(cx-11,y+2,7,2,p.hat); }
+    else if(c.hat==='beret'){ rr(cx-7,y+2,3,11,p.hair); rr(cx+4,y+2,3,11,p.hair); rr(cx-6,y-2,13,4,p.hat); rr(cx+5,y-3,2,2,p.hat); }
+    else { rr(cx-6,y-1,12,4,p.hair); rr(cx-7,y+2,3,11,p.hair); rr(cx+5,y+2,3,11,p.hair); }
+    const a=c.acc||{};
+    if(a.longhair){ rr(cx-7,y+3,3,12,p.hair); rr(cx+5,y+3,3,12,p.hair); }
+    if(a.eyeshade){ rr(cx-6,y+1,12,2,'#2f6a4a'); rr(cx-6,y+1,12,1,'#3f8a60'); }
+    if(a.glasses){ rr(cx-4,y+4,3,3,'#20242a'); rr(cx+2,y+4,3,3,'#20242a'); o.fillStyle='#8fb0c0'; o.fillRect(cx-3,y+5,1,1); o.fillRect(cx+3,y+5,1,1); }
+    if(a.stubble){ rr(cx-3,y+9,7,1,p.skinSh); }
+    if(a.freckles){ o.fillStyle=p.skinSh; o.fillRect(cx-3,y+7,1,1); o.fillRect(cx+2,y+7,1,1); }
+    if(a.pencil){ rr(cx+5,y-1,1,4,'#d9a441'); }
+    rr(cx-7,y+18,14,4,p.suit);
+    if(a.bowtie){ rr(cx-3,y+17,3,2,p.tie); rr(cx,y+17,3,2,p.tie); } else rr(cx-1,y+17,2,4,p.tie);
+    if(a.camera){ rr(cx-3,y+19,6,3,'#17191d'); rr(cx-1,y+20,3,1,'#6a86a0'); }
+    pg.drawImage(t,0,0,22,22,0,0,42,42); }
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);
 })();
