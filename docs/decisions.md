@@ -152,6 +152,24 @@ failure (never throws) so one bad webhook can't block the rest, and `--dry-run` 
 exactly what would be sent without sending. Email/SMTP and clipboard are deferred:
 SMTP needs the keychain for credentials, and clipboard is UI-adjacent.
 
+## The Morgue + ics adapter
+
+### DM.1 — Morgue is a dependency-free file scan, not SQLite (yet)
+The archive/search (plan "The Morgue") is built by scanning `editions/*/edition.json` on
+demand — no `better-sqlite3` native dependency (which also wouldn't build under this
+environment's blocked install scripts). `late-edition search <query>` ranks headline
+matches by term overlap; at CHECK, each story is linked to related past coverage
+(shared significant terms + same beat) and the paper renders a "From the morgue" line.
+A SQLite index can back this later without changing the interface if scan cost matters.
+
+### DM.2 — ics adapter is hand-parsed (no calendar dependency)
+The sixth source adapter (`ics`, for calendars / "City Hall") parses iCalendar by hand —
+line-unfolding, VEVENT extraction, the common DTSTART date forms — rather than pulling a
+calendar library, keeping the zero-added-dependency posture. Past events are filtered out
+by default. `imap` (the remaining v1 adapter) is left for later: it needs a real IMAP
+dependency and a live server to verify meaningfully; the `folder` adapter already covers a
+support-export inbox in the meantime.
+
 ## Milestone 4 — Stop the press & Late Extras (headless slice)
 
 _The interactive interrupt card (run it / fold it / not news) and the press-room animation

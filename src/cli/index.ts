@@ -6,6 +6,7 @@ import type { DistributionConfig } from '../main/config/types.js';
 import { distributeEdition } from '../main/distribute/run.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { detectAll } from '../main/providers/registry.js';
+import { searchMorgue } from '../main/store/morgue.js';
 import { runWatchOnce } from '../main/watch/run.js';
 
 const VERSION = '0.0.1';
@@ -21,6 +22,7 @@ Commands:
   run                    Run one edition through the pipeline (WIRE → PRESS).
   distribute <editionId> Send an already-printed edition to configured channels.
   watch                  Poll sources for tripwires; fire Late Extra bulletins.
+  search <query>         Search the morgue (archive of past editions).
   help                   Show this help.
   version                Print the version.
 
@@ -201,6 +203,27 @@ async function cmdWatch(flags: Record<string, string | boolean>): Promise<number
   return 0;
 }
 
+function cmdSearch(positionals: string[], flags: Record<string, string | boolean>): number {
+  const query = positionals.join(' ').trim();
+  if (!query) {
+    console.error('Usage: late-edition search <query> [--newsroom DIR]');
+    return 2;
+  }
+  const root = resolve(typeof flags.newsroom === 'string' ? flags.newsroom : '.');
+  const hits = searchMorgue(root, query);
+  if (hits.length === 0) {
+    console.log(`No morgue matches for "${query}".`);
+    return 0;
+  }
+  console.log(`Morgue — ${hits.length} match(es) for "${query}":\n`);
+  for (const h of hits) {
+    const tag = h.lateExtra ? 'EXTRA' : `No.${h.number}`;
+    console.log(`  ${h.date} ${tag.padEnd(7)} ${h.headline}  [${h.editionId}]`);
+  }
+  console.log('');
+  return 0;
+}
+
 async function main(): Promise<number> {
   const { command, positionals, flags } = parseArgs(process.argv.slice(2));
 
@@ -223,6 +246,8 @@ async function main(): Promise<number> {
       return cmdDistribute(positionals, flags);
     case 'watch':
       return cmdWatch(flags);
+    case 'search':
+      return cmdSearch(positionals, flags);
     default:
       console.error(`Unknown command: ${command}\n`);
       console.log(HELP);

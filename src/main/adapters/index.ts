@@ -1,6 +1,7 @@
 import { folderAdapter } from './folder.js';
 import { gitLocalAdapter } from './git_local.js';
 import { githubAdapter } from './github.js';
+import { icsAdapter } from './ics.js';
 import { registerAdapter } from './registry.js';
 import { rssAdapter } from './rss.js';
 import { webDiffAdapter } from './web_diff.js';
@@ -11,6 +12,7 @@ registerAdapter(gitLocalAdapter);
 registerAdapter(githubAdapter);
 registerAdapter(webDiffAdapter);
 registerAdapter(folderAdapter);
+registerAdapter(icsAdapter);
 
-export { rssAdapter, gitLocalAdapter, githubAdapter, webDiffAdapter, folderAdapter };
+export { rssAdapter, gitLocalAdapter, githubAdapter, webDiffAdapter, folderAdapter, icsAdapter };
 export { getAdapter, listAdapters, registerAdapter } from './registry.js';

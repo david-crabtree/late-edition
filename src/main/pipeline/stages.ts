@@ -2,6 +2,7 @@ import { runSource } from '../adapters/run.js';
 import type { Correction, Edition, SourceRef, Story } from '../core/edition.js';
 import type { Signal } from '../core/signal.js';
 import { writeStoryFile } from '../store/edition-store.js';
+import { relatedCoverage, scanMorgue, terms } from '../store/morgue.js';
 import { paths } from '../store/paths.js';
 import { appendToWire } from '../store/wire.js';
 import {
@@ -408,7 +409,29 @@ export async function stageCheck(draft: EditionDraft, ctx: PipelineContext): Pro
   });
 
   applyStopThePress(draft, ctx);
+  linkMorgue(draft, ctx);
   ctx.log.emit('CHECK', 'stage_done', { checked: toCheck.length });
+}
+
+/** Link each story to related past coverage from the morgue (the archive on disk). */
+function linkMorgue(draft: EditionDraft, ctx: PipelineContext): void {
+  const archive = scanMorgue(ctx.root);
+  if (archive.length === 0) return;
+  for (const story of draft.stories) {
+    const storyTerms = terms(
+      `${story.call?.headline ?? story.beatName} ${story.beatName} ${story.reports
+        .map((r) => r.proposedAngle)
+        .join(' ')}`,
+    );
+    const related = relatedCoverage(archive, { terms: storyTerms, beatId: story.beatId }, draft.id);
+    if (related.length > 0) {
+      story.morgue = related.map((e) => ({
+        editionId: e.editionId,
+        headline: e.headline,
+        date: e.date,
+      }));
+    }
+  }
 }
 
 /**
@@ -534,6 +557,7 @@ export function assembleEdition(draft: EditionDraft): Edition {
         ? story.reports.map((r) => ({ reporter: r.reporter, angle: r.proposedAngle }))
         : undefined,
       stopThePress: story.stopThePress,
+      morgue: story.morgue,
       sources,
       reports: story.reports,
     });

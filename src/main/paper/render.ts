@@ -72,6 +72,10 @@ function storyMarkdown(s: Story): string {
     const refs = s.sources.map((r) => `[${r.signalId}]${r.url ? `(${r.url})` : ''}`).join(', ');
     lines.push(`\n**Sources:** ${refs}`);
   }
+  if (s.morgue?.length) {
+    const past = s.morgue.map((m) => `${m.headline} (${m.editionId})`).join('; ');
+    lines.push(`\n**From the morgue:** ${past}`);
+  }
   if (s.rationale) lines.push(`\n> Editor's note: ${s.rationale}`);
   lines.push('');
   return lines.join('\n');
@@ -174,6 +178,11 @@ function storyHtml(s: Story): string {
         .join(', ')}</p>`
     : '';
   const note = s.rationale ? `<p class="editor-note">Editor's note: ${esc(s.rationale)}</p>` : '';
+  const morgue = s.morgue?.length
+    ? `<p class="morgue"><strong>From the morgue:</strong> ${s.morgue
+        .map((m) => `${esc(m.headline)} <span class="ed">(${esc(m.editionId)})</span>`)
+        .join('; ')}</p>`
+    : '';
   const kicker = s.stopThePress ? '<p class="stop-kicker">🛑 Stop the Press</p>' : '';
   return `<article class="story${s.stopThePress ? ' stop-the-press' : ''}">
     ${kicker}
@@ -182,6 +191,7 @@ function storyHtml(s: Story): string {
     <p class="byline">By ${esc(s.byline)}</p>
     <div class="body">${paragraphs(s.body)}</div>
     ${sources}
+    ${morgue}
     ${note}
   </article>`;
 }
@@ -221,6 +231,8 @@ section > h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .18e
 .body p { margin: 0 0 .8rem; line-height: 1.5; text-align: justify; }
 .sources { font-size: .74rem; color: #574f3f; }
 .sources a { color: #7a2d1d; }
+.morgue { font-size: .74rem; color: #574f3f; font-style: italic; }
+.morgue .ed { color: #8a8270; font-style: normal; }
 .editor-note { font-size: .8rem; font-style: italic; border-left: 3px solid #7a2d1d; padding-left: .6rem; color: #40382a; }
 .stop-kicker { display: inline-block; background: #7a2d1d; color: #f4efe2; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; font-size: .7rem; padding: .2rem .5rem; margin: 0 0 .4rem; }
 .story.stop-the-press { border-left: 4px solid #7a2d1d; padding-left: .8rem; }

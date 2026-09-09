@@ -25,6 +25,8 @@ export interface Story {
   competingTakes?: { reporter: string; angle: string }[];
   /** A corroborated, urgent finding that stopped the press — runs page one with a kicker. */
   stopThePress?: boolean;
+  /** Related past coverage from the morgue (archive). */
+  morgue?: { editionId: string; headline: string; date: string }[];
   sources: SourceRef[];
   /** Every filed report, kept for transparency and the morgue. */
   reports: FiledReport[];

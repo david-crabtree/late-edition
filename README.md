@@ -48,12 +48,20 @@ crashed run can resume:
 WIRE → ASSIGN → REPORT → ANGLES → CALL → WRITE → CHECK → PROOF → PRESS
 ```
 
-- **Source adapters** (`rss`, `git_local`, `github`, `web_diff`, `folder`, …) do pure
+- **Source adapters** (`rss`, `git_local`, `github`, `web_diff`, `folder`, `ics`) do pure
   fetch-and-diff and emit `Signal`s. No LLM.
-- **Agent providers** (`claude`, `codex`, `gemini`, `ollama`, direct API, and a `fake`
-  provider for testing) run the reporters, writers, editor and copy desk.
+- **Agent providers** (`claude`, `codex`, `gemini`, `opencode`, `ollama`, direct API, and a
+  `fake` provider for testing) run the reporters, writers, editor and copy desk.
+- **Multiple angles**: commission two or three reporters (ideally different providers) per
+  story; when they disagree the paper runs **Competing Takes** instead of silently merging.
 - Every claim in the paper is traceable to a source signal. Unverifiable claims are cut
   and listed under **Corrections**.
+- **Stop the press**: a corroborated, urgent finding is promoted to page one; between
+  editions, `late-edition watch` fires a **Late Extra** bulletin when a tripwire matches.
+- **Distribution**: `--distribute` sends the approved edition to Slack, Teams, a webhook, or
+  an RSS feed — so teammates get the paper without the app.
+- **The morgue**: `late-edition search <query>` searches past editions; each story links to
+  related past coverage.
 
 ## Contributing
 

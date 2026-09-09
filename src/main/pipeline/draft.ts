@@ -37,6 +37,8 @@ export interface StoryDraft {
   check?: CopyCheck;
   /** Set at CHECK when an urgent, corroborated finding stops the press. */
   stopThePress?: boolean;
+  /** Related past coverage from the morgue, linked at CHECK. */
+  morgue?: { editionId: string; headline: string; date: string }[];
 }
 
 /** The whole edition in flight. Persisted to `pipeline.json` after every stage. */
