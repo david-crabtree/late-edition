@@ -280,8 +280,23 @@ It has grown from a single-desk bust into a **whole newsroom floor**:
   atlases per the art brief's pipeline; the prototype's procedural drawing is throwaway reference.
 
 ### 6.6 Progress log (newest first)
-Each line is one "docs: prototype pass — …" commit; see `git log` for the exact SHAs.
-- **Full newsroom + fixes** (`c13f840`, this session's big rework): per-character desks, camera
+Each line is one commit; see `git log` for the exact SHAs.
+- **The product turn — brief-the-Chief, budgets, and the real-engine bridge** (`2590a7a`→`07b312e`):
+  **the product's shape is now settled: a newsroom you brief like a publisher** — you tell the
+  Chief a topic (a competitor, a rumour, "leaked GTA 6 build"), staff-with-personalities research
+  it, banter, pass work, flag bad recon and re-verify, and hand you a clean front page; you mostly
+  just approve the Chief's escalations. (Modelled on **Munder Difflin**, a local multi-agent harness
+  where you brief one boss and agents work on their own budgets.) The prototype became a *live sim* you
+  brief like a publisher — staff have **roles + per-agent token budgets**, work event-driven and
+  concurrent (copy boy runs pages desk-to-desk, copy desk bounces thin recon back to verify, idle
+  banter), and the Chief escalates only the few calls that need you (bump a budget / run page one).
+  The **engine** grew the matching wiring (`591b572`): `run --brief "<topic>"` (synthetic story →
+  ASSIGN→PRESS, no sources), `run --cap <tokens>` / `config edition.tokenCap` (holds reporters the
+  budget can't afford → "held for the next edition"), and a `reel.json` per edition (timed log +
+  per-role token ledger + headline). The prototype can **Load a real edition (reel.json)** and
+  replay it with the true headline and real per-role spend. All `--provider fake`, `npm run check`
+  green (47 tests).
+- **Full newsroom + fixes** (`c13f840`, the pixel-art rework): per-character desks, camera
   follows the cast selection + Free-pan, Mac & Iris added with accessories; Chief's office moved
   into its own back-wall strip (near-flat parallax so no desk covers it), door beside window, big
   centred masthead; rotary phone, animated typewriter, staff couriers, smoking-as-idle-beat,
