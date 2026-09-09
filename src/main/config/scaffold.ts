@@ -54,6 +54,21 @@ schedule:
 
 edition:
   max_page_one: 3
+
+# How an approved edition reaches your team. Distribution is opt-in: run with
+# --distribute (or set auto_send: true). Secrets stay OUT of this file — each channel
+# names an environment variable that holds its webhook URL.
+distribution:
+  auto_send: false
+  channels:
+    # - type: slack
+    #   webhook_env: SLACK_WEBHOOK_URL
+    # - type: teams
+    #   webhook_env: TEAMS_WEBHOOK_URL
+    # - type: webhook
+    #   url_env: LATE_EDITION_WEBHOOK_URL
+    # - type: rss
+    #   base_url: "https://your-host.example/editions"   # optional; omit for local file links
 `;
 
 const STAFF_YAML = `# Which provider runs each desk. Everything defaults to the offline \`fake\` provider

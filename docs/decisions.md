@@ -130,6 +130,28 @@ and it catches citations/links injected by source material. The LLM `CopyCheck` 
 in; the deterministic result wins on `pass`. Unsupported citations become **Corrections**
 with the reporter's name.
 
+## Milestone 5 — Distribution (headless channels)
+
+_Taken before M3/M4 because it's fully headless and it's the point of the whole thing —
+getting the paper to a team that doesn't run the app. M3 (Electron UI) is deferred while
+we stay headless._
+
+### D5.1 — Distribution is opt-in; secrets never touch yaml
+Channels only run when the user passes `--distribute` (or sets `auto_send: true`), matching
+the plan's "explicit approval per edition by default". Each channel names an **environment
+variable** that holds its webhook/URL (`webhook_env`, `url_env`) rather than storing the
+secret in `config.yaml`. OS-keychain storage (keytar) arrives with the UI; the env-var
+indirection is the headless stand-in and keeps secrets out of the repo.
+
+### D5.2 — Channels ship: slack, teams, webhook, rss; a `--dry-run` previews sends
+One-file channels behind a `Channel` interface + registry (mirrors the adapter/provider
+pattern). Slack/Teams/generic-webhook POST via global `fetch`; RSS writes
+`editions/feed.xml` (RSS 2.0) so a team can subscribe with any reader — with `base_url` the
+item links point at hosted HTML, without it at the local file. Every channel handles its own
+failure (never throws) so one bad webhook can't block the rest, and `--dry-run` prints
+exactly what would be sent without sending. Email/SMTP and clipboard are deferred:
+SMTP needs the keychain for credentials, and clipboard is UI-adjacent.
+
 ### D2.4 — Prompt overrides are opt-in, not pre-copied
 Reversed part of D1.7: `init` no longer copies the prompt templates into each newsroom
 (they went stale when the built-in defaults improved). Instead it writes a

@@ -4,7 +4,15 @@ import { basename, join, resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import type { SourceConfig } from '../adapters/types.js';
 import { paths } from '../store/paths.js';
-import type { BeatConfig, Newsroom, PaperConfig, RoleAssignment, StaffConfig } from './types.js';
+import type {
+  BeatConfig,
+  DistChannelConfig,
+  DistributionConfig,
+  Newsroom,
+  PaperConfig,
+  RoleAssignment,
+  StaffConfig,
+} from './types.js';
 
 /** Thrown when a newsroom on disk is missing or malformed, with a user-facing message. */
 export class NewsroomConfigError extends Error {}
@@ -68,7 +76,22 @@ function normalizePaper(raw: unknown, file: string): PaperConfig {
     edition: edition
       ? { maxPageOne: num(edition.max_page_one ?? edition.maxPageOne) ?? 3 }
       : { maxPageOne: 3 },
+    distribution: normalizeDistribution(r.distribution, file),
   };
+}
+
+function normalizeDistribution(raw: unknown, file: string): DistributionConfig | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const r = asRecord(raw, file);
+  const channelsRaw = Array.isArray(r.channels) ? r.channels : [];
+  const channels: DistChannelConfig[] = channelsRaw.map((c, i) => {
+    const cr = asRecord(c, file);
+    if (typeof cr.type !== 'string') {
+      throw new NewsroomConfigError(`distribution.channels[${i}] needs a \`type\` in ${file}.`);
+    }
+    return { ...cr, type: cr.type } as DistChannelConfig;
+  });
+  return { autoSend: Boolean(r.auto_send ?? r.autoSend ?? false), channels };
 }
 
 function role(raw: unknown, file: string, label: string): RoleAssignment {

@@ -21,6 +21,9 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "performance": {
+        "noDelete": "off"
+      },
       "style": {
         "noNonNullAssertion": "off",
         "useNodejsImportProtocol": "error"

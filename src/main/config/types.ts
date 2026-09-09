@@ -1,5 +1,18 @@
 import type { SourceConfig } from '../adapters/types.js';
 
+/** One configured distribution channel. `type` selects the channel; the rest are its options. */
+export interface DistChannelConfig {
+  type: string;
+  [key: string]: unknown;
+}
+
+/** How an approved edition goes out to the team (`config.yaml` `distribution`). */
+export interface DistributionConfig {
+  /** When true, weekday editions may send without a per-edition confirmation. */
+  autoSend: boolean;
+  channels: DistChannelConfig[];
+}
+
 /** Top-level newsroom configuration (`newsroom/config.yaml`). */
 export interface PaperConfig {
   paper: {
@@ -16,6 +29,7 @@ export interface PaperConfig {
     /** Max lead stories on page one. */
     maxPageOne?: number;
   };
+  distribution?: DistributionConfig;
 }
 
 /** How a role maps to a provider (`newsroom/staff.yaml`). */
