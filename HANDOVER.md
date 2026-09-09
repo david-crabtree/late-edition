@@ -21,13 +21,53 @@ disagree, and skim [`docs/decisions.md`](docs/decisions.md) for the "why" behind
   art, packaging) are deferred. We have instead produced: a complete **art brief**
   ([`docs/art-brief.md`](docs/art-brief.md)) and a **playable, code-drawn prototype** of the
   newsroom ([`docs/prototype/newsroom-screen-test.html`](docs/prototype/newsroom-screen-test.html)).
-- **David is a pixel artist** and will draw the real assets. Recent work has been iterating the
-  prototype as a *moving reference*, taking his art-direction notes. See §6 for exactly where
-  that stands and what's still being tuned.
+- **David is a pixel artist** and will draw the real assets. The prototype started as a *moving
+  art reference* and has since grown into the **product demo** (see next bullet). §6 has the art state.
 
-To orient in the code, read in this order: this file → `docs/build-plan.md` (the original
-vision) → `docs/decisions.md` (what was actually decided) → `src/main/pipeline/run.ts` (the
-heart) → `docs/art-brief.md` (for the art side).
+- **Where it's at now — the product turn (this session):** the shape crystallised into *a newsroom
+  you brief like a publisher* (modelled on **Munder Difflin**, a local multi-agent harness). You tell
+  **the Chief** a topic (a competitor, a rumour, "leaked GTA 6 build"); staff-with-personalities
+  research it on their **own token budgets**, concurrently and event-driven (not a linear script);
+  the Chief escalates only the few calls that need you — *bump a budget?* / *run page one?* Built
+  this session: the **live sim + staff-card UI in the prototype**, and the matching **engine wiring**
+  — `run --brief "<topic>"`, `run --cap <tokens>` (also `config edition.tokenCap`), and a per-edition
+  `reel.json` the prototype can **Load** and replay with the real headline + per-role spend. See §6.6.
+
+- **⚠️ REAL vs stand-in (David asked this directly — be honest):** three tiers, only the top is
+  genuinely researched:
+  1. **In-browser sim** (`docs/prototype/newsroom-screen-test.html`) — a **scripted stand-in**: the
+     headline is string-templated from the topic, token numbers are invented, and **no agent
+     researches anything**. It sells the *experience*, not the reporting.
+  2. **Engine + `--provider fake`** — the **real pipeline**, but the `fake` provider emits
+     placeholder text + synthetic tokens. Real machinery, fake words. (This is the deterministic
+     path every test + `npm run check` exercises.)
+  3. **Engine + a real provider** (claude/codex/gemini/opencode/ollama/directapi) — **genuinely
+     researches.** It's a *swap-the-provider* away; the ONLY blocker is that **no real agent CLI is
+     installed/authenticated on the dev machine yet.**
+
+- **▶ DO THIS FIRST next session:** produce one **real** edition. `npm run cli -- detect` → if any
+  provider is `ready`, either set it in `./nr/newsroom/staff.yaml` or pass `--provider <id>`, then
+  `npm run cli -- run --newsroom ./nr --brief "<a topic>" --provider <id>` and load the resulting
+  `editions/<id>/reel.json` into the prototype (the "Load a real edition" button). If none is
+  installed, that's the one thing to raise with David — everything else (brief, budgets, cap, reel,
+  animation) is done and green.
+
+- **Git is LOCAL ONLY** — `git remote -v` is empty, nothing is on GitHub, and **David does not want
+  it pushed yet.** Commit freely to local `main` (per the `docs:` / `feat(prototype|engine):`
+  convention); never add a remote or `git push` unless he asks.
+
+- **The prototype is a live private Claude Artifact** David plays with — **republish to the SAME URL**
+  after every change so his link stays valid:
+  <https://claude.ai/code/artifact/3f3bab13-c6f1-49b8-b4c9-7da3d4d1f415> (owned by demo@lodid.co.uk).
+  Verify in the in-app Browser pane, but it **often collapses to a sliver / narrow width** — driving
+  and reading state via `javascript_tool` (click chips, read the `#staff`/`#approvals` DOM, a
+  scaled-canvas overlay to inspect sprites) is far more reliable than screenshots; synthetic
+  keystrokes don't reach the page, so dispatch `KeyboardEvent`s via JS or use on-screen buttons.
+
+To orient in the code, read in this order: this file → `docs/build-plan.md` (original vision) →
+`docs/decisions.md` (what was decided) → `src/main/pipeline/run.ts` + `stages.ts` (the pipeline,
+now incl. `--brief`/`--cap`/`reel.json`) → `docs/prototype/newsroom-screen-test.html` (the sim +
+card UI) → `docs/art-brief.md` (the art side).
 
 ---
 
