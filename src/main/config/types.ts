@@ -1,0 +1,67 @@
+import type { SourceConfig } from '../adapters/types.js';
+
+/** Top-level newsroom configuration (`newsroom/config.yaml`). */
+export interface PaperConfig {
+  paper: {
+    name: string;
+    tagline?: string;
+    /** IANA timezone, or 'local'. Used for edition dates. */
+    timezone?: string;
+  };
+  schedule?: {
+    /** "HH:MM" 24h local time for the daily edition. Scheduling lands later. */
+    dailyAt?: string;
+  };
+  edition?: {
+    /** Max lead stories on page one. */
+    maxPageOne?: number;
+  };
+}
+
+/** How a role maps to a provider (`newsroom/staff.yaml`). */
+export interface RoleAssignment {
+  provider: string;
+  /** Model id, or the sentinel 'best_available'. */
+  model?: string;
+}
+
+export interface StaffConfig {
+  managingEditor: RoleAssignment;
+  reporters: {
+    /** Fallback for beats without a specific reporter assignment. */
+    default: RoleAssignment;
+    /** Per-beat overrides, keyed by beat id. */
+    [beatId: string]: RoleAssignment;
+  };
+  writers: {
+    default: RoleAssignment;
+    [beatId: string]: RoleAssignment;
+  };
+  copyDesk: RoleAssignment;
+}
+
+/** A beat definition (`newsroom/beats/<id>.yaml`). */
+export interface BeatConfig {
+  id: string;
+  name: string;
+  /** Persona name for the assigned reporter, if any. */
+  reporter?: string;
+  /** How many independent angles to commission per story. Default 1. */
+  angles?: number;
+  /** Prefer different providers across angles for the same story. */
+  mixProviders?: boolean;
+  sources: SourceConfig[];
+}
+
+/** A fully-loaded newsroom, resolved from disk. */
+export interface Newsroom {
+  /** Absolute path to the newsroom root (the dir containing config.yaml). */
+  root: string;
+  config: PaperConfig;
+  staff: StaffConfig;
+  beats: BeatConfig[];
+  /** House style text (`style.md`). */
+  style: string;
+  /** Persona texts keyed by persona name, from `staff/*.md`. */
+  personas: Map<string, string>;
+}

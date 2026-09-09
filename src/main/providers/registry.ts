@@ -1,4 +1,10 @@
+import { claudeProvider } from './claude.js';
+import { codexProvider } from './codex.js';
+import { directApiProvider } from './directapi.js';
 import { fakeProvider } from './fake.js';
+import { geminiProvider } from './gemini.js';
+import { ollamaProvider } from './ollama.js';
+import { opencodeProvider } from './opencode.js';
 import type { AgentProvider, Detection } from './types.js';
 
 /**
@@ -39,5 +45,11 @@ export async function detectAll(): Promise<Map<string, Detection>> {
   return out;
 }
 
-// Always-available baseline.
+// Always-available baseline, then the real providers.
 registerProvider(fakeProvider);
+registerProvider(claudeProvider);
+registerProvider(codexProvider);
+registerProvider(geminiProvider);
+registerProvider(opencodeProvider);
+registerProvider(ollamaProvider);
+registerProvider(directApiProvider);

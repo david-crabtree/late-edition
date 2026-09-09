@@ -55,4 +55,50 @@ advisory on a headless build. Revisit when upgrading the test stack.
 
 ## Milestone 1 — Headless paper
 
-_(to be filled as adapters, providers and the pipeline land)_
+### D1.1 — Verified CLI syntax before writing providers
+Per the plan's VERIFY policy, the real provider invocations were researched against
+official docs first and recorded in `docs/providers-research.md` (dated). Implemented
+invocations: Claude `claude -p … --output-format json` (text in `.result`); Gemini
+`gemini -p … --output-format json` (text in `.response`); Codex `codex exec --sandbox
+read-only --ask-for-approval never --output-last-message <file>` (read the file); OpenCode
+`opencode run --quiet` (plain stdout — its JSON event schema is unverified); Ollama HTTP
+`/api/generate` (text in `.response`); plus a direct-API provider (OpenAI-compatible +
+Anthropic Messages). Unverified flags (e.g. `--version` on some tools) are used only for a
+best-effort liveness probe that treats a non-ENOENT failure as "installed".
+
+### D1.2 — One universal prompt channel (no per-CLI system-prompt flags)
+Not every CLI exposes a separate system-prompt flag, and inventing flags is against
+policy, so a job's system guidance and user materials are composed into a single prompt
+string (`composePrompt`). The direct-API provider, which has real message roles, uses them.
+
+### D1.3 — Providers return model text; the pipeline owns JSON parsing
+Each provider extracts the model's final text from its own envelope and returns that. The
+pipeline asks for JSON where needed and parses defensively (`extractJson`: strips fences,
+brace-matches, retries once with the parse error appended). This keeps providers simple and
+the JSON contract in one place (`pipeline/contracts.ts`).
+
+### D1.4 — Pipeline is an explicit, resumable state machine
+`EditionDraft.stage` walks WIRE→…→PRESS→DONE; the draft is persisted to
+`editions/<id>/pipeline.json` after every transition, and `run --resume <id>` continues
+from the last completed stage. Per-item failures (a broken source, a reporter that errors)
+are captured as `warnings` so one bad input can't sink the edition; only role-resolution or
+render failures are fatal.
+
+### D1.5 — Assignment model for M1 (single angle)
+One provisional story per beat that produced ≥1 new signal. The managing editor sets
+placement (page_one / below_fold / brief / spike); spiked stories leave the run, brief ones
+render as one-line Briefs. Multiple angles, Competing Takes and provider-mixing are wired in
+the data model but exercised in M2.
+
+### D1.7 — Prompt templates: code defaults, per-newsroom overrides
+The plan puts prompts in `prompts/<role>.md`. To avoid a repo copy drifting from the code,
+the built-in templates live in `src/main/pipeline/prompts.ts` as the source of truth and are
+**scaffolded into each newsroom** at `newsroom/prompts/<name>.md` by `init`, where users edit
+them; `loadPrompt` prefers a newsroom override over the built-in. This satisfies "editable
+templates" while keeping one source of truth. Versioned fixtures (plan §9.5) arrive with M2's
+copy-desk work.
+
+### D1.6 — Renderer lives in `main/paper`, shared by CLI and (later) the UI
+`renderMarkdown` / `renderHtml` are pure functions over an `Edition`. The HTML is a
+self-contained newspaper page with an inlined noir palette and system serif — no external
+fonts or assets — so it works offline and as a future static export.

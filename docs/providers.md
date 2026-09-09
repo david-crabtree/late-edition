@@ -1,22 +1,24 @@
 # Provider CLI invocation reference
 
-> **VERIFY policy.** Every flag in this file must be checked against the actually installed
-> CLI. Late Edition never invents flags: if a provider's CLI has changed, detection should
-> fail with a clear message rather than run a bad command. Fill each row in from the real
-> `--help` output on a machine that has the tool, and note the version you verified against.
+> **VERIFY policy.** Late Edition never invents flags: if a provider's CLI has changed,
+> detection should fail with a clear message rather than run a bad command. The syntax below
+> was verified against official docs on 2026-09-09 — full citations and confidence levels are
+> in [`providers-research.md`](providers-research.md). The invocations are implemented in
+> [`src/main/providers/`](../src/main/providers/); re-verify against the installed tool when a
+> CLI updates.
 
-Legend: ✅ verified on this machine · ❓ from docs, unverified · ⛔ not installed here
+Legend: 📄 verified from official docs · 🔌 implemented · ⏳ not yet shipped
 
-| Provider | CLI | Non-interactive invocation | JSON output | Model flag | Verified |
+| Provider | CLI | Implemented invocation | Final text | Model flag | Status |
 |---|---|---|---|---|---|
-| Anthropic | `claude` | `claude -p "<prompt>" --output-format json` | `--output-format json` | `--model <id>` | ❓ |
-| OpenAI | `codex` | `codex exec "<prompt>"` | check `--json` | check | ❓ |
-| Google | `gemini` | `gemini -p "<prompt>"` | check | `-m <id>` | ❓ |
-| OpenCode | `opencode` | `opencode run "<prompt>"` | check | check | ❓ |
-| xAI | `grok` | VERIFY exists; else direct API | — | — | ❓ |
-| GitHub | `copilot` | VERIFY non-interactive mode | — | — | ❓ |
-| Local | Ollama | HTTP `POST localhost:11434/api/generate` | native JSON | `model` field | ❓ |
-| Direct API | — | HTTPS with user key | native JSON | request field | n/a |
+| Anthropic | `claude` | `claude -p "<prompt>" --output-format json` | `.result` | `--model <id>` | 📄🔌 |
+| OpenAI | `codex` | `codex exec --sandbox read-only --ask-for-approval never --output-last-message <f>` | the file | `-m <id>` | 📄🔌 |
+| Google | `gemini` | `gemini -p "<prompt>" --output-format json` | `.response` | `-m <id>` | 📄🔌 |
+| OpenCode | `opencode` | `opencode run --quiet "<prompt>"` | stdout | `-m provider/model` | 📄🔌 |
+| Local | Ollama | HTTP `POST localhost:11434/api/generate` | `.response` | `model` field | 📄🔌 |
+| Direct API | — | OpenAI chat completions / Anthropic Messages | per format | request field | 🔌 |
+| xAI | `grok` | VERIFY exists; else use Direct API with a key | — | — | ⏳ |
+| GitHub | `copilot` | VERIFY non-interactive mode; degrade gracefully | — | — | ⏳ |
 
 ## Detection
 

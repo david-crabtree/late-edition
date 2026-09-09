@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { resolve } from 'node:path';
+import { scaffoldNewsroom } from '../main/config/scaffold.js';
+import { runEdition } from '../main/pipeline/run.js';
 import { detectAll } from '../main/providers/registry.js';
 
 const VERSION = '0.0.1';
@@ -10,14 +13,15 @@ Usage:
 
 Commands:
   detect                 Probe which agent providers are installed & authenticated.
-  init <dir>             Scaffold a new newsroom folder with sample config. [M1]
-  run [--newsroom DIR]   Run one edition through the pipeline. [M1]
+  init <dir>             Scaffold a new newsroom folder with sample config.
+  run                    Run one edition through the pipeline (WIRE → PRESS).
   help                   Show this help.
   version                Print the version.
 
 Options:
-  --newsroom <dir>       Path to a newsroom folder (default: ./newsroom).
+  --newsroom <dir>       Newsroom root (dir containing newsroom/). Default: current dir.
   --provider <id>        Force a provider for every role (e.g. fake).
+  --resume <editionId>   Resume an in-flight edition from its last completed stage.
   -h, --help             Show help.
 
 Examples:
@@ -73,16 +77,41 @@ async function cmdDetect(): Promise<number> {
   return 0;
 }
 
-function notYet(command: string): number {
-  console.error(
-    `\`${command}\` is not implemented in this build (arrives in Milestone 1).
-Run \`late-edition detect\` to see available providers.`,
+function cmdInit(positionals: string[]): number {
+  const dir = resolve(positionals[0] ?? '.');
+  scaffoldNewsroom(dir);
+  console.log(`Scaffolded a newsroom at ${dir}\n`);
+  console.log('Next:');
+  console.log(`  late-edition run --newsroom ${positionals[0] ?? '.'} --provider fake`);
+  console.log('\nThen edit newsroom/beats/*.yaml and newsroom/staff.yaml to make it yours.');
+  return 0;
+}
+
+async function cmdRun(flags: Record<string, string | boolean>): Promise<number> {
+  const root = resolve(typeof flags.newsroom === 'string' ? flags.newsroom : '.');
+  const forceProvider = typeof flags.provider === 'string' ? flags.provider : undefined;
+  const resumeId = typeof flags.resume === 'string' ? flags.resume : undefined;
+
+  console.log(
+    `Running an edition from ${root}${forceProvider ? ` (provider: ${forceProvider})` : ''}…\n`,
   );
-  return 2;
+  const result = await runEdition({ root, forceProvider, resumeId });
+
+  console.log(`Edition ${result.editionId} printed → ${result.editionDir}`);
+  console.log(
+    `  ${result.edition.stories.length} stories, ${result.edition.briefs.length} briefs.`,
+  );
+  if (result.edition.weatherLine) console.log(`  Weather line: ${result.edition.weatherLine}`);
+  if (result.warnings.length) {
+    console.log(`\n  ${result.warnings.length} warning(s):`);
+    for (const w of result.warnings) console.log(`   - ${w}`);
+  }
+  console.log('');
+  return 0;
 }
 
 async function main(): Promise<number> {
-  const { command, flags } = parseArgs(process.argv.slice(2));
+  const { command, positionals, flags } = parseArgs(process.argv.slice(2));
 
   if (flags.help || command === 'help') {
     console.log(HELP);
@@ -96,9 +125,9 @@ async function main(): Promise<number> {
     case 'detect':
       return cmdDetect();
     case 'init':
-      return notYet('init');
+      return cmdInit(positionals);
     case 'run':
-      return notYet('run');
+      return cmdRun(flags);
     default:
       console.error(`Unknown command: ${command}\n`);
       console.log(HELP);
@@ -109,6 +138,6 @@ async function main(): Promise<number> {
 main()
   .then((code) => process.exit(code))
   .catch((err) => {
-    console.error(err instanceof Error ? (err.stack ?? err.message) : String(err));
+    console.error(`\nError: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   });
