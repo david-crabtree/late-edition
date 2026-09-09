@@ -52,6 +52,20 @@
   .frontpage .fp-head{ font-family:var(--display); font-weight:700; text-transform:uppercase; line-height:1.1; font-size:clamp(1.05rem,4.2vw,2.1rem); margin:0; text-wrap:balance; color:#161009; }
   .frontpage .fp-stand{ font-family:var(--type); font-size:clamp(.78rem,2.4vw,1rem); line-height:1.4; color:#3a3227; margin:0; max-width:44ch; }
   .frontpage .chip{ background:#20180c; color:var(--bone); border-color:#20180c; margin-top:2px; }
+  .roster{ margin-top:9px; display:grid; gap:5px; }
+  .ag{ display:grid; grid-template-columns:minmax(72px,1fr) minmax(84px,1.3fr) minmax(70px,1fr) 62px auto auto; gap:8px; align-items:center; font-family:var(--pixel); font-size:.5rem; padding:5px 7px; background:#160f08; border:1px solid #2c2519; border-radius:4px; }
+  .ag.blk{ border-color:var(--red); }
+  .ag-name{ color:var(--amber); letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ag-role,.ag-stat,.ag-tok{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ag-role{ color:var(--bone-dim); } .ag-stat{ color:var(--bone); } .ag-tok{ color:var(--bone-dim); text-align:right; }
+  .ag-bar{ width:60px; height:6px; background:#0c0f14; border:1px solid #2c2519; border-radius:3px; overflow:hidden; }
+  .ag-bar i{ display:block; height:100%; background:var(--amber); } .ag.blk .ag-bar i{ background:var(--red); }
+  .ag-boost{ padding:4px 6px; font-size:.46rem; }
+  .approvals{ margin-top:9px; background:#241a10; border:1px solid var(--amber-dim); border-radius:5px; padding:8px 11px; box-shadow:0 0 0 1px rgba(232,176,75,.12); }
+  .approvals .ap-hd{ font-family:var(--pixel); font-size:.5rem; color:var(--amber); letter-spacing:.06em; text-transform:uppercase; }
+  .approvals .ap{ display:flex; gap:8px; align-items:center; margin-top:8px; font-size:.9rem; color:var(--bone); flex-wrap:wrap; }
+  .approvals .ap span{ flex:1; min-width:180px; }
+  .chip.danger2{ background:var(--red); color:var(--bone); border-color:var(--red); font-weight:700; }
 </style>
 
 <div class="wrap">
@@ -71,10 +85,8 @@
       </div>
     </div>
     <div class="marquee"><span id="mScene">ROAMING · ← → TO WALK</span><span><span class="on">●</span> REC · PARALLAX · 12 FPS</span></div>
-    <div class="pipeline" id="pipeline" hidden>
-      <span class="stg" data-stg="ASSIGN">Assign</span><span class="stg" data-stg="WIRE">Wire</span><span class="stg" data-stg="REPORT">Report</span><span class="stg" data-stg="CHECK">Check</span><span class="stg" data-stg="WRITE">Write</span><span class="stg" data-stg="PRESS">Press</span>
-      <span class="pbudget"><span class="pbar"><i id="spendBar"></i></span><b id="spendEl">0</b>/<span id="budgetEl">60k</span> tok</span>
-    </div>
+    <div class="approvals" id="approvals" hidden><span class="ap-hd">The Chief needs a call from you</span><div id="apList"></div></div>
+    <div class="roster" id="roster"></div>
   </div>
   <div class="deck">
     <div>
@@ -89,7 +101,7 @@
         <button class="chip ex">who's really funding the new console</button>
       </div>
       <div class="row" style="margin-top:10px; gap:10px; align-items:center">
-        <label class="hint" for="budgetRange">Token budget</label>
+        <label class="hint" for="budgetRange">Budget / staffer</label>
         <input id="budgetRange" type="range" min="10000" max="200000" step="5000" value="60000" style="flex:1; max-width:220px">
         <span class="hint" id="budgetLabel">60k</span>
       </div>
@@ -121,11 +133,12 @@
     </div>
   </div>
   <p class="foot">
-    New: <span class="k">Brief the Chief</span> — type a topic (or pick an example) and the newsroom plays it out end to end.
-    The Chief assigns it, the reporter digs, the copy desk flags thin recon and <b>sends it back to verify</b>, the rewrite desk
-    runs it, then <b>stop the press</b> and a finished <span class="k">front page</span> lands — headline built from your topic.
-    One clean pipeline strip shows the stage; the <span class="k">token budget</span> slider caps the spend and holds the story
-    for the next edition if it runs dry. A scripted stand-in for the real agent staff. Rough on purpose — a moving reference to art over.
+    New: the newsroom runs as a <span class="k">live sim</span> (à la Munder Difflin). Brief the Chief with a topic and the staff
+    work it <b>concurrently, each on their own token budget</b> — the reporter digs, the copy desk flags thin recon and bounces it
+    back to verify, the editor writes. It's event-driven, not a fixed script, so the floor stays alive with banter and passed work.
+    The Chief only escalates <span class="k">the few calls that need you</span> — “bump a reporter's budget?” or “run this on page
+    one?” — in the approvals bar. The <span class="k">staff roster</span> shows each person's role, status and spend; boost any
+    budget with +100k. A scripted stand-in for real agent staff — maps onto the engine's WIRE→PRESS pipeline. Rough on purpose.
   </p>
 </div>
 
@@ -158,7 +171,7 @@
 
   const state = { mode:'roam', scene:'roam', castIdx:0, banter:true, facing:1, goto:null, phase:'none', timer:0, goneTotal:24, meeting:false, camFrozen:false, camVal:0, panMode:false, panX:0 };
   const player = { x:300, vx:0 }; const input = { left:false, right:false };
-  const brief = { active:false, topic:'', steps:[], step:-1, t:0, stage:'', spend:0, budget:60000, spot:null, line:'', capped:false };
+  const director = { at:null, t:0 }; let beatT = 40;   // camera "director" (eases to whoever's acting) + sim beat timer
   const smoke=[], steam=[], rain=[], pages=[]; const tw={line:0}, amb={next:90}, runner={x:-40,active:false}; const courier={active:false,x:0,dir:1,target:0,exit:0,phase:'',t:0}; let tick=0, acc=0, last=performance.now(), bubbleTimer=0, bubbleText='', cam=0, ringT=0, officeBlipT=0, cigLit=0, matchT=0;
   const NPC={ pal:{skin:'#cdb08a',skinSh:'#a98a64',hair:'#2a2018',hat:'#3a3630',band:'#241f18',suit:'#4a4a52',suitDk:'#343440',shirt:'#d8d2c0',tie:'#6a5a3a'}, hat:'fedora', prop:'none' };
   const CHIEF={ pal:{skin:'#d8b48a',skinSh:'#b4906a',hair:'#2a2018',hat:'#241a14',band:'#3a2a1a',suit:'#2b2f36',suitDk:'#1c2026',shirt:'#e0dac8',tie:'#7a2d1d'}, hat:'fedora', prop:'none' };
@@ -435,13 +448,13 @@
     R(bx-1,by-1,bw+2,bh+2,'#0b0b0b'); R(bx,by,bw,bh,'#efe9d8'); R(bx,by,bw,1,'#fff'); R(bx,by+bh-1,bw,1,'#c7c1af'); R(cx-2,by+bh,3,2,'#efe9d8'); P(cx-1,by+bh+2,'#0b0b0b');
     g.fillStyle='#1a1a1a'; g.textAlign='center'; g.textBaseline='top'; lines.forEach((l,i)=>g.fillText(l,tx,by+padY+i*lh)); g.textAlign='left'; g.textBaseline='alphabetic'; }
   const TICK_TXT='  LATE EDITION WIRE  ///  PRESS ROOM QUIET, TOO QUIET  ///  COMPETING TAKES ON PAGE ONE  ///  COFFEE POT EMPTY AGAIN  ///  ';
-  function tickerStrip(){ R(0,VH-9,VW,9,'#12100c'); R(0,VH-9,VW,1,'#3a2e1b'); g.fillStyle='#e8b04b'; g.font='6px "Press Start 2P",monospace'; g.textBaseline='middle'; const tw=g.measureText(TICK_TXT).width,x=-((tick*2)%tw); g.fillText(TICK_TXT,x,VH-4); g.fillText(TICK_TXT,x+tw,VH-4); g.textBaseline='alphabetic'; }
+  function tickerStrip(){ const txt = events.length? ('   '+events.join('     ///     ')+'     ///  '):TICK_TXT; R(0,VH-9,VW,9,'#12100c'); R(0,VH-9,VW,1,'#3a2e1b'); g.fillStyle='#e8b04b'; g.font='6px "Press Start 2P",monospace'; g.textBaseline='middle'; const tw=g.measureText(txt).width,x=-((tick*2)%tw); g.fillText(txt,x,VH-4); g.fillText(txt,x+tw,VH-4); g.textBaseline='alphabetic'; }
   function stopOverlay(){ g.fillStyle='rgba(6,6,10,.4)'; g.fillRect(0,0,VW,VH); const down=(tick%16)<8; g.font='8px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; R(40,VH-40,VW-80,20,'#7a1a10'); R(40,VH-40,VW-80,1,'#c2412d'); g.fillStyle='#f4e7c8'; g.fillText('STOP THE PRESS',VW/2,VH-30); if(down&&tick%16===0){ g.fillStyle='rgba(194,65,45,.2)'; g.fillRect(0,0,VW,VH); } g.textAlign='left'; g.textBaseline='alphabetic'; const gr=g.createRadialGradient(VW/2,VH/2,40,VW/2,VH/2,180); gr.addColorStop(0,'rgba(194,65,45,0)'); gr.addColorStop(1,'rgba(194,65,45,.26)'); g.fillStyle=gr; g.fillRect(0,0,VW,VH); }
 
   function render(){ const sky=g.createLinearGradient(0,0,0,VH); sky.addColorStop(0,'#101826'); sky.addColorStop(1,'#0a0d13'); g.fillStyle=sky; g.fillRect(0,0,VW,VH);
     layerFar(cam*0.25); layerBack(cam*BP); layerMain(cam); layerFore(cam*1.15);
-    if(brief.active&&brief.line) bubble((brief.spot==='office'?WINDOW_XB-cam*BP:AC()-cam), FLOOR-56, brief.line);
-    else if(state.mode==='desk'&&state.banter&&bubbleText) bubble(AC()-cam, FLOOR-56, bubbleText);
+    for(const s of staff){ if(s.sayT>0){ const sx=s.ci>=0?deskX(s.ci)-cam:WINDOW_XB-cam*BP; if(sx>-60&&sx<VW+60) bubble(sx, FLOOR-56, s.say); } }
+    if(state.mode==='desk'&&state.banter&&bubbleText && !staff.some(s=>s.ci===state.castIdx&&s.sayT>0)) bubble(AC()-cam, FLOOR-56, bubbleText);
     if(state.mode==='desk'&&state.scene==='stop') stopOverlay(); }
   function newBanter(){ const c=CAST[state.castIdx]; bubbleText = state.scene==='stop'?'STOP THE PRESS!':c.lines[(Math.random()*c.lines.length)|0]; }
 
@@ -455,7 +468,7 @@
         } else if(state.panMode){ if(input.left)state.panX-=12; if(input.right)state.panX+=12; state.panX=Math.max(0,Math.min(WORLD-VW,state.panX)); player.vx=0; }
         else { let vx=0; if(input.left)vx-=7; if(input.right)vx+=7; player.vx=vx; if(vx!==0){ state.facing=vx>0?1:-1; player.x=Math.max(30,Math.min(WORLD-30,player.x+vx)); } }
       } else player.vx=0;
-      cam = state.camFrozen ? state.camVal : brief.active ? Math.max(0,Math.min(WORLD-VW,((brief.spot==='office'?WINDOW_XB:AC()))-VW/2)) : (state.panMode ? Math.max(0,Math.min(WORLD-VW,state.panX)) : Math.max(0,Math.min(WORLD-VW,(state.mode==='desk'?AC():player.x)-VW/2)));
+      { let tgt; if(state.camFrozen) tgt=state.camVal; else if(state.panMode) tgt=state.panX; else if(director.t>0&&director.at) tgt=(director.at.ci>=0?deskX(director.at.ci):WINDOW_XB)-VW/2; else tgt=(state.mode==='desk'?AC():player.x)-VW/2; tgt=Math.max(0,Math.min(WORLD-VW,tgt)); cam+=(tgt-cam)*0.14; if(Math.abs(tgt-cam)<0.6)cam=tgt; }
       if(!reduce&&tick%2===0){ for(const wx of [40,700]) rain.push({win:wx,x:(Math.random()*60)|0,y:0,life:16}); }
       for(let i=rain.length-1;i>=0;i--){ rain[i].y+=3; if(rain[i].y>58) rain.splice(i,1); }
       bubbleTimer--; if(bubbleTimer<=0){ if(state.mode==='desk') newBanter(); bubbleTimer=44; }
@@ -469,7 +482,8 @@
       if(canSmoke){ if(matchT>0){ matchT--; if(matchT===0) cigLit=170; } else if(cigLit>0) cigLit--; else if(tick%18===0&&Math.random()<0.14) matchT=9; }
       else { matchT=0; cigLit=0; }
       if(ringT>0)ringT--; if(officeBlipT>0)officeBlipT--;
-      if(brief.active){ if(--brief.t<=0) advanceBrief(); }
+      if(--beatT<=0){ beatT=22+((Math.random()*30)|0); simBeat(); }
+      for(const s of staff){ if(s.sayT>0) s.sayT--; } if(director.t>0) director.t--;
       if(runner.active){ runner.x+=10; if(runner.x>WORLD+40) runner.active=false; }
       if(courier.active){
         if(courier.phase==='walk'){ if(Math.abs(courier.target-courier.x)>5) courier.x+=6*courier.dir; else { courier.phase='drop'; courier.t=26; } }
@@ -481,7 +495,7 @@
 
   // ---- Controls -----------------------------------------------------------
   const mScene=document.getElementById('mScene'); const sceneLabel={roam:'ROAMING · ← → TO WALK',idle:'AT THE DESK · SMOKE',type:'TYPING',coffee:'COFFEE BREAK',phone:'THE PHONE',stop:'STOP THE PRESS'};
-  function clearGoto(){ state.goto=null; state.phase='none'; state.meeting=false; state.camFrozen=false; }
+  function clearGoto(){ state.goto=null; state.phase='none'; state.meeting=false; state.camFrozen=false; director.t=0; }
   function setScene(s){ clearGoto(); state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } if(s==='roam'){ state.mode='roam'; state.scene='roam'; } else { state.mode='desk'; state.scene=s; player.x=AC(); bubbleTimer=1; } document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===s))); mScene.textContent='SCENE — '+(sceneLabel[s]||s); }
   document.getElementById('scenes').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(!b||!b.dataset.scene) return; setScene(b.dataset.scene); });
   function goToDoor(backX,label,meeting){ state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam')));
@@ -524,51 +538,93 @@
     if(a.camera){ rr(cx-3,y+19,6,3,'#17191d'); rr(cx-1,y+20,3,1,'#6a86a0'); }
     pg.drawImage(t,0,0,22,22,0,0,42,42); }
 
-  // ---- Brief the Chief: a scripted newsroom roleplay driven by a topic ----
-  const briefInput=document.getElementById('briefInput'), spendBar=document.getElementById('spendBar'),
-        spendEl=document.getElementById('spendEl'), budgetEl=document.getElementById('budgetEl'),
-        budgetRange=document.getElementById('budgetRange'), budgetLabel=document.getElementById('budgetLabel'),
-        frontpage=document.getElementById('frontpage'), fpHead=document.getElementById('fpHead'), fpStand=document.getElementById('fpStand');
-  const STAGES=['ASSIGN','WIRE','REPORT','CHECK','WRITE','PRESS'], fmtK=n=>Math.round(n/1000)+'k';
+  // ================ Newsroom sim: roles + per-agent token budgets, event-driven ================
+  // Inspired by Munder Difflin — you brief the Chief; staff work concurrently on their own budgets;
+  // the Chief only kicks the few calls that need you (bump a budget, run page one) upstairs to you.
+  const briefInput=document.getElementById('briefInput'), budgetRange=document.getElementById('budgetRange'),
+        budgetLabel=document.getElementById('budgetLabel'), frontpage=document.getElementById('frontpage'),
+        fpHead=document.getElementById('fpHead'), fpStand=document.getElementById('fpStand'),
+        rosterEl=document.getElementById('roster'), approvalsEl=document.getElementById('approvals'), apListEl=document.getElementById('apList');
+  const fmtK=n=>Math.round(n/1000)+'k';
   const tidy=t=>t.replace(/^\s*(rumou?rs?\s+(of|about|on)\s+|the\s+|a\s+|an\s+)/i,'').replace(/\s+/g,' ').trim();
-  const shortT=t=>{ const s=tidy(t); return s.length>44? s.slice(0,42)+'…':s; };
-  function runBrief(topic){ const T=(topic||'').trim(); if(!T||brief.active) return; frontpage.hidden=true;
-    brief.topic=T; brief.budget=+budgetRange.value; brief.spend=0; brief.capped=false; brief.step=-1; const s=shortT(T);
-    brief.steps=[
-      {stage:'ASSIGN', spot:'office', line:`Front page tonight: ${s}. Two sources, or it doesn't run.`, dur:70, spend:1500},
-      {stage:'ASSIGN', spot:0, scene:'phone', line:`On it, Chief — I know who to call about ${s}.`, dur:54, spend:2500},
-      {stage:'WIRE',   spot:2, scene:'idle', courier:true, line:`Wire's lighting up on ${s}, boss.`, dur:52, spend:3000},
-      {stage:'REPORT', spot:0, scene:'type', line:`Working ${s}. Chasing the paper trail.`, dur:78, spend:15000},
-      {stage:'CHECK',  spot:3, scene:'idle', line:`This ${s} tip is thin — send it back, verify it.`, dur:58, spend:6000},
-      {stage:'REPORT', spot:0, scene:'type', line:`Second source on ${s}. Now it stands up.`, dur:58, spend:12000},
-      {stage:'WRITE',  spot:1, scene:'type', line:`Cut it to the bone. ${s} runs page one.`, dur:56, spend:7000},
-      {stage:'PRESS',  spot:1, scene:'stop', line:`STOP THE PRESS!`, dur:48, spend:1500},
-    ];
-    brief.active=true; document.getElementById('pipeline').hidden=false; mScene.textContent='ON ASSIGNMENT'; advanceBrief(); }
-  function advanceBrief(){ if(brief.spend>=brief.budget && brief.step>=1){ brief.capped=true; finishBrief(); return; }
-    brief.step++; if(brief.step>=brief.steps.length){ finishBrief(); return; }
-    const st=brief.steps[brief.step]; brief.stage=st.stage; brief.spot=st.spot; brief.line=st.line; brief.t=st.dur;
-    brief.spend=Math.min(brief.budget, brief.spend+(st.spend||0)); clearGoto(); state.panMode=false;
-    if(st.spot==='office'){ officeBlipT=st.dur+8; }
-    else { state.castIdx=st.spot; state.mode='desk'; state.scene=st.scene||'idle'; player.x=AC(); nameInput.value=CAST[st.spot].name;
-      document.querySelectorAll('#cast .card').forEach((c,idx)=>c.setAttribute('aria-pressed',String(idx===st.spot))); }
-    if(st.courier && !courier.active) startCourier(); updatePipeline(); }
-  function finishBrief(){ brief.active=false; brief.line=''; brief.stage='PRESS'; updatePipeline();
-    const T=brief.topic, U=tidy(T).toUpperCase();
-    if(brief.capped){ fpHead.textContent=`${U} — HELD FOR THE NEXT EDITION`; fpStand.textContent=`The desk hit its token budget before the story stood up. What we have on ${tidy(T)} is filed; the Chief wants another pass before it runs.`; }
-    else { const heads=[`${U} — SOURCES SPLIT AS CITY DESK CHASES IT`,`INSIDE ${U}: WHAT THEY DIDN'T WANT PRINTED`,`${U} BREAKS — THE DAILY BIT STANDS IT UP`,`THE TRUTH ABOUT ${U}, PAGE ONE`];
-      fpHead.textContent=heads[U.length%heads.length];
-      fpStand.textContent=`Two sources, one long night. The Daily Bit's account of ${tidy(T)} — chased, corrected on the copy desk, and put to bed.`; }
-    frontpage.hidden=false; mScene.textContent='EDITION FILED'; }
-  function updatePipeline(){ const cur=STAGES.indexOf(brief.stage);
-    document.querySelectorAll('#pipeline .stg').forEach(el=>{ const i=STAGES.indexOf(el.dataset.stg); el.classList.toggle('on', i===cur && brief.active); el.classList.toggle('done', i<cur || (!brief.active&&i<=cur)); });
-    const pct=Math.min(100, brief.spend/brief.budget*100); spendBar.style.width=pct+'%'; spendEl.textContent=fmtK(brief.spend); budgetEl.textContent=fmtK(brief.budget);
-    document.querySelector('.pbudget').classList.toggle('max', brief.spend>=brief.budget); }
-  budgetRange.addEventListener('input',()=>{ budgetLabel.textContent=fmtK(+budgetRange.value); if(!brief.active) budgetEl.textContent=fmtK(+budgetRange.value); });
-  document.getElementById('briefBtn').addEventListener('click',()=>runBrief(briefInput.value));
-  briefInput.addEventListener('keydown',e=>{ if(e.key==='Enter') runBrief(briefInput.value); });
-  document.getElementById('examples').addEventListener('click',e=>{ const b=e.target.closest('.ex'); if(!b) return; briefInput.value=b.textContent; runBrief(b.textContent); });
-  document.getElementById('fpClose').addEventListener('click',()=>{ frontpage.hidden=true; setScene('roam'); });
+  const shortT=t=>{ const s=tidy(t); return s.length>26? s.slice(0,24)+'…':s; };
+  const staff=[{ id:'chief', ci:-1, role:'chief', label:'The Chief', sub:'assigns & makes the call', budget:+budgetRange.value, spent:0, status:'idle', say:'', sayT:0 }]
+    .concat(CAST.map((c,i)=>({ id:c.id, ci:i, role:c.desk, label:c.name, sub:c.role, budget:+budgetRange.value, spent:0, status:'idle', say:'', sayT:0 })));
+  const roleAgent=r=>staff.find(s=>s.role===r), chief=staff[0];
+  let storySeq=0, apSeq=0; const stories=[], approvals=[], events=[];
+  function logEvent(s){ events.push(s.toUpperCase()); if(events.length>7) events.shift(); }
+  function agentSay(s,text,dur){ s.say=text; s.sayT=dur||42; }
+  const canAfford=(s,n)=>s.spent+n<=s.budget; function spend(s,n){ s.spent+=n; renderRoster(); }
+  function focusOn(s){ director.at=s; director.t=52; if(s.ci>=0) state.castIdx=s.ci; else officeBlipT=Math.max(officeBlipT,66); }
+  function setSceneFor(s,scene){ if(state.castIdx===s.ci){ state.mode='desk'; state.scene=scene; player.x=AC(); } }
+
+  function briefChief(topic){ const T=(topic||'').trim(); if(!T) return; frontpage.hidden=true;
+    const st={ id:++storySeq, topic:T, short:shortT(T), stage:'assigned', owner:null, quality:0, checks:0, t:0, headline:'' };
+    stories.push(st); chief.status='briefing'; agentSay(chief,`Front page: ${st.short}. Two sources.`,56);
+    logEvent(`Chief takes the brief — ${st.short}`); focusOn(chief); mScene.textContent='THE FLOOR IS WORKING'; renderRoster(); }
+
+  function simBeat(){
+    for(const st of stories){ if(['done','held','press'].includes(st.stage) || Math.random()>0.6) continue;
+      if(st.stage==='assigned'){ if(!canAfford(chief,1500)){ escalate('budget',chief); continue; }
+        spend(chief,1500); const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; rep.status='working';
+        agentSay(chief,`${rep.label.split(' ')[0]}, chase ${st.short}.`,44); agentSay(rep,`On it, Chief.`,34);
+        if(!courier.active) startCourier(); logEvent(`Chief → ${rep.label}: cover ${st.short}`); focusOn(rep); }
+      else if(st.stage==='reporting'){ const rep=staff.find(s=>s.ci===st.owner); if(rep.status==='blocked') continue;
+        if(!canAfford(rep,4500)){ rep.status='blocked'; escalate('budget',rep,st); logEvent(`${rep.label} is out of budget on ${st.short}`); continue; }
+        spend(rep,3500+((Math.random()*3000)|0)); st.quality+=24+((Math.random()*24)|0); rep.status='working'; focusOn(rep); setSceneFor(rep,'type');
+        if(Math.random()<0.5) agentSay(rep, reporterLine(st),40);
+        if(st.quality>=100){ st.stage='checking'; rep.status='idle'; if(!courier.active) startCourier();
+          logEvent(`${rep.label} files on ${st.short}`); agentSay(rep,`Filed — ${st.short}.`,34); } }
+      else if(st.stage==='checking'){ const mac=roleAgent('copydesk'); if(!canAfford(mac,3000)){ escalate('budget',mac,st); continue; }
+        spend(mac,3000); focusOn(mac); setSceneFor(mac,'idle');
+        if(Math.random()<0.42 && st.checks<2){ st.checks++; st.quality=Math.max(40,st.quality-45); st.stage='reporting';
+          const rep=staff.find(s=>s.ci===st.owner); rep.status='working'; if(!courier.active) startCourier();
+          agentSay(mac,`Thin recon on ${st.short}. Verify it.`,48); logEvent(`${mac.label}: ${st.short} needs a 2nd source — back to ${rep.label}`); }
+        else { st.stage='writing'; if(!courier.active) startCourier(); agentSay(mac,`Stands up — ${st.short}.`,34); logEvent(`${mac.label} clears ${st.short}`); } }
+      else if(st.stage==='writing'){ const ed=roleAgent('editor'); if(!canAfford(ed,4000)){ escalate('budget',ed,st); continue; }
+        spend(ed,4000); focusOn(ed); setSceneFor(ed,'type'); st.t++;
+        if(st.t>=2){ st.stage='press'; escalate('press',ed,st); agentSay(ed,`${st.short} — ready for page one.`,46); logEvent(`${ed.label} has ${st.short} ready — the Chief wants your call`); } }
+    }
+    aliveBeat(); }
+  function reporterLine(st){ const L=['Chasing the paper trail…',`Who leaked ${st.short}?`,'Two sources, then it runs.','This one has legs.']; return L[(tick+st.id)%L.length]; }
+  function aliveBeat(){ const idle=staff.filter(s=>s.ci>=0 && s.status==='idle' && s.sayT<=0);
+    if(idle.length && Math.random()<0.5){ const s=idle[(Math.random()*idle.length)|0], c=CAST[s.ci]; agentSay(s, c.lines[(Math.random()*c.lines.length)|0],38); }
+    if(Math.random()<0.22 && !courier.active) startCourier(); }
+
+  function escalate(kind,s,st){ if(kind==='budget'){ if(approvals.some(a=>a.kind==='budget'&&a.who===s.id)) return;
+      approvals.push({ id:++apSeq, kind:'budget', who:s.id, text:`${s.label} is out of budget${st?` on ${st.short}`:''}.` }); logEvent(`${s.label} needs more budget — your call`); }
+    else if(kind==='press'){ if(approvals.some(a=>a.kind==='press'&&a.storyId===st.id)) return; approvals.push({ id:++apSeq, kind:'press', storyId:st.id, text:`Run “${headlineFor(st)}”?` }); }
+    renderApprovals(); renderRoster(); }
+  function resolveApproval(id,ok){ const i=approvals.findIndex(a=>a.id===id); if(i<0) return; const a=approvals[i]; approvals.splice(i,1);
+    if(a.kind==='budget'){ const s=staff.find(x=>x.id===a.who); if(ok){ s.budget+=100000; s.status='working'; agentSay(s,`Thanks, boss.`,30); logEvent(`You boosted ${s.label}'s budget — back on it`);} else { s.status='idle'; logEvent(`You held ${s.label}'s budget`);} }
+    else { const st=stories.find(x=>x.id===a.storyId); if(st){ if(ok){ st.stage='done'; runFrontPage(st);} else { st.stage='held'; logEvent(`You held ${st.short} for the next edition`);} } }
+    renderApprovals(); renderRoster(); }
+  function boost(id,n){ const s=staff.find(x=>x.id===id); if(!s) return; const ap=approvals.find(a=>a.kind==='budget'&&a.who===id); if(ap){ resolveApproval(ap.id,true); return; } s.budget+=n; if(s.status==='blocked') s.status='working'; logEvent(`You boosted ${s.label} +${fmtK(n)}`); renderRoster(); }
+
+  function headlineFor(st){ if(st.headline) return st.headline; const U=tidy(st.topic).toUpperCase();
+    const heads=[`${U} — SOURCES SPLIT AS CITY DESK CHASES IT`,`INSIDE ${U}: WHAT THEY DIDN'T WANT PRINTED`,`${U} BREAKS — THE DAILY BIT STANDS IT UP`,`THE TRUTH ABOUT ${U}, PAGE ONE`]; return st.headline=heads[U.length%heads.length]; }
+  function runFrontPage(st){ fpHead.textContent=headlineFor(st); fpStand.textContent=`Two sources, one long night. The Daily Bit's account of ${tidy(st.topic)} — chased, corrected on the copy desk, and put to bed.`;
+    frontpage.hidden=false; const ed=roleAgent('editor'); focusOn(ed); setSceneFor(ed,'stop'); logEvent(`STOP THE PRESS — ${st.short} runs page one`); mScene.textContent='EDITION FILED'; }
+
+  function statusText(s){ if(s.status==='blocked') return 'OUT OF BUDGET'; const st=stories.find(x=>x.owner===s.ci && !['done','held'].includes(x.stage));
+    if(st) return (s.role==='copydesk'?'CHECKING ':s.role==='editor'?'WRITING ':'ON ')+st.short.toUpperCase();
+    if(s.status==='briefing') return 'BRIEFING'; return 'IDLE'; }
+  function renderRoster(){ rosterEl.innerHTML = staff.map(s=>{ const pct=Math.min(100,s.spent/s.budget*100);
+    return `<div class="ag${s.status==='blocked'?' blk':''}"><b class="ag-name">${s.label}</b><span class="ag-role">${s.sub}</span>`+
+      `<span class="ag-stat">${statusText(s)}</span><span class="ag-bar"><i style="width:${pct}%"></i></span>`+
+      `<span class="ag-tok">${fmtK(s.spent)}/${fmtK(s.budget)}</span><button class="chip ag-boost" data-boost="${s.id}">+100k</button></div>`; }).join(''); }
+  function renderApprovals(){ approvalsEl.hidden=!approvals.length; apListEl.innerHTML = !approvals.length?'':approvals.map(a=> a.kind==='budget'
+    ? `<div class="ap"><span>${a.text}</span><button class="chip primary" data-ap="${a.id}" data-ok="1">Bump +100k</button><button class="chip" data-ap="${a.id}" data-ok="0">Hold</button></div>`
+    : `<div class="ap"><span>${a.text}</span><button class="chip danger2" data-ap="${a.id}" data-ok="1">Run it ▸</button><button class="chip" data-ap="${a.id}" data-ok="0">Hold</button></div>`).join(''); }
+
+  budgetRange.addEventListener('input',()=>{ budgetLabel.textContent=fmtK(+budgetRange.value); staff.forEach(s=>s.budget=+budgetRange.value); renderRoster(); });
+  document.getElementById('briefBtn').addEventListener('click',()=>briefChief(briefInput.value));
+  briefInput.addEventListener('keydown',e=>{ if(e.key==='Enter') briefChief(briefInput.value); });
+  document.getElementById('examples').addEventListener('click',e=>{ const b=e.target.closest('.ex'); if(b){ briefInput.value=b.textContent; briefChief(b.textContent); } });
+  document.getElementById('fpClose').addEventListener('click',()=>{ frontpage.hidden=true; });
+  rosterEl.addEventListener('click',e=>{ const b=e.target.closest('[data-boost]'); if(b) boost(b.dataset.boost,100000); });
+  approvalsEl.addEventListener('click',e=>{ const b=e.target.closest('[data-ap]'); if(b) resolveApproval(+b.dataset.ap, b.dataset.ok==='1'); });
+  budgetLabel.textContent=fmtK(+budgetRange.value); renderRoster();
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);
 })();
