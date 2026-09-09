@@ -172,7 +172,7 @@
   const state = { mode:'roam', scene:'roam', castIdx:0, banter:true, facing:1, goto:null, phase:'none', timer:0, goneTotal:24, meeting:false, camFrozen:false, camVal:0, panMode:false, panX:0 };
   const player = { x:300, vx:0 }; const input = { left:false, right:false };
   const director = { at:null, t:0 }; let beatT = 40;   // camera "director" (eases to whoever's acting) + sim beat timer
-  const smoke=[], steam=[], rain=[], pages=[]; const tw={line:0}, amb={next:90}, runner={x:-40,active:false}; const courier={active:false,x:0,dir:1,target:0,exit:0,phase:'',t:0}; let tick=0, acc=0, last=performance.now(), bubbleTimer=0, bubbleText='', cam=0, ringT=0, officeBlipT=0, cigLit=0, matchT=0;
+  const smoke=[], steam=[], rain=[], pages=[]; const tw={line:0}, amb={next:90}, runner={x:-40,active:false}; const courier={active:false,x:0,dir:1,target:0,exit:0,phase:'',t:0,whoCi:-1}; let pendingReply=null, tick=0, acc=0, last=performance.now(), bubbleTimer=0, bubbleText='', cam=0, ringT=0, officeBlipT=0, cigLit=0, matchT=0;
   const NPC={ pal:{skin:'#cdb08a',skinSh:'#a98a64',hair:'#2a2018',hat:'#3a3630',band:'#241f18',suit:'#4a4a52',suitDk:'#343440',shirt:'#d8d2c0',tie:'#6a5a3a'}, hat:'fedora', prop:'none' };
   const CHIEF={ pal:{skin:'#d8b48a',skinSh:'#b4906a',hair:'#2a2018',hat:'#241a14',band:'#3a2a1a',suit:'#2b2f36',suitDk:'#1c2026',shirt:'#e0dac8',tie:'#7a2d1d'}, hat:'fedora', prop:'none' };
 
@@ -265,7 +265,7 @@
 
   // ---- The newsroom: one desk per character, camera on whoever's cast -----
   function drawNewsroom(){
-    for(let i=0;i<DESKX.length;i++){ const c=CAST[i], x=DESKX[i], active=(i===state.castIdx), seatHere=active?(state.mode==='desk'):true;
+    for(let i=0;i<DESKX.length;i++){ const c=CAST[i], x=DESKX[i], active=(i===state.castIdx), seatHere=(active?(state.mode==='desk'):true) && !(courier.active&&courier.whoCi===i);
       deskPool(x);
       if(seatHere){ if(active) drawSeated(c,x); else drawIdleSitter(c,x); }
       drawDeskProps(c,x, (active&&seatHere)?state.scene:'idle');
@@ -352,9 +352,14 @@
   function drawCourier(){ drawWalk(courier.who||NPC,courier.x|0,FLOOR,courier.dir);
     if(courier.phase==='walk'){ const hx=(courier.x|0)+courier.dir*5; R(hx-3,FLOOR-20,6,7,'#e8e2d0'); R(hx-3,FLOOR-20,6,1,'#f2ecd8'); R(hx-2,FLOOR-17,4,1,'#b9b39c'); } }
   function startCourier(){ if(reduce) return; const fromOffice=Math.random()<0.6;   // usually the Chief, out of his own door
-    courier.who = fromOffice ? CHIEF : NPC;
+    courier.whoCi=-1; courier.who = fromOffice ? CHIEF : NPC;
     courier.x = fromOffice ? OFFICE_XB+9 : (Math.random()<0.5? 40 : WORLD-40);
     courier.exit = courier.x; courier.target = deskX((Math.random()*DESKX.length)|0)-4;   // drops on somebody's desk
+    courier.dir = courier.target>courier.x?1:-1; courier.phase='walk'; courier.t=0; courier.active=true; }
+  // The copy boy physically runs a page from one desk to another, then heads home — real desk-to-desk handoffs.
+  function handoff(fromX, toX){ if(reduce||courier.active) return; const gb=roleAgent('copyboy');
+    courier.whoCi = gb? gb.ci : -1; courier.who = gb? CAST[gb.ci] : NPC;
+    courier.x = fromX; courier.target = toX-2; courier.exit = gb? deskX(gb.ci) : (toX>fromX?WORLD+40:-40);
     courier.dir = courier.target>courier.x?1:-1; courier.phase='walk'; courier.t=0; courier.active=true; }
   function dropPages(wx){ if(reduce) return; for(let i=0;i<3;i++) pages.push({x:wx+(i-1)*3,y:DTOP-10,vx:(Math.random()-0.5)*1.1,vy:-0.5+Math.random()*0.4,rot:Math.random()*6,vr:0.2,life:34}); }
   // Fire a small ambient beat now and then, so the room is never dead.
@@ -484,6 +489,7 @@
       if(ringT>0)ringT--; if(officeBlipT>0)officeBlipT--;
       if(--beatT<=0){ beatT=22+((Math.random()*30)|0); simBeat(); }
       for(const s of staff){ if(s.sayT>0) s.sayT--; } if(director.t>0) director.t--;
+      if(pendingReply){ if(--pendingReply.t<=0){ agentSay(pendingReply.s, pendingReply.text, 36); pendingReply=null; } }
       if(runner.active){ runner.x+=10; if(runner.x>WORLD+40) runner.active=false; }
       if(courier.active){
         if(courier.phase==='walk'){ if(Math.abs(courier.target-courier.x)>5) courier.x+=6*courier.dir; else { courier.phase='drop'; courier.t=26; } }
@@ -564,23 +570,23 @@
     logEvent(`Chief takes the brief — ${st.short}`); focusOn(chief); mScene.textContent='THE FLOOR IS WORKING'; renderRoster(); }
 
   function simBeat(){
-    for(const st of stories){ if(['done','held','press'].includes(st.stage) || Math.random()>0.6) continue;
+    for(const st of stories){ if(['done','held','press'].includes(st.stage) || Math.random()>0.74) continue;
       if(st.stage==='assigned'){ if(!canAfford(chief,1500)){ escalate('budget',chief); continue; }
-        spend(chief,1500); const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; rep.status='working';
+        spend(chief,1500); chief.status='idle'; const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; rep.status='working';
         agentSay(chief,`${rep.label.split(' ')[0]}, chase ${st.short}.`,44); agentSay(rep,`On it, Chief.`,34);
-        if(!courier.active) startCourier(); logEvent(`Chief → ${rep.label}: cover ${st.short}`); focusOn(rep); }
+        handoff(WINDOW_XB, deskX(rep.ci)); logEvent(`Chief → ${rep.label}: cover ${st.short}`); focusOn(rep); }
       else if(st.stage==='reporting'){ const rep=staff.find(s=>s.ci===st.owner); if(rep.status==='blocked') continue;
         if(!canAfford(rep,4500)){ rep.status='blocked'; escalate('budget',rep,st); logEvent(`${rep.label} is out of budget on ${st.short}`); continue; }
-        spend(rep,3500+((Math.random()*3000)|0)); st.quality+=24+((Math.random()*24)|0); rep.status='working'; focusOn(rep); setSceneFor(rep,'type');
+        spend(rep,3500+((Math.random()*3000)|0)); st.quality+=30+((Math.random()*28)|0); rep.status='working'; focusOn(rep); setSceneFor(rep,'type');
         if(Math.random()<0.5) agentSay(rep, reporterLine(st),40);
-        if(st.quality>=100){ st.stage='checking'; rep.status='idle'; if(!courier.active) startCourier();
+        if(st.quality>=100){ st.stage='checking'; rep.status='idle'; handoff(deskX(rep.ci), deskX(roleAgent('copydesk').ci));
           logEvent(`${rep.label} files on ${st.short}`); agentSay(rep,`Filed — ${st.short}.`,34); } }
       else if(st.stage==='checking'){ const mac=roleAgent('copydesk'); if(!canAfford(mac,3000)){ escalate('budget',mac,st); continue; }
         spend(mac,3000); focusOn(mac); setSceneFor(mac,'idle');
         if(Math.random()<0.42 && st.checks<2){ st.checks++; st.quality=Math.max(40,st.quality-45); st.stage='reporting';
-          const rep=staff.find(s=>s.ci===st.owner); rep.status='working'; if(!courier.active) startCourier();
+          const rep=staff.find(s=>s.ci===st.owner); rep.status='working'; handoff(deskX(mac.ci), deskX(st.owner));
           agentSay(mac,`Thin recon on ${st.short}. Verify it.`,48); logEvent(`${mac.label}: ${st.short} needs a 2nd source — back to ${rep.label}`); }
-        else { st.stage='writing'; if(!courier.active) startCourier(); agentSay(mac,`Stands up — ${st.short}.`,34); logEvent(`${mac.label} clears ${st.short}`); } }
+        else { st.stage='writing'; handoff(deskX(mac.ci), deskX(roleAgent('editor').ci)); agentSay(mac,`Stands up — ${st.short}.`,34); logEvent(`${mac.label} clears ${st.short}`); } }
       else if(st.stage==='writing'){ const ed=roleAgent('editor'); if(!canAfford(ed,4000)){ escalate('budget',ed,st); continue; }
         spend(ed,4000); focusOn(ed); setSceneFor(ed,'type'); st.t++;
         if(st.t>=2){ st.stage='press'; escalate('press',ed,st); agentSay(ed,`${st.short} — ready for page one.`,46); logEvent(`${ed.label} has ${st.short} ready — the Chief wants your call`); } }
@@ -588,8 +594,10 @@
     aliveBeat(); }
   function reporterLine(st){ const L=['Chasing the paper trail…',`Who leaked ${st.short}?`,'Two sources, then it runs.','This one has legs.']; return L[(tick+st.id)%L.length]; }
   function aliveBeat(){ const idle=staff.filter(s=>s.ci>=0 && s.status==='idle' && s.sayT<=0);
-    if(idle.length && Math.random()<0.5){ const s=idle[(Math.random()*idle.length)|0], c=CAST[s.ci]; agentSay(s, c.lines[(Math.random()*c.lines.length)|0],38); }
-    if(Math.random()<0.22 && !courier.active) startCourier(); }
+    if(idle.length>=2 && Math.random()<0.35){ const a=idle.splice((Math.random()*idle.length)|0,1)[0], b=idle[(Math.random()*idle.length)|0];   // a two-way exchange across the room
+      agentSay(a, CAST[a.ci].lines[(Math.random()*CAST[a.ci].lines.length)|0],42); pendingReply={ s:b, text:CAST[b.ci].lines[(Math.random()*CAST[b.ci].lines.length)|0], t:24 }; }
+    else if(idle.length && Math.random()<0.5){ const s=idle[(Math.random()*idle.length)|0], c=CAST[s.ci]; agentSay(s, c.lines[(Math.random()*c.lines.length)|0],38); }
+    if(Math.random()<0.18 && !courier.active) startCourier(); }
 
   function escalate(kind,s,st){ if(kind==='budget'){ if(approvals.some(a=>a.kind==='budget'&&a.who===s.id)) return;
       approvals.push({ id:++apSeq, kind:'budget', who:s.id, text:`${s.label} is out of budget${st?` on ${st.short}`:''}.` }); logEvent(`${s.label} needs more budget — your call`); }
