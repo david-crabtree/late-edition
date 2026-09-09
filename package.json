@@ -1,0 +1,39 @@
+{
+  "name": "late-edition",
+  "version": "0.0.1",
+  "private": true,
+  "description": "A noir newsroom that turns your own AI agents into a daily paper.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "late-edition": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "cli": "tsx src/cli/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run lint && npm run test"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "diff": "^5.2.0",
+    "rss-parser": "^3.13.0",
+    "yaml": "^2.5.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/diff": "^5.2.3",
+    "@types/node": "^20.16.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
+  }
+}
