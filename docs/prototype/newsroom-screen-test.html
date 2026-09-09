@@ -62,7 +62,7 @@
         <button class="chip" id="chiefBtn">See the Chief ▸</button>
         <button class="chip" id="exitBtn">Step out ▸door</button>
       </div>
-      <p class="hint">Keys: <b>← →</b> / <b>A D</b> to walk · <b>Space</b> to sit · buttons seat &amp; perform. Doors are on the back wall.</p>
+      <p class="hint">Keys: <b>← →</b> / <b>A D</b> to walk · <b>Space</b> to sit. Walk right to find the Chief's office window — he's chewing someone out.</p>
     </div>
     <div><p class="label">The staff — click to cast</p><div class="cast" id="cast"></div></div>
     <div><p class="label">Name this reporter</p>
@@ -73,18 +73,18 @@
     </div>
   </div>
   <p class="foot">
-    Fixes this pass: smoke curls slowly now, doors sit flush on the back wall (the camera holds while you walk to one),
-    and the Chief's meeting plays as an <span class="k">illuminated close-up cutaway</span> — upper bodies, near-normal
-    scale — instead of two distant worms. Typing hands rest on the keys, the speech bubble is anchored again, and the
-    desk is tidied. Rough on purpose — a representation for you to art over.
+    This pass: the desk is a flat 2D block, the Chief's door &amp; office window moved off to the right so they're not
+    behind the player, and the office <span class="k">window</span> shows two <b>silhouettes</b> facing off — arms waving,
+    tempers up. Typing fingers sit on the keyboard at the desk's front edge with the machine behind them. Rough on
+    purpose — a representation for you to art over.
   </p>
 </div>
 
 <script>
 (() => {
   const cv = document.getElementById('screen'); const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
-  const VW = cv.width, VH = cv.height, WORLD = 760, FLOOR = 150, DC = 400;
-  const OFFICE_XB = 300, DOOR_LB = 190, DOOR_RB = 650;           // door positions on the BACK wall
+  const VW = cv.width, VH = cv.height, WORLD = 760, FLOOR = 150, DC = 400, DTOP = FLOOR-16; // flat desk top line
+  const OFFICE_XB = 500, WINDOW_XB = 456, DOOR_LB = 210, DOOR_RB = 660;    // back-wall x's, office kept away from the desk
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const CAST = [
@@ -98,10 +98,8 @@
       pal:{skin:'#c88a56',skinSh:'#9c6a3e',hair:'#1c130c',hat:'#3a5060',band:'#233542',suit:'#495a3a',suitDk:'#33422a',shirt:'#d8cbb0',tie:'#8a6a2a'},
       hat:'cap', prop:'cig', lines:['Presses are hungry tonight, boss.','I run faster’n the deadline, watch me.','Coffee’s fresh — the coffee’s a lie.','Extra! Extra! …once you write it.'] },
   ];
-  const CHIEF = { name:'The Chief', pal:{skin:'#d8ab7a',skinSh:'#b98a5e',hair:'#8f8a7e',hat:'visor',band:'#2f6a4a',suit:'#3a3f45',suitDk:'#282c31',shirt:'#e2dcca',tie:'#4a3a2a'}, hat:'visor' };
 
-  const state = { mode:'roam', scene:'roam', castIdx:0, banter:true, facing:1,
-                  goto:null, phase:'none', timer:0, goneTotal:26, meeting:false, camFrozen:false, camVal:0 };
+  const state = { mode:'roam', scene:'roam', castIdx:0, banter:true, facing:1, goto:null, phase:'none', timer:0, goneTotal:24, camFrozen:false, camVal:0 };
   const player = { x:300, vx:0 }; const input = { left:false, right:false };
   const smoke=[], steam=[], rain=[]; let tick=0, acc=0, last=performance.now(), bubbleTimer=0, bubbleText='', cam=0;
 
@@ -116,12 +114,12 @@
     R(120,14,12,12,'#d9d2b0'); R(120,14,12,1,'#eee7c6'); P(130,17,'#b9b090'); g.restore(); }
   function layerBack(off){ g.save(); g.translate(-off,0);
     R(0,0,WORLD,FLOOR,'#182231'); R(0,0,WORLD,70,'#141d29'); R(0,FLOOR-8,WORLD,1,'#0f1620'); R(0,FLOOR-7,WORLD,3,'#101a26');
-    wallSign(360,20);
-    for(const wx of [60,580]) windowBlinds(wx,44);
-    for(const fx of [240,440]) framedPage(fx,58);
-    wallClock(130,58); ceilingFan(330,16); ceilingTube(off);
-    plainDoor(DOOR_LB); officeDoor(OFFICE_XB); plainDoor(DOOR_RB);   // doors ON the back wall
-    backDeskReporter(500);
+    wallSign(150,20);
+    for(const wx of [50,610]) windowBlinds(wx,44);
+    for(const fx of [110,300]) framedPage(fx,58);
+    wallClock(360,58); ceilingFan(240,16); ceilingTube(off);
+    plainDoor(DOOR_LB); officeWindow(WINDOW_XB); officeDoor(OFFICE_XB); plainDoor(DOOR_RB);
+    backDeskReporter(120);
     g.restore(); }
   function layerMain(off){ g.save(); g.translate(-off,0);
     R(0,FLOOR,WORLD,VH-FLOOR+20,'#241a10'); R(0,FLOOR,WORLD,1,'#3a2a1a');
@@ -144,17 +142,22 @@
     R(x+13,FLOOR-68+bob,10,15,'#0b1017'); R(x+14,FLOOR-77+bob,8,9,'#0b1017'); R(x+6,FLOOR-58,6,5,'#e7e1cf'); R(x+22,FLOOR-58,6,5,'#e7e1cf');
     if((tick%2)===0) R(x+10,FLOOR-55,4,2,'#0b1017'); else R(x+22,FLOOR-55,4,2,'#0b1017'); }
 
-  // Doors sit on the back wall (bottom just above the floor line) so they don't float.
   function plainDoor(x){ const y=FLOOR-45; R(x-2,y-1,22,44,'#140f0a'); R(x,y,18,43,'#2c2013'); R(x,y,18,1,'#3b2a1a'); R(x+3,y+3,12,10,'#1a130a'); R(x+13,y+24,3,4,'#c9b06a'); }
-  function officeDoor(x){ const y=FLOOR-48; R(x-4,y-7,32,55,'#120d08'); R(x-4,y-7,32,1,'#2a2016');
-    g.fillStyle='rgba(200,180,120,.55)'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.fillText('CHIEF',x+12,y-3); g.textAlign='left';
-    R(x,y,24,48,'#241a10'); R(x,y,24,1,'#3a2a1a'); R(x+18,y+26,3,4,'#c9b06a');
-    // glass: dim normally, glows amber during a meeting
-    const meeting = state.meeting && state.phase==='gone';
-    const wx=x+4,wy=y+5,ww=16,wh=15; R(wx-1,wy-1,ww+2,wh+2,'#2a2012');
-    if(meeting){ const gl=g.createLinearGradient(wx,wy,wx,wy+wh); gl.addColorStop(0,'#efc266'); gl.addColorStop(1,'#a8781f'); g.fillStyle=gl; g.fillRect(wx,wy,ww,wh);
-      R(wx+3,wy+7,3,7,'#171009'); R(wx+3,wy+4,3,3,'#171009'); R(wx+10,wy+7,3,7,'#171009'); R(wx+10,wy+4,3,3,'#171009'); }
-    else { R(wx,wy,ww,wh,'#3a2f16'); } }
+  function officeDoor(x){ const y=FLOOR-45; R(x-2,y-1,22,44,'#140f0a'); R(x,y,18,43,'#241a10'); R(x,y,18,1,'#3a2a1a'); R(x+3,y+3,12,7,'#3a2f16'); R(x+13,y+24,3,4,'#c9b06a');
+    g.fillStyle='rgba(200,180,120,.55)'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.fillText('CHIEF',x+9,y-4); g.textAlign='left'; }
+  // An interior office window in the wall: two silhouettes facing off, arms waving (angry).
+  function officeWindow(x){ const y=FLOOR-46, w=40, h=32;
+    R(x-3,y-3,w+6,h+6,'#120d08'); R(x-3,y-3,w+6,1,'#2a2016');
+    const gl=g.createLinearGradient(x,y,x,y+h); gl.addColorStop(0,'#efc266'); gl.addColorStop(1,'#a8781f'); g.fillStyle=gl; g.fillRect(x,y,w,h);   // lit glass
+    for(let i=3;i<h;i+=6) R(x,y+i,w,1,'#e2b45a');                                   // frosted streaks
+    const base=y+h-2;
+    // LEFT figure — the Chief, jabbing a finger
+    const cArm=(tick%6<3)?-5:-2; R(x+9,base-13,4,13,'#150f08'); R(x+9,base-18,5,5,'#150f08'); R(x+13,base-11+cArm,4,2,'#150f08');
+    // RIGHT figure — the reporter, throwing both hands up, leaning back a touch
+    const rArm=(tick%8<4)?-6:-1, lean=(tick%24<12)?0:1;
+    R(x+26+lean,base-13,4,13,'#150f08'); R(x+26+lean,base-18,5,5,'#150f08'); R(x+23+lean,base-11+rArm,4,2,'#150f08'); R(x+30+lean,base-9+((tick%8<4)?-4:0),3,2,'#150f08');
+    R(x+w/2-1,y,1,h,'#120d08'); R(x,y+Math.floor(h/2),w,1,'#120d08');              // mullions
+    g.fillStyle='rgba(20,15,8,.85)'; g.font='5px "Press Start 2P",monospace'; g.textAlign='center'; g.fillText("CHIEF'S OFFICE",x+w/2,y-5); g.textAlign='left'; }
 
   // ---- Main set pieces ----------------------------------------------------
   function filingCabinet(x){ R(x,FLOOR-38,26,38,'#2b3036'); R(x,FLOOR-38,26,1,'#454b52'); for(let i=0;i<3;i++){ R(x+3,FLOOR-34+i*11,20,8,'#20252a'); R(x+11,FLOOR-31+i*11,4,2,'#6b7076'); } }
@@ -164,33 +167,34 @@
   function cat(x){ const flick=(tick%40<4); R(x+2,FLOOR-46,12,6,'#20242a'); R(x+2,FLOOR-48,4,3,'#20242a'); P(x+3,FLOOR-48,'#e8b04b'); P(x+5,FLOOR-48,'#e8b04b'); R(x+13,FLOOR-45,flick?2:3,flick?4:2,'#20242a'); }
   function hangingBulb(x){ const sway=reduce?0:Math.round(Math.sin(tick*0.12+x)*1); R(x,0,1,14,'#0c0c0c'); R(x-1+sway,14,3,3,'#c9c2a0'); const gr=g.createRadialGradient(x+sway,17,1,x+sway,17,22); gr.addColorStop(0,'rgba(232,176,75,.4)'); gr.addColorStop(1,'rgba(232,176,75,0)'); g.fillStyle=gr; g.fillRect(x-20+sway,0,44,46); }
 
-  // ---- Hero desk + player -------------------------------------------------
+  // ---- Hero desk (flat 2D) + player --------------------------------------
   function heroDeskAndPlayer(){ const c=CAST[state.castIdx];
-    const pool=g.createRadialGradient(DC,FLOOR-24,6,DC,FLOOR-24,120); pool.addColorStop(0,'rgba(232,176,75,.26)'); pool.addColorStop(1,'rgba(232,176,75,0)'); g.fillStyle=pool; g.fillRect(DC-80,FLOOR-100,240,100);
+    const pool=g.createRadialGradient(DC,DTOP,6,DC,DTOP,120); pool.addColorStop(0,'rgba(232,176,75,.24)'); pool.addColorStop(1,'rgba(232,176,75,0)'); g.fillStyle=pool; g.fillRect(DC-80,DTOP-70,240,80);
     const seated=state.mode==='desk';
     if(seated) drawSeated(c,DC); else drawRoamer(c);
-    drawDesk(DC); deskProps(c,DC,!seated); if(seated) drawSeatedArms(c,DC); nameplate(DC,FLOOR-5);
+    // flat desk: one front block + a top line + nameplate. No depth.
+    if(seated){ drawTypewriterAndProps(c,DC); }              // machine sits behind the hands (drawn next)
+    R(DC-48,DTOP,96,16,'#3b2a1a'); R(DC-48,DTOP,96,1,'#5a4028');
+    if(!seated) drawTypewriterAndProps(c,DC,true);
+    R(DC-15,FLOOR-5,30,4,'#20242c'); R(DC-15,FLOOR-5,30,1,'#3a4450'); nameplate(DC,FLOOR-3);
+    if(seated) drawSeatedHands(c,DC);
     if(seated){ updateParticles(steam); updateParticles(smoke); } }
-  function drawDesk(x){
-    R(x-48,FLOOR-20,96,4,'#4a3320'); R(x-48,FLOOR-20,96,1,'#6a4a2c');    // desk top surface + lip
-    R(x-48,FLOOR-16,96,16,'#3b2a1a'); R(x-48,FLOOR-16,96,1,'#2c2013');   // front panel
-    R(x-44,FLOOR-13,40,10,'#332416'); R(x-42,FLOOR-11,36,6,'#3f2c1a'); // left drawer
-    R(x+6,FLOOR-13,40,10,'#332416'); R(x+8,FLOOR-11,36,6,'#3f2c1a');     // right drawer
-    R(x-26,FLOOR-9,3,2,'#8a6a3a'); R(x+22,FLOOR-9,3,2,'#8a6a3a');        // drawer knobs
-    R(x-15,FLOOR-4,30,4,'#20242c'); R(x-15,FLOOR-4,30,1,'#3a4450'); }    // nameplate
   function nameplate(cx,y){ const name=(CAST[state.castIdx].name||'').toUpperCase().slice(0,15); g.fillStyle='#c9b06a'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(name,cx,y); g.textAlign='left'; g.textBaseline='alphabetic'; }
-  function deskProps(c,x,idleMug){ const ty=FLOOR-24;
-    // banker's lamp far left
-    R(x-46,ty+6,2,8,'#c8b34a'); R(x-49,ty+12,8,2,'#8a7a30'); R(x-51,ty,18,6,'#2f6a4a'); R(x-51,ty,18,2,'#3f8a60');
-    const lg=g.createRadialGradient(x-42,ty+4,1,x-42,ty+4,16); lg.addColorStop(0,'rgba(255,214,120,.45)'); lg.addColorStop(1,'rgba(255,214,120,0)'); g.fillStyle=lg; g.fillRect(x-56,ty-4,34,24);
-    // typewriter, centred
-    R(x-3,ty+1,6,3,'#6b7076'); R(x-10,ty-4,20,6,'#e8e2d0'); R(x-10,ty-4,20,1,'#bdb79f'); // paper (rear)
-    R(x-13,ty+3,26,6,'#3d4247'); R(x-13,ty+3,26,1,'#5b6167');           // body
-    R(x-11,ty+9,22,2,'#20242a');                                        // key deck (front, at FLOOR-13)
-    drawPhone(x-30,FLOOR-16); if(idleMug) drawMug(x+34,FLOOR-8,c.prop==='coffee'); R(x+16,FLOOR-8,16,4,'#e8e2d0'); P(x+19,FLOOR-8,'#7a2d1d'); }
-  function drawPhone(x,y){ const jit=(state.scene==='phone'&&(tick%20<8))?1:0; R(x+3+jit,y+8,10,4,'#20242a'); R(x+6+jit,y-2,4,10,'#2b3036'); R(x+4+jit,y-6,8,4,'#3d4247'); R(x+5+jit,y-7,6,2,'#111');
-    if(state.scene!=='phone'){ R(x+11,y-4,5,2,'#3d4247'); R(x+15,y-3,2,6,'#2b3036'); }
-    if(state.scene==='phone'&&tick%20<8){ const cc='#e8b04b'; P(x-1,y-2,cc);P(x-2,y-4,cc);P(x-3,y-6,cc);P(x-1,y+2,cc);P(x-2,y+4,cc); } }
+
+  // The typewriter body sits ABOVE the desk top; keys are the front row on the desk.
+  function drawTypewriterAndProps(c,x,idleMug){
+    // banker's lamp, far left, on the desk top
+    R(x-46,DTOP-8,2,8,'#c8b34a'); R(x-49,DTOP-1,8,2,'#8a7a30'); R(x-51,DTOP-14,18,6,'#2f6a4a'); R(x-51,DTOP-14,18,2,'#3f8a60');
+    const lg=g.createRadialGradient(x-42,DTOP-10,1,x-42,DTOP-10,16); lg.addColorStop(0,'rgba(255,214,120,.4)'); lg.addColorStop(1,'rgba(255,214,120,0)'); g.fillStyle=lg; g.fillRect(x-56,DTOP-18,34,22);
+    // typewriter (centred): paper (rear/top) → body → keyboard row at the desk's front edge
+    R(x-9,DTOP-18,18,6,'#e8e2d0'); R(x-9,DTOP-18,18,1,'#bdb79f'); R(x-3,DTOP-20,6,3,'#6b7076');   // paper + platen knobs
+    R(x-12,DTOP-12,24,6,'#3d4247'); R(x-12,DTOP-12,24,1,'#5b6167');                                // body
+    R(x-11,DTOP-6,22,3,'#20242a'); R(x-10,DTOP-5,20,1,'#12161c');                                  // keyboard row (front)
+    // phone left, mug right, papers
+    drawPhone(x-32,DTOP); if(idleMug) drawMug(x+34,DTOP-6,c.prop==='coffee'); R(x+16,DTOP-6,16,4,'#e8e2d0'); P(x+19,DTOP-6,'#7a2d1d'); }
+  function drawPhone(x,y){ const jit=(state.scene==='phone'&&(tick%20<8))?1:0; R(x+3+jit,y-2,10,4,'#20242a'); R(x+6+jit,y-12,4,10,'#2b3036'); R(x+4+jit,y-16,8,4,'#3d4247'); R(x+5+jit,y-17,6,2,'#111');
+    if(state.scene!=='phone'){ R(x+11,y-14,5,2,'#3d4247'); R(x+15,y-13,2,6,'#2b3036'); }
+    if(state.scene==='phone'&&tick%20<8){ const cc='#e8b04b'; P(x-1,y-12,cc);P(x-2,y-14,cc);P(x-3,y-16,cc);P(x-1,y-8,cc);P(x-2,y-6,cc); } }
   function drawMug(x,y,steamOn){ R(x,y,8,6,'#c9c2b0'); R(x,y,8,1,'#e6dfce'); R(x+8,y+1,2,3,'#9a917c'); R(x+1,y+1,6,2,'#3a2b1e'); if(steamOn&&!reduce&&tick%7===0) steam.push({x:x+3,y:y-1,life:34,rise:0.3,seed:Math.random()*6,c:'#cdd6da'}); }
 
   // ---- Character rig ------------------------------------------------------
@@ -203,7 +207,6 @@
   function hatOn(c,cx,y){ const p=c.pal;
     if(c.hat==='fedora'){ R(cx-8,y+1,17,2,p.hat); R(cx-8,y+1,17,1,'#0f0f0f'); R(cx-5,y-4,11,6,p.hat); R(cx-5,y-4,11,2,'#0f0f0f'); R(cx-5,y,11,2,p.band); }
     else if(c.hat==='cap'){ R(cx-6,y-1,13,4,p.hat); R(cx-6,y-1,13,1,'#0f1a20'); R(cx-11,y+2,7,2,p.hat); }
-    else if(c.hat==='visor'){ R(cx-6,y-1,12,3,p.hair); R(cx-7,y+2,15,2,p.band); R(cx-7,y+2,15,1,'#3f8a60'); }   // eyeshade visor
     else { R(cx-6,y-1,12,4,p.hair); R(cx-7,y+2,3,10,p.hair); R(cx+5,y+2,3,10,p.hair); P(cx-6,y,'#c9a24b'); P(cx+6,y,'#c9a24b'); } }
 
   function drawRoamer(c){ const walking=Math.abs(player.vx)>0.01;
@@ -226,41 +229,18 @@
 
   function drawSeated(c,cx){ const p=c.pal,bob=reduce?0:(state.scene==='idle'?(Math.sin(tick*0.22)<0?0:1):(tick%8<4?0:1)); const shY=FLOOR-34+bob,headTop=FLOOR-45+bob,shock=state.scene==='stop';
     R(cx-9,shY,18,22,p.suit); R(cx-9,shY,18,2,p.suitDk); R(cx-3,shY,6,11,p.shirt); R(cx-1,shY+1,2,10,p.tie);
+    // resting / gesture arms that DON'T cross the desk front (kept above the desk top or to the side)
+    if(state.scene==='phone'){ R(cx+4,FLOOR-40,4,3,p.suit); R(cx+5,FLOOR-42,4,3,'#2b3036'); R(cx+6,FLOOR-41,2,9,'#20242a'); }   // receiver to ear
+    else if(state.scene==='stop'){ R(cx-9,FLOOR-40,4,3,p.suitDk); R(cx-10,FLOOR-43,4,3,p.skin); R(cx+5,FLOOR-40,4,3,p.suit); R(cx+6,FLOOR-43,4,3,p.skin); }
     const h=headFront(c,cx,headTop,(tick%64)<3,shock);
     if(c.prop==='cig'&&state.scene!=='coffee'&&!shock) puff(c,h.mouthX,h.mouthY); if(shock) smoke.length=0; }
 
-  // SHORT stub arms. Typing hands sit ON the front key deck (FLOOR-13), below the machine body.
-  function drawSeatedArms(c,cx){ const p=c.pal, deskY=FLOOR-15;
-    const stub=(x,y,col)=>R(x,y,4,3,col), hand=(x,y)=>R(x,y,3,2,p.skin);
-    if(state.scene==='type'){ const hit=tick%2;
-      stub(cx-8,FLOOR-17,p.suitDk); hand(cx-7,FLOOR-13-hit);
-      stub(cx+4,FLOOR-17,p.suit);   hand(cx+4,FLOOR-13-(1-hit));
-      R(cx-12,FLOOR-11,24,1,'#4a5057'); if(hit&&tick%4===0) P(cx,FLOOR-14,'#fff2c4');
-    } else if(state.scene==='coffee'){ const f=((tick/4)|0)%3; const mx=[cx+6,cx+3,cx][f], my=[deskY,FLOOR-24,FLOOR-33][f];
-      stub(mx-4,my+2,p.suit); drawMug(mx,my,f===2); stub(cx-9,FLOOR-16,p.suitDk); hand(cx-10,deskY);
-    } else if(state.scene==='phone'){ stub(cx+4,FLOOR-38,p.suit); R(cx+5,FLOOR-40,4,3,'#2b3036'); R(cx+6,FLOOR-39,2,9,'#20242a'); stub(cx-9,FLOOR-16,p.suitDk); hand(cx-10,deskY);
-    } else if(state.scene==='stop'){ stub(cx-9,FLOOR-38,p.suitDk); hand(cx-10,FLOOR-41); stub(cx+5,FLOOR-38,p.suit); hand(cx+6,FLOOR-41);
-    } else { stub(cx-10,FLOOR-16,p.suitDk); hand(cx-11,deskY); stub(cx+6,FLOOR-16,p.suit); hand(cx+7,deskY); } }
-
-  // ---- Chief's office cutaway (illuminated close-up) ----------------------
-  function drawCutaway(alpha){ g.globalAlpha=alpha;
-    const bw=170,bh=92,bx=(VW-bw)/2,by=16;
-    R(bx-2,by-2,bw+4,bh+4,'#0a0806'); R(bx-1,by-1,bw+2,1,'#e8b04b'); R(bx,by,bw,bh,'#20160e');   // frame lit by amber
-    R(bx,by,bw,22,'#2a1d12');                                   // wall
-    // window + shelf hints
-    R(bx+10,by+4,26,14,'#7a5a1e'); for(let i=0;i<14;i+=3){ R(bx+10,by+4+i,26,1,'#e2a442'); } R(bx+120,by+4,38,3,'#3a2a1a'); R(bx+120,by+9,38,3,'#3a2a1a');
-    R(bx,by+bh-30,bw,30,'#3b2a1a'); R(bx,by+bh-30,bw,2,'#5a4028'); R(bx,by+bh-24,bw,24,'#2c2013'); // big desk
-    const talkA=(tick%12<6), talkB=!talkA;
-    bust(CHIEF, bx+50, by+bh-30, talkA, (tick%40<8));           // Chief on the left
-    bust(CAST[state.castIdx], bx+120, by+bh-30, talkB, false);  // the reporter on the right
-    g.fillStyle='rgba(200,180,120,.7)'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.fillText("THE CHIEF'S OFFICE",VW/2,by+bh+2); g.textAlign='left';
-    g.globalAlpha=1; }
-  // upper-body bust at near-normal scale (head ~11px), facing centre, with mouth flap
-  function bust(c,cx,deskTop,talk,gesture){ const p=c.pal, shY=deskTop-16, headTop=deskTop-27;
-    R(cx-9,shY,18,20,p.suit); R(cx-9,shY,18,2,p.suitDk); R(cx-3,shY,6,10,p.shirt); R(cx-1,shY+1,2,9,p.tie);
-    const h=headFront(c,cx,headTop,false,false);
-    R(cx-2,h.mouthY,4,talk?2:1, talk?'#3a1f14':'#7a4a34');       // mouth flap
-    if(gesture){ R(cx+8,shY+3,3,3,p.suitDk); R(cx+10,shY-1,3,3,p.skin); }   // chief raises a hand
+  // Hands drawn AFTER the desk. Typing = fingertips on the keyboard row (front of desk); the
+  // machine body is above/behind them, so the hands never sit in front of the typewriter.
+  function drawSeatedHands(c,cx){ const p=c.pal;
+    if(state.scene==='type'){ const hit=tick%2; R(cx-7,DTOP-6-hit,3,2,p.skin); R(cx+4,DTOP-6-(1-hit),3,2,p.skin); if(hit&&tick%4===0) P(cx,DTOP-7,'#fff2c4'); }
+    else if(state.scene==='coffee'){ const f=((tick/4)|0)%3, mx=[cx+6,cx+3,cx][f], my=[DTOP-6,FLOOR-24,FLOOR-33][f]; R(mx-4,my+2,4,3,p.suit); drawMug(mx,my,f===2); R(cx-10,DTOP-4,3,2,p.skin); }
+    else if(state.scene==='idle'){ R(cx-11,DTOP-4,4,2,p.skin); R(cx+7,DTOP-4,4,2,p.skin); }   // hands resting on desk edge
   }
 
   // ---- Particles / bubble / ticker / stop --------------------------------
@@ -275,11 +255,8 @@
 
   function render(){ const sky=g.createLinearGradient(0,0,0,VH); sky.addColorStop(0,'#101826'); sky.addColorStop(1,'#0a0d13'); g.fillStyle=sky; g.fillRect(0,0,VW,VH);
     layerFar(cam*0.25); layerBack(cam*0.55); layerMain(cam); layerFore(cam*1.15);
-    // Speech bubble in SCREEN space (so it stays anchored to its box), above the seated head.
     if(state.mode==='desk'&&state.banter&&bubbleText) bubble(DC-cam, FLOOR-56, bubbleText);
-    if(state.mode==='desk'&&state.scene==='stop') stopOverlay();
-    // Chief cutaway while the meeting is in progress
-    if(state.meeting&&state.phase==='gone'){ const t=state.goneTotal, el=t-state.timer; const a=Math.min(1, el/8, state.timer/8); drawCutaway(Math.max(0,a)); } }
+    if(state.mode==='desk'&&state.scene==='stop') stopOverlay(); }
   function newBanter(){ const c=CAST[state.castIdx]; bubbleText = state.scene==='stop'?'STOP THE PRESS!':c.lines[(Math.random()*c.lines.length)|0]; }
 
   function frame(now){ const dt=now-last; last=now; acc+=dt; const step=1000/12;
@@ -288,25 +265,24 @@
         if(state.goto!=null){
           if(state.phase==='walk'){ const dx=state.goto-player.x; if(Math.abs(dx)>3){ const d=dx>0?1:-1; state.facing=d; player.vx=4*d; player.x+=4*d; } else { player.vx=0; state.phase='gone'; state.timer=state.goneTotal; } }
           else if(state.phase==='gone'){ player.vx=0; state.timer--; if(state.timer<=0){ state.phase='return'; state.timer=8; player.x=state.goto; } }
-          else if(state.phase==='return'){ player.vx=0; state.timer--; if(state.timer<=0){ state.phase='none'; state.goto=null; state.meeting=false; state.camFrozen=false; } }
+          else if(state.phase==='return'){ player.vx=0; state.timer--; if(state.timer<=0){ state.phase='none'; state.goto=null; state.camFrozen=false; } }
         } else { let vx=0; if(input.left)vx-=4; if(input.right)vx+=4; player.vx=vx; if(vx!==0){ state.facing=vx>0?1:-1; player.x=Math.max(30,Math.min(WORLD-30,player.x+vx)); } }
       } else player.vx=0;
       cam = state.camFrozen ? state.camVal : Math.max(0,Math.min(WORLD-VW,(state.mode==='desk'?DC:player.x)-VW/2));
-      if(!reduce&&tick%2===0){ for(const wx of [60,580]) rain.push({win:wx,x:(Math.random()*60)|0,y:0,life:16}); }
+      if(!reduce&&tick%2===0){ for(const wx of [50,610]) rain.push({win:wx,x:(Math.random()*60)|0,y:0,life:16}); }
       for(let i=rain.length-1;i>=0;i--){ rain[i].y+=3; if(rain[i].y>58) rain.splice(i,1); }
       bubbleTimer--; if(bubbleTimer<=0){ if(state.mode==='desk') newBanter(); bubbleTimer=44; }
     } render(); requestAnimationFrame(frame); }
 
   // ---- Controls -----------------------------------------------------------
   const mScene=document.getElementById('mScene'); const sceneLabel={roam:'ROAMING · ← → TO WALK',idle:'AT THE DESK · SMOKE',type:'TYPING',coffee:'COFFEE BREAK',phone:'THE PHONE',stop:'STOP THE PRESS'};
-  function clearGoto(){ state.goto=null; state.phase='none'; state.meeting=false; state.camFrozen=false; }
+  function clearGoto(){ state.goto=null; state.phase='none'; state.camFrozen=false; }
   function setScene(s){ clearGoto(); if(s==='roam'){ state.mode='roam'; state.scene='roam'; } else { state.mode='desk'; state.scene=s; player.x=DC; bubbleTimer=1; } document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===s))); mScene.textContent='SCENE — '+(sceneLabel[s]||s); }
   document.getElementById('scenes').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(!b||!b.dataset.scene) return; setScene(b.dataset.scene); });
-  // walk to a BACK-WALL door: freeze the camera and aim the player where the door appears on screen
-  function goToDoor(backX,label,meeting){ state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam')));
-    state.camFrozen=true; state.camVal=cam; state.goto=(backX+12)+state.camVal*0.45; state.phase='walk'; state.meeting=meeting; state.goneTotal=meeting?64:24; mScene.textContent=label; }
-  document.getElementById('chiefBtn').addEventListener('click',()=>goToDoor(OFFICE_XB,'OFF TO SEE THE CHIEF',true));
-  document.getElementById('exitBtn').addEventListener('click',()=>goToDoor(player.x>DC?DOOR_RB:DOOR_LB,'STEPPING OUT',false));
+  function goToDoor(backX,label){ state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam')));
+    state.camFrozen=true; state.camVal=cam; state.goto=(backX+9)+state.camVal*0.45; state.phase='walk'; state.goneTotal=24; mScene.textContent=label; }
+  document.getElementById('chiefBtn').addEventListener('click',()=>goToDoor(OFFICE_XB,'OFF TO SEE THE CHIEF'));
+  document.getElementById('exitBtn').addEventListener('click',()=>goToDoor(player.x>DC?DOOR_RB:DOOR_LB,'STEPPING OUT'));
   function hold(btn,key){ const on=e=>{e.preventDefault(); clearGoto(); if(state.mode!=='roam') setScene('roam'); input[key]=true;}; const off=()=>input[key]=false; btn.addEventListener('pointerdown',on); btn.addEventListener('pointerup',off); btn.addEventListener('pointerleave',off); btn.addEventListener('pointercancel',off); }
   hold(document.getElementById('walkL'),'left'); hold(document.getElementById('walkR'),'right');
   addEventListener('keydown',e=>{ const k=e.key.toLowerCase();
