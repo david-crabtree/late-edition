@@ -145,11 +145,21 @@ Layer order (back → front):
 7. `hat` — fedora/cap/visor/pinned (S5/S6)
 8. `prop` — cigarette / coffee / pencil / receiver (front-most)
 
+### Proportions — chunky & iconic (art direction, locked)
+Deliberately **stocky, not lanky**. Big head, wide torso, short stubby limbs — closer to a
+1.7-head-tall silhouette than realistic. Less pixel density reads better here: keep limbs
+simple (2–4 px thick blocks), avoid long thin arms/legs. The character should read at a
+glance as a shape, not a stick figure. (See the revised prototype for the target feel.)
+
 ### Canonical measurements (within the 64×64 cell)
-- **Seated bust:** shoulders at **y≈36**, head crown at **y≈14**, desk line at **y=52**.
-  Head ≈ 16 px tall × 15 px wide. Shoulders ≈ 32 px wide.
-- **Standing:** total height ≈ **52–56 px**; head ≈ 14 px; pivot at y=63.
-- **Hands:** ≈ 6×4 px blocks. Keep them readable — hands sell typing and phone.
+- **Standing:** total height ≈ **40–46 px** (chunky). **Head ≈ 14 px** (≈⅓ of the body —
+  intentionally large), torso wide (~20 px), legs short (~12 px). Pivot at bottom-centre.
+- **Seated bust:** big head + wide chunky torso above the desk line (**y=52**); lower body
+  hidden. Shoulders ~24 px wide.
+- **Hands:** ≈ 3–4 px blocks on **short, connected** arms (shoulder→hand ≤ ~10 px). Hands
+  must land *on* props — desk items are centred in front of the sitter so arms stay short.
+- **Side-profile walk** is a distinct pose (not the front sprite slid sideways): narrower
+  side torso, a nose nub + eye on the facing side, one visible swinging arm, a stride step.
 
 ---
 
