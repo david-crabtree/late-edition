@@ -289,7 +289,7 @@ Each prop is its own sheet. "frames" lists animation states.
 | `prop_nameplate` | 64 × 10 | 1 | engraved plate; byline text via bitmap font |
 | `prop_door_plain` | 22 × 42 | closed 1 (+2 open opt) | actors walk through to leave/return (fade at the threshold) |
 | `prop_door_office` | 22 × 44 | frame 1 | the Chief's door (plain, "CHIEF" plate). Reporters walk through it to see the boss |
-| `prop_office_window` | ~46 × 38 | silhouette loop | **an interior window in the wall next to the Chief's door**: backlit amber frosted glass with **two black silhouettes facing off** — arms waving, a jabbing finger, tempers rising (~6–8-frame loop). Ambient; the boss is always chewing someone out. NOT full-colour characters, NOT a close-up cutaway |
+| `prop_office_window` | ~66 × 46 | dim/lit states + silhouette loop | **an interior window in the wall near the Chief's door**. The **Chief sits behind his desk** (upper body only — the desk/sill hides the rest), **dim** while he's alone (small idle). When a reporter walks through the door, the **light snaps on** and a **visitor silhouette** appears opposite him, both arms waving / a jabbing finger — an argument in silhouette. Black silhouettes, NOT full-colour characters, NOT a close-up cutaway. Keep door and window spaced apart |
 | `prop_cabinet` | 40 × 56 | closed 1 + open 2 | filing cabinet (Morgue); drawer sliding out |
 | `prop_coatrack` | 20 × 60 | 1 | flavour |
 | `prop_tube_capsule` | 8 × 12 | 2 | pneumatic-tube capsule zip (flavour) |
