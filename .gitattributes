@@ -1,0 +1,9 @@
+# Normalize line endings to LF across platforms.
+* text=auto eol=lf
+
+# Binary assets (add sprite/atlas types here as art lands)
+*.png binary
+*.jpg binary
+*.aseprite binary
+*.woff binary
+*.woff2 binary
