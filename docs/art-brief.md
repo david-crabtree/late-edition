@@ -156,8 +156,10 @@ glance as a shape, not a stick figure. (See the revised prototype for the target
   intentionally large), torso wide (~20 px), legs short (~12 px). Pivot at bottom-centre.
 - **Seated bust:** big head + wide chunky torso above the desk line (**y=52**); lower body
   hidden. Shoulders ~24 px wide.
-- **Hands:** ≈ 3–4 px blocks on **short, connected** arms (shoulder→hand ≤ ~10 px). Hands
-  must land *on* props — desk items are centred in front of the sitter so arms stay short.
+- **Seated arms are STUBS, not limbs.** At this chunky scale, draw a small 3–4 px sleeve
+  block with a 3 px hand poking out near the desk — do **not** draw a full shoulder→hand
+  arm (it reads gangly). Desk props are centred in front of the sitter so the hands land on
+  them with almost no reach. Standing arms are likewise short blocks at the sides.
 - **Side-profile walk** is a distinct pose (not the front sprite slid sideways): narrower
   side torso, a nose nub + eye on the facing side, one visible swinging arm, a stride step.
 
@@ -285,6 +287,8 @@ Each prop is its own sheet. "frames" lists animation states.
 | `prop_clock` | 20 × 20 | face 1 | hands drawn by engine rotation (don't hand-draw 12) |
 | `prop_ticker` | 64 × 8 tile | 1 tileable | wire ticker strip; text scrolls via bitmap font |
 | `prop_nameplate` | 64 × 10 | 1 | engraved plate; byline text via bitmap font |
+| `prop_door_plain` | 22 × 42 | closed 1 (+2 open opt) | actors walk through to leave/return (fade at the threshold) |
+| `prop_door_office` | 32 × 50 | frame 1 + **silhouette loop** | the Chief's door: frosted amber pane with **two silhouettes** behind it, one gesturing (~4-frame loop) — a "meeting in progress" told entirely in silhouette |
 | `prop_cabinet` | 40 × 56 | closed 1 + open 2 | filing cabinet (Morgue); drawer sliding out |
 | `prop_coatrack` | 20 × 60 | 1 | flavour |
 | `prop_tube_capsule` | 8 × 12 | 2 | pneumatic-tube capsule zip (flavour) |
