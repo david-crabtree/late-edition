@@ -173,6 +173,12 @@ function createWindow(): void {
         `LE_DEBUG banter: on=${first.banter}, spoke in ${seconds}s: ${[...spoke].join(', ') || 'nobody'}`,
       );
       console.log(`LE_DEBUG staff: ${prev.people.map((p) => `${p.id}:${p.st}`).join(' ')}`);
+      console.log(
+        'LE_DEBUG cast:',
+        await js(
+          "[...document.querySelectorAll('#staff .sc b')].map(e=>e.textContent).join(' | ')",
+        ),
+      );
       // The coffee beat, sampled frame by frame. The old one drew a mug at the mouth while
       // both arms hung at the sides, so the check is that the arm actually moves with it.
       console.log(

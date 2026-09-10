@@ -373,8 +373,8 @@
 <script>
 (() => {
   const cv = document.getElementById('screen'); const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
-  const VW = cv.width, VH = cv.height, WORLD = 1760, FLOOR = 150, DTOP = FLOOR-16, BP = 0.85;  // BP = back-wall parallax (near 1 so desks can't slide over the office window)
-  const DESKX = [110, 300, 800, 1010, 1220, 1430, 1640];               // 2 desks left of the office, 5 to its right — the middle strip stays clear in front of the Chief's office
+  const VW = cv.width, VH = cv.height, WORLD = 1950, FLOOR = 150, DTOP = FLOOR-16, BP = 0.85;  // BP = back-wall parallax (near 1 so desks can't slide over the office window)
+  const DESKX = [110, 300, 800, 1010, 1220, 1430, 1640, 1850];        // 2 desks left of the office, 6 to its right — the middle strip stays clear in front of the Chief's office
   const deskX = i => DESKX[i] ?? 320, AC = () => DESKX[state.castIdx];  // active character's desk centre
   const OFFICE_XB = 454, WINDOW_XB = 480, DOOR_LB = 250, DOOR_RB = 1710;   // Chief's office door+window in the clear middle strip; plain doors at the far ends
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -383,25 +383,28 @@
   // office, then the desk tiers (edit, rewrite, copy desk) and support to the right. Each
   // desk index maps to DESKX[i]; the clear middle strip is the office frontage.
   const CAST = [
-    { id:'ruth', name:'Ruth Okafor', role:'Researcher',
+    { id:'ruth', name:'Ruth Ledger', role:'Researcher',
       pal:{skin:'#8a5a34',skinSh:'#6a4426',hair:'#160e08',hat:'#3a5a4a',band:'#243a30',suit:'#3a5a4a',suitDk:'#284034',shirt:'#e6dccb',tie:'#8a7a30'},
       hat:'none', prop:'coffee', acc:{glasses:1,longhair:1}, desk:'research', lines:['Give me an hour and a phone book.','Every fact leaves a paper trail.','I don’t guess - I look it up.','Primary source, or it stays out.','Someone filed this. Someone always files something.','A press release isn’t a source. It’s a wish.','Three tabs open and none of them agree.','I found the footnote. The footnote found nothing.','If it’s only on their own website, it isn’t true yet.','The date on this page is older than the claim.','Wikipedia is a map. I want the territory.','Two sources, and neither one is the other one.','Everybody cites the same blog post. Nobody read it.','Good. A number. Numbers can be checked.','Archive it before they quietly change it.','That’s a secondary source wearing a primary’s coat.'] },
     { id:'sam', name:'Sam Vance', role:'Hardboiled reporter',
       pal:{skin:'#d3a06f',skinSh:'#a97b4e',hair:'#241812',hat:'#4a3826',band:'#2a1f14',suit:'#3d4954',suitDk:'#2b333c',shirt:'#dcd6c6',tie:'#7a2d1d'},
       hat:'fedora', prop:'cig', acc:{stubble:1,loosetie:1}, desk:'reporter', lines:['Ink’s cheap. The truth runs extra.','Get me rewrite - and a match.','Every quiet night’s a headline that ain’t broke yet.','Facts don’t care what time it is, kid.','Nobody ever called me back at a reasonable hour.','The story’s fine. It’s the third paragraph that’s lying.','I’ve been hung up on by better people than this.','They said no comment. That’s a comment.','Buried on page nine. That’s where the good ones live.','I don’t need the whole truth. I need the bit that checks out.','Two hours on the phone for one sentence. Worth it.','The lede’s in here somewhere. It’s hiding.','Somebody’s lying and I’ve narrowed it down to everybody.','Ashtray’s full. Notebook isn’t. Wrong way round.','You can smell a rewrite job from the door.','Deadline’s a suggestion. The presses aren’t.'] },
-    { id:'dot', name:'Dot Kowalski', role:'News editor',
+    { id:'dot', name:'Dot Banner', role:'News editor',
       pal:{skin:'#e0b184',skinSh:'#c79a72',hair:'#3a1d12',hat:'#6a2740',band:'#4a1a2c',suit:'#5a2338',suitDk:'#401828',shirt:'#e6dccb',tie:'#c9a24b'},
       hat:'none', prop:'coffee', acc:{pencil:1,earrings:1}, desk:'editor', lines:['Cut it to the bone, then cut the bone.','Two sources or it’s a rumour with a byline.','I’ve spiked better copy before breakfast.','Hold page one. I feel one coming.','Four hundred words. Not four hundred and one.','You buried it. Dig it up and put it first.','If the headline needs the standfirst, the headline’s broken.','I don’t want your opinion. I want their quote.','Nice sentence. It’s out.','Who does it hit? Lead with them.','That’s a feature pretending to be news.','Below the fold, and lucky to be there.','Take the adverb out and read it again.','We ran this in March. Find me what’s new.','It stands up or it doesn’t. There’s no third thing.','Front page is a promise. Don’t make me break it.'] },
-    { id:'hal', name:'Hal Brody', role:'Rewrite / copywriter',
+    { id:'hal', name:'Hal Brevier', role:'Rewrite / copywriter',
       pal:{skin:'#cf9c66',skinSh:'#a67848',hair:'#1c130c',hat:'#3a4048',band:'#242a30',suit:'#4a4038',suitDk:'#342c26',shirt:'#dcd6c6',tie:'#3a6a7a'},
       hat:'none', prop:'coffee', acc:{loosetie:1,glasses:1}, desk:'copywriter', lines:['Give me the facts, I’ll give you the music.','Ledes are made, not born.','Kill the adjectives, keep the verbs.','Three tight grafs by deadline.','Short sentence. Then a longer one to breathe. Then short.','I’ve rewritten this lede four times. It’s getting worse.','Every ’very’ I delete adds a year to my life.','The facts are dull. The order they arrive in isn’t.','Don’t explain the joke. Don’t explain the fact either.','A comma there changes who’s to blame.','Read it aloud. If you run out of air, cut it.','The last line does the work. Save something for it.','’In conclusion’ is where good copy goes to die.','Passive voice. Someone did this. Say who.','Two facts side by side beat a paragraph of opinion.','It isn’t the words. It’s the gaps between them.'] },
-    { id:'mac', name:'Mac McHale', role:'Copy desk',
+    { id:'mac', name:'Mac Stet', role:'Copy desk',
       pal:{skin:'#c9a07a',skinSh:'#a07a56',hair:'#3a3a3a',hat:'#3a4a3a',band:'#2a3226',suit:'#3a4636',suitDk:'#2a3428',shirt:'#dcd6c6',tie:'#5a6b4a'},
       hat:'none', prop:'coffee', acc:{eyeshade:1,glasses:1}, desk:'copydesk', lines:['Two sources, then we talk.','Spelled wrong? I spike it.','I read galleys in my sleep.','The record says otherwise, pal.','This claim has no source. It has a vibe.','You wrote ’reportedly’. Reported by whom?','The number in graf two fights the one in graf five.','Lovely quote. It isn’t in the transcript.','Citation says 2024. The source page says 2019.','I’ve cut worse. I’ve never cut faster.','’Sources say’ is two words too many.','Nobody sues you for the sentence you didn’t print.','Green pencil’s earned its keep tonight.','That’s an inference. Label it or lose it.','The link goes to a 404. So does the claim.','Corrections column has room. Let’s not fill it.'] },
-    { id:'gus', name:'Gus Moreno', role:'Copy boy',
+    { id:'gus', name:'Gus Dash', role:'Copy boy',
       pal:{skin:'#c88a56',skinSh:'#9c6a3e',hair:'#1c130c',hat:'#3a5060',band:'#233542',suit:'#495a3a',suitDk:'#33422a',shirt:'#d8cbb0',tie:'#8a6a2a'},
       hat:'cap', prop:'none', acc:{bowtie:1,freckles:1,young:1}, desk:'copyboy', lines:['Presses are hungry tonight, boss.','I run faster than the deadline, watch me.','Coffee’s fresh - the coffee’s a lie.','Extra! Extra! ...once you write it.','Copy for the desk! Anyone? No? Right.','One day my name goes on one of these.','I know every shortcut in this building.','Mr Vance says I ask too many questions. Is that one?','Pressroom’s warm. Best seat in the house.','Carried a page one once. Didn’t read it. Still regret it.','There’s a man downstairs who’s been here since 1931.','Ink under the fingernails never comes out. Suits me.','Everyone’s shouting. Must be going well.','I’ll get it there before you’ve finished writing it.','Boss says wait. Waiting’s the hard part.','Somebody left a sandwich on the linotype again.'] },
-    { id:'iris', name:'Iris Vale', role:'Photo desk',
+    { id:'ida', name:'Ida Stringer', role:'Field reporter',
+      pal:{skin:'#c98f66',skinSh:'#a06e48',hair:'#2c1a10',hat:'#4a4030',band:'#31281c',suit:'#57503c',suitDk:'#3e392a',shirt:'#ded6c2',tie:'#6a7a4a'},
+      hat:'fedora', prop:'none', acc:{scarf:1,longhair:1}, desk:'field', lines:['I keep an eye on things while you’re out.','Nothing moved on the wire last night. That’s news too.','Six pages watched, one of them twitched.','I don’t file unless something changed.','Same page, same words, three days running.','The pricing page moved. Somebody hoped nobody was looking.','I’ve been on this patch longer than the patch has.','You’ll know the moment it’s worth knowing.','A quiet beat is a beat, not a holiday.','They changed it at two in the morning. I was up.','Watch it long enough and it tells you something.','I don’t chase. I wait, and it comes past.','Four sources on the string, all behaving.','Somebody edited that quietly. Not quietly enough.','The overnight file’s thin. Thin and honest.','Give me a page and a week and I’ll give you a pattern.'] },
+    { id:'iris', name:'Iris Plate', role:'Photo desk',
       pal:{skin:'#e0b184',skinSh:'#c79a72',hair:'#2a1810',hat:'#6a2740',band:'#4a1a2c',suit:'#3a4657',suitDk:'#2a3442',shirt:'#e6dccb',tie:'#c98a3a'},
       hat:'beret', prop:'none', acc:{camera:1,longhair:1}, desk:'photo', lines:['One frame tells the whole story.','Hold the front page for my shot.','Light’s bad; the truth isn’t.','Say cheese, city hall.','Nobody makes the picture for me. I write the brief.','Give me the caption and I’ll tell you if it’s honest.','A photograph nobody took isn’t a photograph.','Alt text isn’t decoration. Someone’s reading it.','Wrong picture, right story - still a lie.','The archive’s got it. The archive always has it.','Crop it and you’ve written an opinion.','I want the hands. Hands say more than faces.','Available light and a steady elbow.','That caption claims more than the story does.','The document scan is the shot. Unglamorous. True.','Two frames: one for the record, one for the poster.'] },
   ];
@@ -542,6 +545,7 @@
     if(c.desk==='reporter'){ drawPhone(x-47); drawTypewriter(x); if(idleMug) drawMug(x+34,DTOP-6); R(x+16,DTOP-6,15,4,'#e8e2d0'); R(x+16,DTOP-6,15,1,'#f2ecd8'); ashtray(x+40); }
     else if(c.desk==='editor'){ drawTypewriter(x); paperSpike(x-44); pencilCup(x+30); if(idleMug) drawMug(x+40,DTOP-6); deskStack(x+16); }
     else if(c.desk==='copyboy'){ bigStack(x); deskBell(x+36); bundles(x-48); }
+    else if(c.desk==='field'){ drawPhone(x-47); paperSpike(x+38); corkboard(x-40,DTOP-64); drawLedger(x, scene==='type'); }
     else if(c.desk==='copydesk'){ drawTypewriter(x); loupe(x-42); galleys(x+16); gluePot(x+36); if(idleMug) drawMug(x-30,DTOP-6); }
     else if(c.desk==='photo'){ plateCamera(x); photoLine(x); redSafelight(x+40); trays(x-44); }
     else if(c.desk==='research'){ drawPhone(x-47); bookStack(x-42); drawLedger(x, scene==='type'); rolodex(x+30); if(idleMug) drawMug(x+42,DTOP-6); }
@@ -686,7 +690,8 @@
     if(a.stubble){ R(cx-4,y+9,3,1,p.skinSh); R(cx+2,y+9,3,1,p.skinSh); P(cx-1,y+10,p.skinSh); }
     if(a.freckles){ P(cx-3,y+7,p.skinSh); P(cx+3,y+7,p.skinSh); }
     if(a.pencil){ R(cx+5,y-1,1,5,'#d9a441'); P(cx+5,y-2,'#7a2d1d'); }                                             // red pencil behind the ear
-    if(a.earrings){ P(cx-6,y+9,'#c9a24b'); P(cx+6,y+9,'#c9a24b'); } }
+    if(a.earrings){ P(cx-6,y+9,'#c9a24b'); P(cx+6,y+9,'#c9a24b'); }
+    if(a.scarf){ R(cx-6,y+10,12,2,'#7a3a2a'); R(cx-6,y+10,12,1,'#9a4c38'); R(cx+3,y+12,3,4,'#7a3a2a'); P(cx+4,y+15,'#5c2a1e'); } }   // she works outside; the scarf comes in with her
 
   function drawRoamer(c){ const walking=Math.abs(player.vx)>0.01;
     let a=1; if(state.goto!=null){ const d=Math.abs(state.goto-player.x); if(state.phase==='gone') a=0; else if(state.phase==='return') a=1-(state.timer/8); else if(d<12) a=Math.max(0,d/12); }
