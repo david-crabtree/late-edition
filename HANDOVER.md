@@ -418,9 +418,12 @@ Each line is one commit; see `git log` for the exact SHAs.
 - **Cadence control + per-newsroom history** — a "run the story" trigger with history/context saved
   to a local folder per newsroom (context the agents carry across runs). The autonomy unit:
   reporters holding multiple standing assignments on a cadence (extends `watch`).
-- **Roster characters** — the prototype cast predates the researcher tier; it needs new characters
-  so the visual aid matches the real org (researchers → reporters → copywriters → editors).
-- **Cheap-model citation discipline** — re-validate the hardened writer prompt on a paid tiered run.
+- ✅ **Roster characters** (commit `d9c4e1d`) — added Ruth Okafor (Researcher) and Hal Brody
+  (Rewrite/copywriter) with personalised desks; room widened to 7 desks (2 left / 5 right of the
+  office) with the office frontage kept clear. Relabeled Dot to News editor. **Still to do:** wire
+  the prototype's *sim story-flow* through the new tiers (research→report→write) — right now Ruth &
+  Hal have desks/cards but the animated pipeline still runs report→check→edit. Pairs with cadence.
+- **Cheap-model citation discipline** — re-validate the hardened writer prompt on a run (free on the plan).
 
 
 - **M3 — the app UI** (Electron + PixiJS): the Newsroom, Editor's Office, Press Room rooms; the
