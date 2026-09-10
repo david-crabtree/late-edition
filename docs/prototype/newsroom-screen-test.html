@@ -208,11 +208,39 @@
   .spike .sp-act{ display:flex; gap:5px; }
   .spike .sp-act .chip[disabled]{ opacity:.4; cursor:default; }
   .spike .sp-foot{ font-size:.66rem; color:#7a7259; margin:9px 0 0; }
+  .spike .sp-foot a{ color:var(--amber-dim); cursor:pointer; text-decoration:underline; }
   .frontpage .fp-watch{ text-align:left; max-width:62ch; width:100%; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
   .frontpage .fp-watch[hidden]{ display:none; }
   .frontpage .fp-watch .chip{ background:#efe6d2; border-color:#bda87f; color:#2a2115; font-size:.72rem; }
   .frontpage .fp-watch .chip[disabled]{ opacity:.6; cursor:default; }
   .frontpage .fp-watch-note{ font-size:.66rem; color:#6a6250; }
+  /* The case file. Same shape as Back issues, because it is the same kind of drawer. */
+  .casefile{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
+  .casefile[hidden]{ display:none; }
+  .casefile .cf-card{ width:min(700px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
+  .casefile .cf-hd{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:11px 14px; background:#14100b; border-bottom:1px solid #2c2519; }
+  .casefile .cf-hd b{ font-family:var(--display); text-transform:uppercase; letter-spacing:.03em; font-size:.9rem; color:var(--amber); }
+  .casefile .cf-sub{ font-family:var(--pixel); font-size:.5rem; color:var(--bone-dim); }
+  .casefile .cf-switch{ margin-left:auto; display:flex; align-items:center; gap:6px; font-size:.72rem; color:var(--bone-dim); cursor:pointer; }
+  .casefile .cf-switch input{ accent-color:#6a7a4a; }
+  .casefile .cf-list{ overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:7px; }
+  .casefile .cf{ border:1px solid #23201a; border-radius:6px; background:#0e1116; padding:9px 11px; }
+  .casefile .cf.off{ opacity:.55; }
+  .casefile .cf-top{ display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+  .casefile .cf-name{ flex:1; min-width:0; }
+  .casefile .cf-name b{ display:block; font-size:.86rem; color:var(--bone); line-height:1.3; }
+  .casefile .cf-name small{ display:block; font-size:.68rem; color:var(--bone-dim); margin-top:2px; }
+  .casefile .cf-act{ display:flex; gap:5px; flex-wrap:wrap; }
+  .casefile .cf-act .chip[disabled]{ opacity:.4; cursor:default; }
+  .casefile .cf-srcs{ list-style:none; margin:9px 0 0; padding:0; display:flex; flex-direction:column; gap:3px; border-top:1px solid #23201a; padding-top:8px; }
+  .casefile .cf-srcs li{ display:flex; align-items:center; gap:8px; font-size:.7rem; color:var(--bone-dim); }
+  .casefile .cf-type{ font-family:var(--pixel); font-size:.42rem; letter-spacing:.04em; text-transform:uppercase; color:#7a7259; border:1px solid #2c2519; border-radius:3px; padding:2px 4px; flex:none; }
+  .casefile .cf-url{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:ui-monospace,Menlo,Consolas,monospace; }
+  .casefile .cf-x{ flex:none; background:none; border:1px solid #2c2519; color:#8a8270; border-radius:3px; cursor:pointer; font-size:.66rem; line-height:1; padding:3px 6px; font-family:inherit; }
+  .casefile .cf-x:hover:not([disabled]){ border-color:#8a3226; color:#e8926a; }
+  .casefile .cf-x[disabled]{ opacity:.4; cursor:default; }
+  .casefile .cf-empty{ padding:22px 14px; text-align:center; font-size:.76rem; color:var(--bone-dim); line-height:1.6; }
+  .casefile .cf-foot{ font-size:.66rem; color:#7a7259; margin:0; padding:10px 14px; border-top:1px solid #23201a; line-height:1.5; }
   .backissues{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .backissues[hidden]{ display:none; }
   .backissues .bi-card{ width:min(680px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
@@ -1328,9 +1356,11 @@
     const el=document.createElement('div'); el.className='spike'; el.hidden=true;
     el.innerHTML=`<div class="sp-hd"><b>The overnight file</b><span class="sp-sub" id="spSub"></span><button class="chip" id="spClose">Close</button></div>
       <div class="sp-list" id="spList"></div>
-      <p class="sp-foot">Watching costs nothing — no model sees these pages until you run one.</p>`;
+      <p class="sp-foot">Watching costs nothing — no model sees these pages until you run one.
+        <a id="spCases">Open the case file</a> to see the sources or drop a case.</p>`;
     const anchor=document.querySelector('.appbar'); if(anchor) anchor.after(el); else document.body.appendChild(el);
     el.querySelector('#spClose').addEventListener('click',()=>{ el.hidden=true; });
+    el.querySelector('#spCases').addEventListener('click',()=>{ el.hidden=true; openCaseFile(); });
     spikeEl=el; return el; }
   const sinceText=iso=>{ if(!iso) return 'not checked yet';
     const mins=Math.max(0,Math.round((Date.now()-new Date(iso).getTime())/60000));
@@ -1369,6 +1399,8 @@
     return moved; }
   async function refreshWatches(check){
     if(!window.lateEdition.watches) return 0;
+    try{ fieldOn=await window.lateEdition.fieldDesk(); }catch(_){ }
+    if(!fieldOn){ if(spikeEl) spikeEl.hidden=true; return 0; }
     try{
       if(check) await window.lateEdition.checkWatches();
       watchList=await window.lateEdition.watches();
@@ -1419,6 +1451,77 @@
         const i=ida(); if(i) charLog(i,'act',`Took the beat: ${r.name}`);
         await refreshWatches(false); }
       else { b.disabled=false; b.textContent=(r&&r.error)||'Could not watch those'; } }); }
+  // ---- The case file -------------------------------------------------------------------
+  // Every story Ida is following is a case: the pages it came from, what they've done, and
+  // whether it's worth staying on. The strip under the appbar is only the nudge; this is
+  // where you see the sources and get rid of the ones that aren't earning their keep.
+  let caseEl=null, fieldOn=true;
+  const MAX_PER_RUN=12;   // mirrors the engine's cap — a follow-up reports the newest changes only
+  function buildCaseFile(){
+    if(caseEl) return caseEl;
+    const el=document.createElement('div'); el.className='casefile'; el.hidden=true;
+    el.innerHTML=`<div class="cf-card">
+      <div class="cf-hd"><b>The case file</b><span class="cf-sub" id="cfSub"></span>
+        <label class="cf-switch"><input type="checkbox" id="cfOn"> Field desk</label>
+        <button class="chip" id="cfClose">Close</button></div>
+      <div class="cf-list" id="cfList"></div>
+      <p class="cf-foot">Ida checks these when you open the app. Watching costs nothing — no model
+        sees a page until you run a follow-up, and a follow-up reports the ${MAX_PER_RUN} newest
+        changes at most.</p>
+    </div>`;
+    document.body.appendChild(el);
+    el.addEventListener('click', e=>{ if(e.target===el) el.hidden=true; });
+    el.querySelector('#cfClose').addEventListener('click',()=>{ el.hidden=true; });
+    el.querySelector('#cfOn').addEventListener('change', async e=>{
+      fieldOn=e.target.checked;
+      try{ await window.lateEdition.setFieldDesk(fieldOn); }catch(_){ }
+      const i=ida(); if(i) charLog(i,'act', fieldOn?'Back on the beat.':'Off the beat — not watching anything.');
+      if(fieldOn) await refreshWatches(true); else { if(spikeEl) spikeEl.hidden=true; renderCases(); } });
+    caseEl=el; return el; }
+  function renderCases(){
+    const el=buildCaseFile(), list=el.querySelector('#cfList'), sub=el.querySelector('#cfSub');
+    el.querySelector('#cfOn').checked=fieldOn;
+    const srcs=watchList.reduce((n,w)=>n+w.sources.length,0);
+    sub.textContent = watchList.length
+      ? `${watchList.length} case${watchList.length>1?'s':''} · ${srcs} source${srcs===1?'':'s'} watched`
+      : '';
+    if(!watchList.length){
+      list.innerHTML=`<div class="cf-empty">No cases open. Finish a story and Ida will offer to
+        keep an eye on the pages it came from.</div>`; return; }
+    list.innerHTML='';
+    for(const w of watchList){
+      const box=document.createElement('div'); box.className='cf'+(fieldOn?'':' off');
+      const moved=w.pending.length;
+      box.innerHTML=`<div class="cf-top">
+          <div class="cf-name"><b>${fpEsc(w.name)}</b>
+            <small>${moved?`${moved} change${moved===1?'':'s'} waiting`:'nothing has moved'} · checked ${fpEsc(sinceText(w.lastCheckedAt))}</small></div>
+          <div class="cf-act">
+            <button class="chip primary" data-run="${fpEsc(w.id)}"${moved&&fieldOn?'':' disabled'}>Run it</button>
+            <button class="chip" data-clear="${fpEsc(w.id)}"${moved?'':' disabled'}>Spike changes</button>
+            <button class="chip danger2" data-drop="${fpEsc(w.id)}">Drop the case</button>
+          </div>
+        </div>
+        <ul class="cf-srcs">${w.sources.map(s=>`<li>
+          <span class="cf-type">${fpEsc(s.type)}</span>
+          <span class="cf-url" title="${fpEsc(s.url||'')}">${fpEsc(s.url||'(no address)')}</span>
+          <button class="cf-x" data-case="${fpEsc(w.id)}" data-src="${fpEsc(s.id)}" title="Stop watching this page">✕</button>
+        </li>`).join('')}</ul>`;
+      list.appendChild(box); }
+    list.querySelectorAll('[data-run]').forEach(b=>b.addEventListener('click',()=>{
+      el.hidden=true; runWatched(b.dataset.run); }));
+    list.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',async()=>{
+      await window.lateEdition.clearSpike(b.dataset.clear); await refreshWatches(false); renderCases(); }));
+    list.querySelectorAll('[data-drop]').forEach(b=>b.addEventListener('click',async()=>{
+      await window.lateEdition.unwatch(b.dataset.drop); await refreshWatches(false); renderCases(); }));
+    list.querySelectorAll('.cf-x').forEach(b=>b.addEventListener('click',async()=>{
+      b.disabled=true;
+      const r=await window.lateEdition.dropSource(b.dataset.case, b.dataset.src);
+      const i=ida(); if(i&&r&&r.caseDropped) charLog(i,'act','Last page off the case — dropped it.');
+      await refreshWatches(false); renderCases(); })); }
+  async function openCaseFile(){
+    try{ fieldOn=await window.lateEdition.fieldDesk(); }catch(_){ }
+    await refreshWatches(false);
+    const el=buildCaseFile(); renderCases(); el.hidden=false; }
   // ---- Rewrite this, as something else --------------------------------------------------
   // The reporting, the sources and the copy desk's verdict are already on disk, so asking
   // for a LinkedIn post is one writer call against checked material — not a new edition.
@@ -1664,7 +1767,7 @@
     if(mScene) mScene.textContent='Ready — brief the Chief.';
     const cab=document.querySelector('.cabinet');
     const bar=document.createElement('div'); bar.className='appbar';
-    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><button class="chip" id="appBack">Back issues</button><span class="grow"></span><button class="chip pan" id="appLeft" aria-label="Look left" title="Look left">◀</button><button class="chip pan" id="appRight" aria-label="Look right" title="Look right">▶</button><button class="chip" id="appFollow" aria-pressed="true" title="Auto-focus follows the working desk — turn off to look around freely">⦿ Auto-focus</button><button class="chip" id="appQuips" aria-pressed="true" title="The staff's one-liners">💬 Quips</button><button class="chip" id="appSettings">⚙ Settings</button>`;
+    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><button class="chip" id="appBack">Back issues</button><button class="chip" id="appCases">Case file</button><span class="grow"></span><button class="chip pan" id="appLeft" aria-label="Look left" title="Look left">◀</button><button class="chip pan" id="appRight" aria-label="Look right" title="Look right">▶</button><button class="chip" id="appFollow" aria-pressed="true" title="Auto-focus follows the working desk — turn off to look around freely">⦿ Auto-focus</button><button class="chip" id="appQuips" aria-pressed="true" title="The staff's one-liners">💬 Quips</button><button class="chip" id="appSettings">⚙ Settings</button>`;
     if(cab) cab.parentNode.insertBefore(bar, cab.nextSibling);
     const ex=document.getElementById('examples'); if(ex) ex.style.display='none';   // demo brief chips are a sim aid, not app chrome
     // Reorder for the app: brief right under the stage, budget becomes a staff card, controls hidden.
@@ -1723,6 +1826,7 @@
     $('appResume').addEventListener('click', async()=>{ haltViz=false; await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
     $('appOpen').addEventListener('click', ()=>{ if(lastEditionId) window.lateEdition.openPaper(lastEditionId); });
     $('appBack').addEventListener('click', openBackIssues);
+    $('appCases').addEventListener('click', openCaseFile);
     quipBtn=$('appQuips');
     const paintQuips=()=>{ quipBtn.setAttribute('aria-pressed',String(state.banter));
       quipBtn.textContent = state.banter ? '💬 Quips' : '💬 Quips off'; };

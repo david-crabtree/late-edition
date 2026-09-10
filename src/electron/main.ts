@@ -26,8 +26,10 @@ import { clearHalt, isHalted, setHalt } from '../main/store/halt.js';
 import type { LogEvent } from '../main/store/log.js';
 import { paths } from '../main/store/paths.js';
 import {
+  MAX_PER_RUN,
   checkWatched,
   clearSpike,
+  dropSource,
   listWatched,
   unwatch,
   watchEdition,
@@ -60,6 +62,8 @@ function appConfigPath(): string {
 }
 interface AppConfig {
   root?: string;
+  /** Is the field desk on? Default on — checking costs nothing. */
+  fieldDesk?: boolean;
   /** Version of the first-run notice the user has read. Bump NOTICE_VERSION to re-show it. */
   noticeAccepted?: number;
 }
@@ -468,7 +472,25 @@ function createWindow(): void {
               panelShown: !!(el && !el.hidden),
               panelRows: el ? el.querySelectorAll('.sp').length : 0,
             };
-            for (const w of list) await window.lateEdition.unwatch(w.id);
+            // The case file: the switch, the sources, and pulling one page off a case.
+            document.getElementById('appCases').click();
+            await new Promise(r2 => setTimeout(r2, 300));
+            const cf = document.querySelector('.casefile');
+            out.caseFileOpens = !!(cf && !cf.hidden);
+            out.caseRows = cf ? cf.querySelectorAll('.cf').length : 0;
+            out.sourcesListed = cf ? cf.querySelectorAll('.cf-srcs li').length : 0;
+            out.hasSwitch = !!(cf && cf.querySelector('#cfOn'));
+            out.hasDropCase = !!(cf && cf.querySelector('[data-drop]'));
+            const x = cf && cf.querySelector('.cf-x');
+            if (x) { x.click(); await new Promise(r2 => setTimeout(r2, 400)); }
+            out.sourcesAfterRemovingOne = cf ? cf.querySelectorAll('.cf-srcs li').length : 0;
+            // And the switch actually stops the checking.
+            const sw = cf.querySelector('#cfOn');
+            sw.checked = false; sw.dispatchEvent(new Event('change'));
+            await new Promise(r2 => setTimeout(r2, 300));
+            out.offStops = (await window.lateEdition.checkWatches()).beats.length === 0;
+            await window.lateEdition.setFieldDesk(true);
+            for (const w of await window.lateEdition.watches()) await window.lateEdition.unwatch(w.id);
             return JSON.stringify(out);
           })()`),
         );
@@ -891,7 +913,24 @@ ipcMain.handle('le:watchEdition', async (_e, editionId: string, slug?: string) =
 ipcMain.handle('le:watches', () => listWatched(newsroomRoot()));
 
 /** Poll every watched page. Free — no model is involved at any point. */
-ipcMain.handle('le:checkWatches', () => checkWatched(newsroomRoot()));
+ipcMain.handle('le:checkWatches', () => {
+  if (readAppConfig().fieldDesk === false) {
+    return { beats: [], moved: 0, checkedAt: new Date().toISOString(), tokens: 0 as const };
+  }
+  return checkWatched(newsroomRoot());
+});
+
+/** Is the field desk on shift? Off means no checking and no spike. */
+ipcMain.handle('le:fieldDesk', () => readAppConfig().fieldDesk !== false);
+ipcMain.handle('le:setFieldDesk', (_e, on: boolean) => {
+  writeAppConfig({ ...readAppConfig(), fieldDesk: on !== false });
+  return on !== false;
+});
+
+/** Pull one source off a case. Removing the last one drops the case. */
+ipcMain.handle('le:dropSource', (_e, beatId: string, sourceId: string) =>
+  dropSource(newsroomRoot(), beatId, sourceId),
+);
 
 /** Stop watching a beat, or clear its spike without running anything. */
 ipcMain.handle('le:unwatch', (_e, beatId: string) => unwatch(newsroomRoot(), beatId));
@@ -912,10 +951,14 @@ ipcMain.handle('le:runWatch', async (e, beatId: string, opts: { shape?: CopyShap
   const beat = (await listWatched(root)).find((b) => b.id === beatId);
   if (!beat) return { ok: false as const, error: 'That beat is no longer being watched.' };
   if (!beat.pending.length) return { ok: false as const, error: 'Nothing has changed there yet.' };
+  // Only the newest changes. A case left alone for a month accumulates dozens of diffs, and
+  // handing all of them to the reporter is how a cheap follow-up becomes the week's most
+  // expensive run. The rest stay on the spike.
+  const signals = beat.pending.slice(-MAX_PER_RUN);
   try {
     const res = await runEdition({
       root,
-      watchBeat: { beatId: beat.id, beatName: beat.name, signals: beat.pending },
+      watchBeat: { beatId: beat.id, beatName: beat.name, signals },
       research: 0,
       shape: opts?.shape,
       clarify: false, // the desk knows what it is following up; there is nothing to ask

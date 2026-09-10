@@ -8,7 +8,15 @@ import { scaffoldNewsroom } from '../config/scaffold.js';
 import type { Edition } from '../core/edition.js';
 import { runEdition } from '../pipeline/run.js';
 import { paths } from '../store/paths.js';
-import { checkWatched, clearSpike, listWatched, unwatch, watchEdition } from './field.js';
+import {
+  MAX_PER_RUN,
+  checkWatched,
+  clearSpike,
+  dropSource,
+  listWatched,
+  unwatch,
+  watchEdition,
+} from './field.js';
 
 /** A page we can change between checks, so "did it notice" is a real question. */
 let server: Server;
@@ -124,5 +132,62 @@ describe('the field desk', () => {
     const r = await watchEdition(root, editionId);
     expect(unwatch(root, r.beatId)).toBe(true);
     expect(await listWatched(root)).toHaveLength(0);
+  });
+});
+
+describe('working a case', () => {
+  let root: string;
+  let editionId: string;
+
+  beforeEach(async () => {
+    root = mkdtempSync(join(tmpdir(), 'le-case-'));
+    scaffoldNewsroom(root);
+    pageBody = 'The price is £10.';
+    const res = await runEdition({ root, forceProvider: 'fake', brief: 'the price of tea' });
+    editionId = res.editionId;
+    const file = join(paths(root).editionDir(editionId), 'edition.json');
+    const ed = JSON.parse(readFileSync(file, 'utf8')) as Edition;
+    if (ed.stories[0]) {
+      ed.stories[0].sources = [
+        { signalId: 'research:aaaaaaaaaaaa', title: 'One', url: `${base}/one` },
+        { signalId: 'research:bbbbbbbbbbbb', title: 'Two', url: `${base}/two` },
+        { signalId: 'research:cccccccccccc', title: 'Three', url: `${base}/three` },
+      ];
+      writeFileSync(file, JSON.stringify(ed), 'utf8');
+    }
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  it('drops one source and leaves the rest of the case standing', async () => {
+    const c = await watchEdition(root, editionId);
+    const before = (await listWatched(root))[0];
+    const victim = before?.sources[1];
+    const r = await dropSource(root, c.beatId, String(victim?.id));
+    expect(r).toMatchObject({ ok: true, remaining: 2, caseDropped: false });
+    const after = (await listWatched(root))[0];
+    expect(after?.sources.map((s) => s.id)).not.toContain(victim?.id);
+    expect(after?.sources).toHaveLength(2);
+    expect(after?.name).toBe(before?.name); // the case survives its own edit
+  });
+
+  it('drops the case when the last source goes, rather than leaving an empty one', async () => {
+    const c = await watchEdition(root, editionId);
+    const ids = ((await listWatched(root))[0]?.sources ?? []).map((s) => s.id);
+    for (const id of ids.slice(0, -1)) await dropSource(root, c.beatId, id);
+    const last = await dropSource(root, c.beatId, String(ids.at(-1)));
+    expect(last.caseDropped).toBe(true);
+    expect(await listWatched(root)).toHaveLength(0);
+  });
+
+  it('says no to a source that is not on the case', async () => {
+    const c = await watchEdition(root, editionId);
+    expect(await dropSource(root, c.beatId, 'nope')).toMatchObject({ ok: false });
+    expect((await listWatched(root))[0]?.sources).toHaveLength(3);
+  });
+
+  // The cost guard. A case ignored for a month must not turn into the week's biggest run.
+  it('caps how many changes one follow-up reports on', async () => {
+    expect(MAX_PER_RUN).toBeLessThanOrEqual(20);
+    expect(MAX_PER_RUN).toBeGreaterThan(0);
   });
 });

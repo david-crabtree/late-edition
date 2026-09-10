@@ -113,28 +113,90 @@ export async function watchEdition(
   const beatId = slugify(`watch-${story.slug}-${editionId}`).slice(0, 60);
   const sources = urls.map(sourceFor);
 
+  writeCase(root, { beatId, name, fromEdition: editionId, sources });
+  writeSpike(root, beatId, { pending: [] });
+  return { beatId, name, watched: urls.length, skipped };
+}
+
+/** Write (or rewrite) a case's beat file. Rewriting is how a source gets pulled. */
+function writeCase(
+  root: string,
+  c: {
+    beatId: string;
+    name: string;
+    fromEdition?: string;
+    sources: { id: string; type: string; url?: string }[];
+  },
+): void {
   const lines = [
     FIELD_MARKER,
-    `# Promoted from edition ${editionId}. Delete this file to stop watching.`,
-    `id: ${beatId}`,
-    `name: ${yamlQuote(name)}`,
+    c.fromEdition
+      ? `# Opened from edition ${c.fromEdition}. Delete this file to drop the case.`
+      : '# Delete this file to drop the case.',
+    `id: ${c.beatId}`,
+    `name: ${yamlQuote(c.name)}`,
     'reporter: "Ida Stringer"',
-    '# The digging is already done — a run here reports what changed, it does not re-research.',
+    '# The digging is already done - a run here reports what changed, it does not re-research.',
     'research: 0',
     'sources:',
   ];
-  for (const s of sources) {
+  for (const s of c.sources) {
     lines.push(`  - id: ${s.id}`);
     lines.push(`    type: ${s.type}`);
     lines.push(`    url: ${yamlQuote(String(s.url))}`);
   }
   lines.push('');
-
   mkdirSync(paths(root).beatsDir, { recursive: true });
-  writeFileSync(join(paths(root).beatsDir, `${beatId}.yaml`), lines.join('\n'), 'utf8');
-  writeSpike(root, beatId, { pending: [] });
-  return { beatId, name, watched: urls.length, skipped };
+  writeFileSync(join(paths(root).beatsDir, `${c.beatId}.yaml`), lines.join('\n'), 'utf8');
 }
+
+/** Which edition a case was opened from, read back off its own file. */
+function caseOrigin(root: string, beatId: string): string | undefined {
+  try {
+    const text = readFileSync(join(paths(root).beatsDir, `${beatId}.yaml`), 'utf8');
+    return /# Opened from edition (\S+)\./.exec(text)?.[1];
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Pull one source off a case without dropping the whole thing - the page turned out to be
+ * noise, or it changes every hour for no reason. Dropping the last source drops the case,
+ * because a case watching nothing is just clutter.
+ */
+export async function dropSource(
+  root: string,
+  beatId: string,
+  sourceId: string,
+): Promise<{ ok: boolean; remaining: number; caseDropped: boolean }> {
+  const beat = (await listWatched(root)).find((b) => b.id === beatId);
+  if (!beat) return { ok: false, remaining: 0, caseDropped: false };
+  const sources = beat.sources.filter((s) => s.id !== sourceId);
+  if (sources.length === beat.sources.length) {
+    return { ok: false, remaining: sources.length, caseDropped: false };
+  }
+  if (!sources.length) {
+    unwatch(root, beatId);
+    return { ok: true, remaining: 0, caseDropped: true };
+  }
+  writeCase(root, {
+    beatId,
+    name: beat.name,
+    fromEdition: beat.fromEdition ?? caseOrigin(root, beatId),
+    sources,
+  });
+  return { ok: true, remaining: sources.length, caseDropped: false };
+}
+
+/**
+ * The most changes a single follow-up will report on.
+ *
+ * A case left alone for a month can accumulate dozens of diffs, and feeding all of them to
+ * the reporter is exactly how a "cheap" follow-up turns into the most expensive run of the
+ * week. The newest ones are the story; the rest stay on the spike.
+ */
+export const MAX_PER_RUN = 12;
 
 /** Is this beat one the field desk created? */
 function isFieldBeat(root: string, beatId: string): boolean {
@@ -167,6 +229,7 @@ export async function listWatched(root: string): Promise<WatchedBeat[]> {
         type: s.type,
         url: (s as { url?: string }).url,
       })),
+      fromEdition: caseOrigin(root, beat.id),
       lastCheckedAt: spike.lastCheckedAt,
       pending: spike.pending ?? [],
     });

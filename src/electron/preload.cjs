@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld('lateEdition', {
   watches: () => ipcRenderer.invoke('le:watches'),
   checkWatches: () => ipcRenderer.invoke('le:checkWatches'),
   unwatch: (beatId) => ipcRenderer.invoke('le:unwatch', beatId),
+  dropSource: (beatId, sourceId) => ipcRenderer.invoke('le:dropSource', beatId, sourceId),
+  fieldDesk: () => ipcRenderer.invoke('le:fieldDesk'),
+  setFieldDesk: (on) => ipcRenderer.invoke('le:setFieldDesk', on),
   clearSpike: (beatId) => ipcRenderer.invoke('le:clearSpike', beatId),
   runWatch: (beatId, opts) => ipcRenderer.invoke('le:runWatch', beatId, opts || {}),
   /** Every edition this newsroom has filed, newest first. */
