@@ -1,4 +1,6 @@
 import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 export interface CliResult {
   stdout: string;
@@ -8,6 +10,25 @@ export interface CliResult {
 
 export class CliNotInstalledError extends Error {}
 export class CliTimeoutError extends Error {}
+
+/**
+ * Is `cmd` findable on the Windows PATH (as an .exe/.cmd/.bat/… shim)? npm installs CLIs
+ * as `foo.cmd` batch shims, which `execFile('foo')` can't launch (ENOENT) and can't run
+ * without a shell — so on Windows we launch through `cmd.exe /c`. We check existence
+ * ourselves first so a genuinely-missing binary still reports as not installed, rather
+ * than as a cmd.exe "not recognized" exit code.
+ */
+function windowsHasCommand(cmd: string): boolean {
+  if (cmd.includes('/') || cmd.includes('\\')) return existsSync(cmd);
+  const exts = ['', ...(process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';')];
+  const dirs = (process.env.PATH ?? '').split(';').filter(Boolean);
+  for (const dir of dirs) {
+    for (const ext of exts) {
+      if (existsSync(join(dir, cmd + ext))) return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Run a CLI to completion, capturing stdout/stderr. Kills the process on timeout.
@@ -22,9 +43,19 @@ export function runCli(
   },
 ): Promise<CliResult> {
   return new Promise((resolve, reject) => {
+    // On Windows, launch through `cmd.exe /c` so npm's `.cmd` shims resolve. Pass the
+    // real prompt via `opts.input` (stdin), never argv — cmd.exe mangles quotes/newlines
+    // and has an ~8 KB command-line limit that research materials would blow past.
+    const isWin = process.platform === 'win32';
+    if (isWin && !windowsHasCommand(cmd)) {
+      reject(new CliNotInstalledError(`\`${cmd}\` is not installed or not on PATH.`));
+      return;
+    }
+    const file = isWin ? (process.env.ComSpec ?? 'cmd.exe') : cmd;
+    const fileArgs = isWin ? ['/c', cmd, ...args] : args;
     const child = execFile(
-      cmd,
-      args,
+      file,
+      fileArgs,
       {
         cwd: opts.cwd,
         timeout: opts.timeoutMs,

@@ -42,15 +42,20 @@ disagree, and skim [`docs/decisions.md`](docs/decisions.md) for the "why" behind
      placeholder text + synthetic tokens. Real machinery, fake words. (This is the deterministic
      path every test + `npm run check` exercises.)
   3. **Engine + a real provider** (claude/codex/gemini/opencode/ollama/directapi) — **genuinely
-     researches.** It's a *swap-the-provider* away; the ONLY blocker is that **no real agent CLI is
-     installed/authenticated on the dev machine yet.**
+     researches. PROVEN (2026-09-10):** the `claude` CLI is installed + logged in (claude.ai
+     subscription) and produced a real edition on "New UK vaping regulations in 2026" — the
+     researcher pulled the actual gov.uk policy paper, Finance Act 2026 (c.11) §115,
+     legislation.gov.uk, and a UCL medRxiv preprint, all real URLs; the copy desk caught genuine
+     overreach (argument-from-silence) and filed Corrections. This is no longer hypothetical.
 
-- **▶ DO THIS FIRST next session:** produce one **real** edition. `npm run cli -- detect` → if any
-  provider is `ready`, either set it in `./nr/newsroom/staff.yaml` or pass `--provider <id>`, then
-  `npm run cli -- run --newsroom ./nr --brief "<a topic>" --provider <id>` and load the resulting
-  `editions/<id>/reel.json` into the prototype (the "Load a real edition" button). If none is
-  installed, that's the one thing to raise with David — everything else (brief, budgets, cap, reel,
-  animation) is done and green.
+- **▶ DONE (was "do this first"): a real edition exists.** `npm run cli -- detect` now shows
+  **claude ready** (the earlier "not installed" was a Windows `.cmd`-shim bug in the provider
+  runner, since fixed). Reproduce with:
+  `npm run cli -- run --newsroom <dir> --provider claude --research 1 --brief "<topic>"`.
+  ⚠️ **Cost/efficiency caveat:** that run billed ~739k tokens (mostly cache-reads from the research
+  web tool) — real editions are not cheap. Efficiency levers to pursue: a cheaper research model,
+  fewer/tighter research passes (`--research`, `maxFindings`), and keeping only the strong tiers on
+  the pricey model. See the next autonomy unit (cadence/assignments) and the cost note in §7.
 
 - **Git is LOCAL ONLY** — `git remote -v` is empty, nothing is on GitHub, and **David does not want
   it pushed yet.** Commit freely to local `main` (per the `docs:` / `feat(prototype|engine):`
@@ -325,6 +330,15 @@ It has grown from a single-desk bust into a **whole newsroom floor**:
 
 ### 6.6 Progress log (newest first)
 Each line is one commit; see `git log` for the exact SHAs.
+- **First REAL edition — the `claude` provider works on Windows** (this session, after the tier):
+  `detect` was wrongly reporting `claude` "not installed" — a Windows bug: `execFile('claude')`
+  can't launch npm's `claude.cmd` shim (ENOENT). Fixed `runCli` to launch through `cmd.exe /c` on
+  win32 (with a PATH existence check so a genuinely-missing binary still reports not-installed),
+  and switched the `claude` provider to feed the prompt on **stdin** (works with `-p`, dodges the
+  ~8 KB argv limit that research materials blow past). Enabled **WebSearch/WebFetch** for the
+  `researcher` role only (verified flags from `claude --help`: `--allowed-tools <tools...>`), other
+  roles run tool-free. Added token-usage parsing from the JSON envelope. **Result:** a genuine,
+  fully-sourced edition (see §0 tier 3). Cost ~739k tokens — efficiency is the open question.
 - **The researcher tier — the "not paper thin" pass** (this session): added a **RESEARCH**
   stage between ASSIGN and REPORT so the org is now the full four tiers David wants —
   **researchers → reporters → copywriters (rewrite desk) → editors (managing editor + copy

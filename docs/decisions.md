@@ -236,3 +236,29 @@ and **on (1 pass) by default for a `--brief` topic**, since a bare topic needs d
 (`maxFindings`, default 8) to bound downstream tokens, and the scaffold points the
 researcher desk at a *cheaper* model. Research spend counts toward the existing `--cap`
 token budget and is attributed to a `researcher` role in the reel ledger.
+
+### DR.5 — Windows CLI launch: `cmd.exe /c` + prompt on stdin
+`detect` reported `claude` "not installed" on the Windows dev machine even though it was —
+`execFile('claude', …)` can't launch npm's `claude.cmd` batch shim (ENOENT) and Node won't
+run a `.cmd` without a shell. Fixed `runCli` to launch through `cmd.exe /c <cmd> <args>` on
+win32, guarded by an explicit PATH+PATHEXT existence check so a truly-missing binary still
+raises `CliNotInstalledError` (rather than a cmd.exe "not recognized" exit code). The prompt
+now goes to the CLI on **stdin** (verified: `claude -p` reads it), not argv — argv through
+cmd.exe mangles quotes/newlines and caps at ~8 KB, which research materials exceed. The other
+CLIs still pass their prompt in argv (untested on Windows); prefer stdin when wiring them.
+
+### DR.6 — Web tools are role-gated to the researcher, via verified flags only
+Only the `researcher` role gets `--allowed-tools WebSearch WebFetch` (names verified from
+`claude --help`); every other role runs tool-free (cheaper, safer, no accidental Bash/file
+use). This is the concrete answer to DR.3's "how do research agents actually browse": for
+`claude`, a verified per-role flag; for other providers, the same one-file hook once their
+flags are verified. Proven end-to-end on a real edition 2026-09-10.
+
+### DR.7 — Cost is the live constraint (open)
+The first real edition billed ~739k tokens — dominated by cache-read input from the research
+web tool, not output. That's fine for a one-off but not for a tool people run daily "that
+can't cost the earth" (David's words). Levers already in place: `--research <n>`/`maxFindings`
+(bound the dig), model tiering in `staff.yaml` (put researchers/copy desk on a cheaper model,
+keep only the managing editor strong), and the `--cap` token budget. Not yet done: measuring
+per-role cost and defaulting the scaffold to a cheap research model. Revisit before the OSS
+launch / landing page.
