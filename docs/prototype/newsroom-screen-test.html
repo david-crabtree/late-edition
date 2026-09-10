@@ -594,7 +594,13 @@
     for(const s of staff){ if(s.sayT>0){ const sx=s.ci>=0?deskX(s.ci)-cam:WINDOW_XB-cam*BP; if(sx>-60&&sx<VW+60) bubble(sx, FLOOR-56, s.say); } }
     if(state.mode==='desk'&&state.banter&&bubbleText && !staff.some(s=>s.ci===state.castIdx&&s.sayT>0)) bubble(AC()-cam, FLOOR-56, bubbleText);
     if(window.lateEdition && haltViz) stopOverlay('ALL STOP · AGENTS IDLED');
-    else if(state.mode==='desk'&&state.scene==='stop') stopOverlay(); }
+    else if(state.mode==='desk'&&state.scene==='stop') stopOverlay();
+    if(window.lateEdition && typeof pendingClarify!=='undefined' && pendingClarify) waitBanner('THE CHIEF IS WAITING FOR YOUR STEER'); }
+  // A gentle, non-blocking amber banner across the top of the stage — the floor stays visible beneath it.
+  function waitBanner(text){ const pulse=Math.sin(tick*0.13)*0.5+0.5, w=VW-64, x=32, y=7, h=15;
+    R(x,y,w,h,'#241d0c'); R(x,y,w,1,'#e8b04b'); R(x,y+h-1,w,1,'#5a4620'); R(x,y,1,h,'#5a4620'); R(x+w-1,y,1,h,'#5a4620');
+    const dot=(tick%16)<8?'◆':'◇'; g.font='7px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle';
+    g.fillStyle=`rgba(232,176,75,${(0.6+0.4*pulse).toFixed(3)})`; g.fillText(`${dot}  ${text}  ${dot}`, VW/2, y+h/2+1); g.textAlign='left'; g.textBaseline='alphabetic'; }
   function newBanter(){ const c=CAST[state.castIdx]; bubbleText = state.scene==='stop'?'STOP THE PRESS!':c.lines[(Math.random()*c.lines.length)|0]; }
 
   function frame(now){ const dt=now-last; last=now; acc+=dt; const step=1000/12;
@@ -967,6 +973,7 @@
     finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   function buildAppChrome(){
     const mast=document.querySelector('.masthead'); if(mast) mast.style.display='none';                    // drop "SCREEN TEST" + intro
+    const foot=document.querySelector('.foot'); if(foot) foot.style.display='none';                        // drop the sim blurb (Munder Difflin / "Load real edition" / "Rough on purpose")
     const reelWrap=document.getElementById('reelInput'); if(reelWrap&&reelWrap.closest('label')) reelWrap.closest('label').style.display='none';   // "Load a real edition" is a sim tool
     const scenes=document.getElementById('scenes'); if(scenes) for(const b of [...scenes.children]){ const keep=b.id==='panBtn'; if(!keep) b.style.display='none'; }   // keep only Free pan
     const mq=document.querySelector('.marquee'); if(mq&&mq.lastElementChild){ mq.lastElementChild.innerHTML='<span id="appUsage" class="usage"></span>'; }   // usage readout replaces "REC · PARALLAX · 12 FPS"
@@ -979,7 +986,7 @@
     // Reorder for the app: brief right under the stage, budget becomes a staff card, controls hidden.
     const deck=document.querySelector('.deck');
     if(deck && deck.children.length>=2){ const briefCol=deck.children[1], controlsCol=deck.children[2];
-      if(briefCol) bar.after(briefCol);
+      if(briefCol){ bar.after(briefCol); briefCol.style.margin='16px 0 6px'; }   // don't let the brief box crowd the appbar or the log below
       const budgetRow=document.getElementById('budgetRange') && document.getElementById('budgetRange').closest('.row');
       if(budgetRow){ const card=document.createElement('div'); card.className='sc budgetcard'; card.appendChild(budgetRow); const st=document.getElementById('staff'); if(st) st.appendChild(card); }
       if(controlsCol){ const pan=document.getElementById('panBtn'); if(pan){ pan.textContent='⤢ Look around'; bar.insertBefore(pan, bar.querySelector('.grow')); } controlsCol.style.display='none'; }
