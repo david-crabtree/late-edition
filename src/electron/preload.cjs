@@ -4,6 +4,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('lateEdition', {
+  /** Which channels this build of the engine actually has. Lets the interface check
+   *  before it calls, so a stale `npm run electron` says so instead of throwing. */
+  api: () => ipcRenderer.invoke('le:api'),
   /** The disclaimers (first-run, output, billing) + whether the first-run one was read. */
   notices: () => ipcRenderer.invoke('le:notices'),
   /** Record that the first-run notice has been read. */

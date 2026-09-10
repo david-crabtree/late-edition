@@ -107,6 +107,10 @@ Break any of these and the output stops being worth anything. All three have tes
   run quietly spent a real plan allowance the moment the user answered the Chief.
 - **Agent CLIs install as `.cmd` on Windows**, so `execFile('claude')` ENOENTs. The provider
   layer wraps `cmd.exe /c`.
+- **The interface loads from source, the engine from `dist/`.** `npm run electron` skips the
+  build, so a new interface can pair with an old engine and every new channel throws "No
+  handler registered". The interface now asks `le:api` what the engine has and shows a red
+  banner rather than failing silently — but **use `npm run app` after changing `src/`.**
 - **Global CSS collisions.** `.card { display: flex }` broke the start gate once. Scope new
   class names.
 - **Most agent CLIs return one block when they finish**, not a token stream, so a desk's

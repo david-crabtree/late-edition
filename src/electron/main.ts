@@ -239,6 +239,32 @@ function createWindow(): void {
           return JSON.stringify({ cards: cards.length, before, after, moved: after !== before, who });
         })()`),
       );
+      // The interface/engine handshake. Asking for a channel this build hasn't got is
+      // exactly what a stale `npm run electron` looks like from the interface's side.
+      console.log(
+        'LE_DEBUG handshake:',
+        await js(`(async () => {
+          const real = await window.lateEdition.api();
+          const quietWhenMatched = !document.querySelector('.stalebar');
+          const ok = await window.__leProbe.shakeHands(['le:api', 'le:watches']);
+          const stillQuiet = !document.querySelector('.stalebar');
+          // Now ask for something no build has.
+          const bad = await window.__leProbe.shakeHands(['le:api', 'le:doesNotExist']);
+          const warned = !!document.querySelector('.stalebar');
+          const bar = document.querySelector('.stalebar');
+          if (bar) bar.remove();
+          await window.__leProbe.shakeHands(['le:api']);
+          return JSON.stringify({
+            channels: real.channels.length,
+            hasFieldDesk: real.channels.includes('le:checkWatches'),
+            matchedOk: ok,
+            quietWhenMatched: quietWhenMatched && stillQuiet,
+            mismatchReported: bad === false,
+            warnsVisibly: warned,
+            recovered: !document.querySelector('.stalebar'),
+          });
+        })()`),
+      );
       // Chrome and layout: the tuning strip out of the cast grid, card-click follow, the
       // quips toggle, and nothing in Setup touching anything else.
       console.log(
@@ -532,12 +558,26 @@ app.on('window-all-closed', () => {
 });
 
 // ---- IPC: the renderer talks to the engine through these -------------------
+//
+// The renderer is loaded from source while the main process runs from dist/, so
+// `npm run electron` (no rebuild) can pair a new interface with an old engine. That used
+// to show up as a spray of "No handler registered" errors with no explanation. Every
+// channel is recorded as it registers, and `le:api` lets the interface check before it
+// calls — see `apiOk()` in the interface.
+const CHANNELS: string[] = [];
+const handle = (channel: string, fn: Parameters<typeof ipcMain.handle>[1]) => {
+  CHANNELS.push(channel);
+  ipcMain.handle(channel, fn);
+};
+
+/** What this build of the engine can do. */
+handle('le:api', () => ({ channels: CHANNELS.slice() }));
 
 /** The folder the newsroom lives in (where context/history is stored). */
-ipcMain.handle('le:getRoot', () => newsroomRoot());
+handle('le:getRoot', () => newsroomRoot());
 
 /** Open a folder picker; on choose, move the newsroom there and remember it. */
-ipcMain.handle('le:pickRoot', async () => {
+handle('le:pickRoot', async () => {
   const res = await dialog.showOpenDialog(win ?? undefined!, {
     title: 'Choose a folder to store this newsroom (config, staff, editions & history)',
     properties: ['openDirectory', 'createDirectory'],
@@ -553,7 +593,7 @@ ipcMain.handle('le:pickRoot', async () => {
  * The disclaimers, and whether this user has already read the first-run one. The words
  * live in one module so the paper, the app and the README can never say different things.
  */
-ipcMain.handle('le:notices', () => ({
+handle('le:notices', () => ({
   firstRun: FIRST_RUN_NOTICE,
   outputShort: OUTPUT_DISCLAIMER_SHORT,
   apiBilling: API_BILLING_NOTICE,
@@ -562,7 +602,7 @@ ipcMain.handle('le:notices', () => ({
 }));
 
 /** Record that the first-run notice has been read, so it isn't shown again. */
-ipcMain.handle('le:acceptNotice', () => {
+handle('le:acceptNotice', () => {
   writeAppConfig({ ...readAppConfig(), noticeAccepted: NOTICE_VERSION });
   return true;
 });
@@ -573,7 +613,7 @@ ipcMain.handle('le:acceptNotice', () => {
  * and which of its models suits each desk. The panel used to hardcode Claude's aliases as
  * the recommendation for every provider; now the provider answers for itself.
  */
-ipcMain.handle('le:detect', async () => {
+handle('le:detect', async () => {
   const m = await detectAll();
   return listProviders().map((p) => ({
     id: p.id,
@@ -588,7 +628,7 @@ ipcMain.handle('le:detect', async () => {
 });
 
 /** The current per-role staff assignment (for the Setup panel). */
-ipcMain.handle('le:staff', async () => {
+handle('le:staff', async () => {
   const root = newsroomRoot();
   const nr = await loadNewsroom(root);
   const pick = (r: { provider: string; model?: string }) => ({
@@ -609,7 +649,7 @@ interface RolePick {
   model?: string;
 }
 /** Write staff.yaml from the Setup panel — this is how a user wires roles to their agents. */
-ipcMain.handle('le:setStaff', async (_e, a: Record<string, RolePick>) => {
+handle('le:setStaff', async (_e, a: Record<string, RolePick>) => {
   const root = newsroomRoot();
   const line = (r?: RolePick) => {
     const p = r?.provider || 'fake';
@@ -632,7 +672,7 @@ ipcMain.handle('le:setStaff', async (_e, a: Record<string, RolePick>) => {
 });
 
 /** Brief the Chief → run the real pipeline, streaming every event to the renderer. */
-ipcMain.handle(
+handle(
   'le:run',
   async (
     e,
@@ -699,7 +739,7 @@ ipcMain.handle(
 );
 
 /** The user's answer to the Chief's clarification → resume the paused edition and finish it. */
-ipcMain.handle(
+handle(
   'le:answerClarification',
   async (
     e,
@@ -794,21 +834,21 @@ async function summarizeUsage(edition: Edition) {
 }
 
 /** The stop switch: halt every agent call (idles the newsroom) / lift it. */
-ipcMain.handle('le:halt', () => {
+handle('le:halt', () => {
   setHalt(newsroomRoot(), 'stopped from the app');
   return true;
 });
-ipcMain.handle('le:resume', () => {
+handle('le:resume', () => {
   clearHalt(newsroomRoot());
   return true;
 });
-ipcMain.handle('le:isHalted', () => isHalted(newsroomRoot()));
+handle('le:isHalted', () => isHalted(newsroomRoot()));
 
 /**
  * Your answer to the Chief's mid-run question. `true` sends the researcher back over that
  * story; `false` runs it as it stands, and the Editor's Log says so.
  */
-ipcMain.handle(
+handle(
   'le:answerVerify',
   async (
     e,
@@ -868,7 +908,7 @@ ipcMain.handle(
 );
 
 /** The formats, tones and lengths the copy desk can write in — the picker's options. */
-ipcMain.handle('le:formats', () => ({
+handle('le:formats', () => ({
   formats: FORMATS.map((f) => ({ id: f.id, label: f.label, hint: f.hint })),
   tones: Object.entries(TONES).map(([id, t]) => ({ id, label: t.label })),
   lengths: Object.entries(LENGTHS).map(([id, l]) => ({ id, label: l.label })),
@@ -878,7 +918,7 @@ ipcMain.handle('le:formats', () => ({
  * Write a finished story again in another shape. One writer call against reporting that is
  * already done and already checked — not a new edition, and it cannot add a source.
  */
-ipcMain.handle('le:rewrite', async (e, editionId: string, shape: CopyShape, slug?: string) => {
+handle('le:rewrite', async (e, editionId: string, shape: CopyShape, slug?: string) => {
   const send = (ev: LogEvent) => {
     if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
   };
@@ -901,7 +941,7 @@ ipcMain.handle('le:rewrite', async (e, editionId: string, shape: CopyShape, slug
  */
 
 /** Keep an eye on the pages a finished story came from. */
-ipcMain.handle('le:watchEdition', async (_e, editionId: string, slug?: string) => {
+handle('le:watchEdition', async (_e, editionId: string, slug?: string) => {
   try {
     return { ok: true as const, ...(await watchEdition(newsroomRoot(), editionId, { slug })) };
   } catch (err) {
@@ -910,10 +950,10 @@ ipcMain.handle('le:watchEdition', async (_e, editionId: string, slug?: string) =
 });
 
 /** What the field desk is watching, and what is on the spike. */
-ipcMain.handle('le:watches', () => listWatched(newsroomRoot()));
+handle('le:watches', () => listWatched(newsroomRoot()));
 
 /** Poll every watched page. Free — no model is involved at any point. */
-ipcMain.handle('le:checkWatches', () => {
+handle('le:checkWatches', () => {
   if (readAppConfig().fieldDesk === false) {
     return { beats: [], moved: 0, checkedAt: new Date().toISOString(), tokens: 0 as const };
   }
@@ -921,20 +961,20 @@ ipcMain.handle('le:checkWatches', () => {
 });
 
 /** Is the field desk on shift? Off means no checking and no spike. */
-ipcMain.handle('le:fieldDesk', () => readAppConfig().fieldDesk !== false);
-ipcMain.handle('le:setFieldDesk', (_e, on: boolean) => {
+handle('le:fieldDesk', () => readAppConfig().fieldDesk !== false);
+handle('le:setFieldDesk', (_e, on: boolean) => {
   writeAppConfig({ ...readAppConfig(), fieldDesk: on !== false });
   return on !== false;
 });
 
 /** Pull one source off a case. Removing the last one drops the case. */
-ipcMain.handle('le:dropSource', (_e, beatId: string, sourceId: string) =>
+handle('le:dropSource', (_e, beatId: string, sourceId: string) =>
   dropSource(newsroomRoot(), beatId, sourceId),
 );
 
 /** Stop watching a beat, or clear its spike without running anything. */
-ipcMain.handle('le:unwatch', (_e, beatId: string) => unwatch(newsroomRoot(), beatId));
-ipcMain.handle('le:clearSpike', (_e, beatId: string) => {
+handle('le:unwatch', (_e, beatId: string) => unwatch(newsroomRoot(), beatId));
+handle('le:clearSpike', (_e, beatId: string) => {
   clearSpike(newsroomRoot(), beatId);
   return true;
 });
@@ -943,7 +983,7 @@ ipcMain.handle('le:clearSpike', (_e, beatId: string) => {
  * Run an edition off what the field desk found. No researcher, no re-polling: the digging
  * was done when the original story ran, so this should cost a fraction of a fresh edition.
  */
-ipcMain.handle('le:runWatch', async (e, beatId: string, opts: { shape?: CopyShape } = {}) => {
+handle('le:runWatch', async (e, beatId: string, opts: { shape?: CopyShape } = {}) => {
   const root = newsroomRoot();
   const send = (ev: LogEvent) => {
     if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
@@ -992,10 +1032,10 @@ ipcMain.handle('le:runWatch', async (e, beatId: string, opts: { shape?: CopyShap
 });
 
 /** Every edition this newsroom has filed, newest first — the back-issues drawer. */
-ipcMain.handle('le:editions', (): EditionSummary[] => listEditions(newsroomRoot()));
+handle('le:editions', (): EditionSummary[] => listEditions(newsroomRoot()));
 
 /** One past edition in full, so the front page can show it again without a rerun. */
-ipcMain.handle('le:edition', (_e, editionId: string) => {
+handle('le:edition', (_e, editionId: string) => {
   try {
     const file = join(paths(newsroomRoot()).editionDir(editionId), 'edition.json');
     return JSON.parse(readFileSync(file, 'utf8')) as Edition;
@@ -1005,14 +1045,14 @@ ipcMain.handle('le:edition', (_e, editionId: string) => {
 });
 
 /** Open the finished paper in the user's real browser (a full-size, shareable view). */
-ipcMain.handle('le:openPaper', (_e, editionId: string) => {
+handle('le:openPaper', (_e, editionId: string) => {
   const file = join(paths(newsroomRoot()).editionDir(editionId), 'edition.html');
   if (existsSync(file)) shell.openPath(file);
   return existsSync(file);
 });
 
 /** Read a finished edition's rendered HTML (for the in-window front-page view). */
-ipcMain.handle('le:editionHtml', async (_e, editionId: string) => {
+handle('le:editionHtml', async (_e, editionId: string) => {
   const root = newsroomRoot();
   try {
     return readFileSync(join(paths(root).editionDir(editionId), 'edition.html'), 'utf8');

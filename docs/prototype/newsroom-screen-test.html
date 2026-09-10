@@ -215,6 +215,12 @@
   .frontpage .fp-watch .chip[disabled]{ opacity:.6; cursor:default; }
   .frontpage .fp-watch-note{ font-size:.66rem; color:#6a6250; }
   /* The case file. Same shape as Back issues, because it is the same kind of drawer. */
+  /* Shown only when the running engine is older than this interface. */
+  .stalebar{ background:#2a1410; border:1px solid #8a3226; border-left:3px solid #c2412d; border-radius:6px;
+             padding:10px 13px; margin:0 0 12px; font-size:.76rem; line-height:1.55; color:#e8c0ac; }
+  .stalebar b{ color:#f0a48c; }
+  .stalebar code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.72rem; color:var(--bone);
+                  background:#12161c; border:1px solid #3a2e1b; border-radius:3px; padding:1px 5px; }
   .casefile{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .casefile[hidden]{ display:none; }
   .casefile .cf-card{ width:min(700px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
@@ -1127,6 +1133,27 @@
     if(s==='editor'&&e==='call') return ['act',`Made the call — ${d.placement||''}${d.competingTakes?' (competing takes)':''}`];
     return null; }
   const STAGE2DO={ RESEARCH:['research','Researching the topic'], REPORT:['reporter','Reporting'], WRITE:['copywriter','Rewriting the copy'], CHECK:['copydesk','Checking the copy'], CALL:['editor','Making the call'], TRIAGE:['chief','Sizing up the brief'], ASSIGN:['chief','Assigning the desk'] };
+  // The interface loads from source; the engine runs from dist/. `npm run electron` skips
+  // the build, so the two can drift. Ask the engine what it has before calling anything
+  // newer than it — otherwise the console fills with "No handler registered" and nothing
+  // says why.
+  let apiChannels=null;
+  const apiOk=name=>!apiChannels || apiChannels.includes(name);
+  async function shakeHands(need){
+    try{ const a=await window.lateEdition.api(); apiChannels=(a&&a.channels)||[]; }
+    catch(_){ apiChannels=[]; }                       // no le:api at all = a very old engine
+    const missing=need.filter(n=>!apiChannels.includes(n));
+    if(missing.length) staleEngineWarning(missing);
+    return !missing.length; }
+  function staleEngineWarning(missing){
+    const bar=document.createElement('div'); bar.className='stalebar';
+    bar.innerHTML=`<b>The engine is out of date.</b> This window has features the running
+      engine doesn't (${missing.length} missing). Quit and run <code>npm run app</code>
+      instead of <code>npm run electron</code> — that rebuilds first. Those parts are
+      switched off until you do.`;
+    const w=document.querySelector('.wrap'); if(w) w.insertBefore(bar, w.firstChild);
+    console.warn('Late Edition: engine is missing', missing.join(', '));
+  }
   let realActive=null, lastEditionId=null, haltViz=false, followBtn=null, quipBtn=null;
   let watching=null;   // app: the staffer whose card you clicked — the camera stays on them
   // App camera: follow ON = auto-focus drifts with the working desk; OFF = free look (◀ ▶ pan, camera stays put).
@@ -1398,8 +1425,8 @@
     el.hidden=false;
     return moved; }
   async function refreshWatches(check){
-    if(!window.lateEdition.watches) return 0;
-    try{ fieldOn=await window.lateEdition.fieldDesk(); }catch(_){ }
+    if(!window.lateEdition.watches || !apiOk('le:watches') || !apiOk('le:checkWatches')) return 0;
+    if(apiOk('le:fieldDesk')){ try{ fieldOn=await window.lateEdition.fieldDesk(); }catch(_){ } }
     if(!fieldOn){ if(spikeEl) spikeEl.hidden=true; return 0; }
     try{
       if(check) await window.lateEdition.checkWatches();
@@ -1440,7 +1467,7 @@
     const host=document.getElementById('fpWatch'); if(!host) return;
     const st=(edition&&edition.stories&&edition.stories[0])||null;
     const urls=st?(st.sources||[]).filter(s=>s.url).length:0;
-    if(!urls||!lastEditionId||!window.lateEdition.watchEdition){ host.hidden=true; return; }
+    if(!urls||!lastEditionId||!window.lateEdition.watchEdition||!apiOk('le:watchEdition')){ host.hidden=true; return; }
     host.hidden=false;
     host.innerHTML=`<button class="chip" id="fpWatchBtn">Keep watching these ${urls} source${urls>1?'s':''}</button>
       <span class="fp-watch-note">Ida checks them when you open the app. Costs nothing until something changes.</span>`;
@@ -1474,7 +1501,7 @@
     el.querySelector('#cfClose').addEventListener('click',()=>{ el.hidden=true; });
     el.querySelector('#cfOn').addEventListener('change', async e=>{
       fieldOn=e.target.checked;
-      try{ await window.lateEdition.setFieldDesk(fieldOn); }catch(_){ }
+      if(apiOk('le:setFieldDesk')){ try{ await window.lateEdition.setFieldDesk(fieldOn); }catch(_){ } }
       const i=ida(); if(i) charLog(i,'act', fieldOn?'Back on the beat.':'Off the beat — not watching anything.');
       if(fieldOn) await refreshWatches(true); else { if(spikeEl) spikeEl.hidden=true; renderCases(); } });
     caseEl=el; return el; }
@@ -1519,7 +1546,7 @@
       const i=ida(); if(i&&r&&r.caseDropped) charLog(i,'act','Last page off the case — dropped it.');
       await refreshWatches(false); renderCases(); })); }
   async function openCaseFile(){
-    try{ fieldOn=await window.lateEdition.fieldDesk(); }catch(_){ }
+    if(apiOk('le:fieldDesk')){ try{ fieldOn=await window.lateEdition.fieldDesk(); }catch(_){ } }
     await refreshWatches(false);
     const el=buildCaseFile(); renderCases(); el.hidden=false; }
   // ---- Rewrite this, as something else --------------------------------------------------
@@ -1826,7 +1853,9 @@
     $('appResume').addEventListener('click', async()=>{ haltViz=false; await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
     $('appOpen').addEventListener('click', ()=>{ if(lastEditionId) window.lateEdition.openPaper(lastEditionId); });
     $('appBack').addEventListener('click', openBackIssues);
-    $('appCases').addEventListener('click', openCaseFile);
+    $('appCases').addEventListener('click', ()=>{
+      if(!apiOk('le:watches')){ mScene.textContent='Engine out of date — run npm run app'; return; }
+      openCaseFile(); });
     quipBtn=$('appQuips');
     const paintQuips=()=>{ quipBtn.setAttribute('aria-pressed',String(state.banter));
       quipBtn.textContent = state.banter ? '💬 Quips' : '💬 Quips off'; };
@@ -2020,6 +2049,7 @@
       applyEvent: applyRealEvent,
       applyResult: applyRunResult,
       refreshWatches: (check) => refreshWatches(check),
+      shakeHands: (need) => shakeHands(need),
       // Put one staffer into a named idle beat and hold them there, so an animation can be
       // sampled frame by frame instead of waited for.
       forceBeat: (i, beat) => { const p=people[i]; p.st='idle'; p.beat=beat; p.t=99999; p.coffeeT=0;
@@ -2038,7 +2068,9 @@
     // draws at BP parallax — so the camera value that centres it is (x - VW/2)/BP, not x - VW/2.
     cam=state.panX=Math.max(0, Math.min(WORLD-VW, (WINDOW_XB-VW/2)/BP));
     buildAppChrome(); buildSetup(); buildStartupModal(); learnBilling();
-    refreshWatches(true);   // the overnight file, waiting when you open the app — costs nothing
+    // Check the engine can do what this interface expects, then take the overnight file.
+    shakeHands(['le:api','le:watches','le:checkWatches','le:watchEdition','le:fieldDesk','le:runWatch','le:formats','le:rewrite','le:editions'])
+      .then(()=>refreshWatches(true));
   }
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);

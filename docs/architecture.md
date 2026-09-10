@@ -131,6 +131,11 @@ can be proven without a person watching the window.
 
 ## Gotchas that have already cost time
 
+- **`npm run electron` does not rebuild.** The interface is read from source while the main
+  process runs from `dist/`, so the two drift and every channel the old engine lacks throws
+  "No handler registered". The interface asks `le:api` at boot and shows a banner when they
+  disagree, but use `npm run app` after touching `src/`.
+
 - **Global CSS collisions.** `.card { display: flex }` broke the start gate; scope new
   class names and check computed styles.
 - **Most agent CLIs return one block when they finish**, not a token stream. The console
