@@ -315,7 +315,7 @@
     else if(c.desk==='copyboy'){ bigStack(x); deskBell(x+36); bundles(x-48); }
     else if(c.desk==='copydesk'){ drawTypewriter(x); loupe(x-42); galleys(x+16); gluePot(x+36); if(idleMug) drawMug(x-30,DTOP-6); }
     else if(c.desk==='photo'){ plateCamera(x); photoLine(x); redSafelight(x+40); trays(x-44); }
-    else if(c.desk==='research'){ drawPhone(x-47); bookStack(x-34); rolodex(x+28); clippings(x+12); loupe(x-12); if(idleMug) drawMug(x+42,DTOP-6); }
+    else if(c.desk==='research'){ drawPhone(x-47); bookStack(x-42); drawLedger(x, scene==='type'); rolodex(x+30); if(idleMug) drawMug(x+42,DTOP-6); }
     else if(c.desk==='copywriter'){ drawTypewriter(x); gluePot(x-44); bookStack(x+30); crumples(x+38); pencilCup(x-30); if(idleMug) drawMug(x+16,DTOP-6); }
     else { drawTypewriter(x); } }
   // Researcher & copywriter desk kit: reference books, a card file, pinned clippings, paper wads.
@@ -323,6 +323,21 @@
   function rolodex(x){ R(x,DTOP-7,12,7,'#3a2f16'); R(x,DTOP-7,12,1,'#4a3d1e'); for(let i=0;i<5;i++) R(x+1+i*2,DTOP-9,1,2,i%2?'#dcd6c6':'#cfc9b4'); P(x+6,DTOP-10,'#8f959c'); }
   function clippings(x){ R(x,DTOP-13,10,7,'#dcd6c6'); R(x,DTOP-13,10,1,'#efe9d8'); R(x+2,DTOP-11,6,1,'#9a917c'); R(x+2,DTOP-9,6,1,'#9a917c'); P(x+8,DTOP-14,'#c2412d'); }
   function crumples(x){ for(const d of [[0,0],[6,0],[3,-3]]){ R(x+d[0],DTOP-2-d[1],4,3,'#e8e2d0'); P(x+d[0]+1,DTOP-3-d[1],'#cfc9b4'); } }
+  // The researcher's body-covering animated prop: an open ledger on a reading lectern (same
+  // footprint as the typewriter, so it hides her hands/lower torso). Dark frame + oxblood
+  // board + cream pages read as a distinct object; a page turns over the spine as she works.
+  function drawLedger(x, working){
+    const flip = reduce?0:(working ? (tick%4<2?1:0) : ((tick%150)<10?1:0));  // active page-turn at work; a rare turn when idle
+    R(x-13,DTOP-2,26,2,'#160f08');                                           // desk shadow
+    R(x-13,DTOP-14,26,12,'#241a10'); R(x-13,DTOP-14,26,1,'#3a2a1a');         // lectern body — covers hands/lower torso
+    R(x-13,DTOP-14,1,12,'#3a2a1a'); R(x+12,DTOP-14,1,12,'#160f08');          // side edges
+    R(x-11,DTOP-9,22,7,'#5a3428'); R(x-11,DTOP-9,22,1,'#6e4433');            // oxblood book board
+    R(x-11,DTOP-15,11,7,'#e8e2d0'); R(x-11,DTOP-15,11,1,'#fbf6e6');          // left page
+    R(x,DTOP-15,11,7,'#e8e2d0');    R(x,DTOP-15,11,1,'#fbf6e6');             // right page
+    R(x-1,DTOP-16,2,9,'#8a5a2a'); R(x-1,DTOP-16,2,1,'#c9a24b');              // spine + brass
+    for(let i=2;i<7;i+=2){ R(x-9,DTOP-14+i,7,1,'#a89f86'); R(x+2,DTOP-14+i,7,1,'#a89f86'); }  // text lines
+    if(flip){ R(x-1,DTOP-17,8,9,'#f4efe0'); R(x-1,DTOP-17,8,1,'#ffffff'); for(let i=2;i<8;i+=2) R(x+1,DTOP-16+i,5,1,'#c9c2ad'); }  // a page lifting/turning over the spine
+    R(x+3,DTOP-8,7,1,'#c2412d'); P(x+10,DTOP-8,'#e8cf88'); }                 // a pencil laid across the page
   function bigStack(x){ for(let i=0;i<8;i++){ const o=(i%2)?1:0, w=22-((i>5)?4:0); R(x-11+o,DTOP-2-i*2,w,2,(i%2)?'#cfc9b4':'#dcd6c6'); R(x-11+o,DTOP-2-i*2,w,1,'#efe9d8'); } R(x-9,DTOP-3,18,1,'#3a2e1b'); P(x-2,DTOP-15,'#7a2d1d'); P(x+4,DTOP-11,'#7a2d1d'); }
   function plateCamera(x){ R(x-10,DTOP-16,20,14,'#17191d'); R(x-10,DTOP-16,20,1,'#3a4048'); R(x-10,DTOP-3,20,3,'#0e1116'); R(x-4,DTOP-13,11,10,'#0e1116'); R(x-2,DTOP-11,7,6,'#6a86a0'); R(x-2,DTOP-11,7,1,'#a9c6da'); R(x-7,DTOP-19,7,3,'#20242a'); if(!reduce&&tick%80<3) R(x-12,DTOP-20,4,3,'#fff2c4'); R(x-3,DTOP-2,6,2,'#20242a'); }
   // desk prop kit
