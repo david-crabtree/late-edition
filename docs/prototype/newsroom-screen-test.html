@@ -65,6 +65,21 @@
   .pipeline .pbar{ display:inline-block; width:72px; height:6px; background:#1b1610; border:1px solid #3a2e1b; border-radius:3px; overflow:hidden; }
   .pipeline .pbar i{ display:block; height:100%; width:0; background:var(--amber); transition:width .3s; }
   .pipeline .pbudget.max i{ background:var(--red); }
+  .clog{ margin-top:10px; background:#0b0e13; border:1px solid #2c2519; border-radius:6px; overflow:hidden; }
+  .clog-hd{ display:flex; align-items:center; gap:10px; padding:7px 10px; background:#14100b; border-bottom:1px solid #2c2519; }
+  .clog-hd canvas{ width:34px; height:34px; image-rendering:pixelated; border-radius:4px; background:#0a0d12; flex:none; }
+  .clog-id{ display:flex; flex-direction:column; min-width:0; }
+  .clog-id b{ font-family:var(--display); text-transform:uppercase; letter-spacing:.03em; font-size:.9rem; color:var(--amber); line-height:1.1; }
+  .clog-id span{ font-size:.68rem; color:var(--bone-dim); }
+  .clog-cur{ font-family:var(--pixel); font-size:.5rem; color:#0b0e13; background:var(--amber); padding:3px 6px; border-radius:3px; letter-spacing:.04em; white-space:nowrap; }
+  .clog-hint{ margin-left:auto; font-size:.6rem; color:#6a6250; font-family:var(--pixel); }
+  .clog-body{ height:148px; overflow-y:auto; padding:8px 11px; font-family:ui-monospace,Menlo,Consolas,"Courier New",monospace; font-size:.75rem; line-height:1.6; }
+  .clog-body .ln{ white-space:pre-wrap; }
+  .clog-body .do{ color:#9fd0ff; } .clog-body .do::before{ content:'▸ '; color:#5b9bd5; }
+  .clog-body .act{ color:#c9e6b0; } .clog-body .act::before{ content:'✓ '; color:#7bb661; }
+  .clog-body .think{ color:#c2b48f; font-style:italic; } .clog-body .think::before{ content:'“'; } .clog-body .think::after{ content:'”'; }
+  .clog-body .sys{ color:#6a6250; border-bottom:1px dashed #2c2519; padding-bottom:5px; margin-bottom:5px; font-family:var(--pixel); font-size:.56rem; letter-spacing:.03em; }
+  @media (max-width:720px){ .clog-hint{ display:none; } }
   .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:5% 8%; gap:10px; z-index:5; line-height:1.35; overflow:auto; }
   .frontpage[hidden]{ display:none; }
   .frontpage .fp-mast{ font-family:var(--display); font-weight:700; text-transform:uppercase; letter-spacing:.08em; line-height:1.1; font-size:clamp(1.1rem,4vw,2rem); color:#20180c; border-bottom:3px double #20180c; padding-bottom:5px; width:100%; }
@@ -106,6 +121,15 @@
     </div>
     <div class="marquee"><span id="mScene">ROAMING · ← → TO WALK</span><span><span class="on">●</span> REC · PARALLAX · 12 FPS</span></div>
     <div class="approvals" id="approvals" hidden><span class="ap-hd">The Chief needs a call from you</span><div id="apList"></div></div>
+  </div>
+  <div class="clog" id="clog" aria-live="polite">
+    <div class="clog-hd">
+      <canvas id="clogPortrait" width="42" height="42"></canvas>
+      <div class="clog-id"><b id="clogName">The Chief</b><span id="clogRole">assigns &amp; makes the call</span></div>
+      <span class="clog-cur" id="clogCur">IDLE</span>
+      <span class="clog-hint">their desk log — click any staffer to read theirs</span>
+    </div>
+    <div class="clog-body" id="clogBody"></div>
   </div>
   <div class="deck">
     <div>
@@ -564,7 +588,7 @@
   addEventListener('keyup',e=>{ if(typingInField(e)) return; const k=e.key.toLowerCase(); if(k==='arrowleft'||k==='a')input.left=false; if(k==='arrowright'||k==='d')input.right=false; });
   cv.addEventListener('pointerdown',()=>cv.focus());
 
-  function selectCast(i){ state.castIdx=i; player.x=deskX(i); state.facing=1; state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } renderRoster(); }
+  function selectCast(i){ state.castIdx=i; player.x=deskX(i); state.facing=1; state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } selectLog(staff.find(s=>s.ci===i)); renderRoster(); }
   const banterBtn=document.getElementById('banterBtn'); banterBtn.addEventListener('click',()=>{ state.banter=!state.banter; banterBtn.setAttribute('aria-pressed',String(state.banter)); });
   const panBtn=document.getElementById('panBtn');
   function setPan(on){ state.panMode=on; panBtn.setAttribute('aria-pressed',String(on)); if(on){ clearGoto(); state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam'))); state.panX=cam; mScene.textContent='FREE PAN · ← → TO LOOK'; } else mScene.textContent='ROAMING · ← → TO WALK'; }
@@ -597,20 +621,34 @@
   const fmtK=n=>Math.round(n/1000)+'k';
   const tidy=t=>t.replace(/^\s*(rumou?rs?\s+(of|about|on)\s+|the\s+|a\s+|an\s+)/i,'').replace(/\s+/g,' ').trim();
   const shortT=t=>{ const s=tidy(t); return s.length>26? s.slice(0,24)+'…':s; };
-  const staff=[{ id:'chief', ci:-1, role:'chief', label:'The Chief', sub:'assigns & makes the call', budget:+budgetRange.value, spent:0, status:'idle', say:'', sayT:0 }]
-    .concat(CAST.map((c,i)=>({ id:c.id, ci:i, role:c.desk, label:c.name, sub:c.role, budget:+budgetRange.value, spent:0, status:'idle', say:'', sayT:0 })));
+  const staff=[{ id:'chief', ci:-1, role:'chief', label:'The Chief', sub:'assigns & makes the call', budget:+budgetRange.value, spent:0, status:'idle', say:'', sayT:0, log:[] }]
+    .concat(CAST.map((c,i)=>({ id:c.id, ci:i, role:c.desk, label:c.name, sub:c.role, budget:+budgetRange.value, spent:0, status:'idle', say:'', sayT:0, log:[] })));
   const roleAgent=r=>staff.find(s=>s.role===r), chief=staff[0];
+  // ---- Per-character log: a friendly rendering of each agent's "CLI" — what they're doing
+  // (do), what they did (act), and what they're thinking (their dialogue). Click a card to read.
+  let logSel=staff[0];
+  const escH=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const clogName=document.getElementById('clogName'), clogRole=document.getElementById('clogRole'),
+        clogCur=document.getElementById('clogCur'), clogBody=document.getElementById('clogBody'), clogPortrait=document.getElementById('clogPortrait');
+  function charLog(s,kind,text){ if(!s||!text) return; s.log=s.log||[]; const last=s.log[s.log.length-1];
+    if(last&&last.kind===kind&&last.text===text) return; s.log.push({kind,text}); if(s.log.length>80) s.log.shift(); if(s===logSel) renderCharLog(); }
+  function selectLog(s){ if(!s) return; logSel=s; renderCharLog(); }
+  function renderCharLog(){ const s=logSel; if(!s||!clogBody) return; clogName.textContent=s.label; clogRole.textContent=s.sub;
+    clogCur.textContent=(statusText(s)||'IDLE'); if(s.ci>=0) portrait(clogPortrait,CAST[s.ci]); else chiefPortrait(clogPortrait);
+    const rows=(s.log||[]).slice(-40).map(e=>`<div class="ln ${e.kind}">${escH(e.text)}</div>`).join('');
+    clogBody.innerHTML=`<div class="ln sys">${escH(s.label.toUpperCase())} · ${escH(s.sub)} — on shift</div>`+(rows||'<div class="ln sys">quiet at the desk. brief the Chief to set the floor working.</div>');
+    clogBody.scrollTop=clogBody.scrollHeight; }
   let storySeq=0, apSeq=0; const stories=[], approvals=[], events=[];
   function logEvent(s){ events.push(s.toUpperCase()); if(events.length>7) events.shift(); }
-  function agentSay(s,text,dur){ s.say=text; s.sayT=dur||42; }
+  function agentSay(s,text,dur){ s.say=text; s.sayT=dur||42; charLog(s,'think',text); }
   const canAfford=(s,n)=>s.spent+n<=s.budget; function spend(s,n){ s.spent+=n; renderRoster(); }
   function focusOn(s){ director.at=s; director.t=52; if(s.ci>=0) state.castIdx=s.ci; else officeBlipT=Math.max(officeBlipT,66); }
   function setSceneFor(s,scene){ if(state.castIdx===s.ci){ state.mode='desk'; state.scene=scene; player.x=AC(); } }
 
   function briefChief(topic){ const T=(topic||'').trim(); if(!T) return; frontpage.hidden=true;
     const st={ id:++storySeq, topic:T, short:shortT(T), stage:'assigned', owner:null, quality:0, checks:0, t:0, headline:'' };
-    stories.push(st); chief.status='briefing'; agentSay(chief,`Front page: ${st.short}. Two sources.`,56);
-    logEvent(`Chief takes the brief — ${st.short}`); focusOn(chief); mScene.textContent='THE FLOOR IS WORKING'; renderRoster(); }
+    stories.push(st); chief.status='briefing'; charLog(chief,'do',`Reading the brief: "${st.topic}"`); agentSay(chief,`Front page: ${st.short}. Two sources.`,56);
+    logEvent(`Chief takes the brief — ${st.short}`); focusOn(chief); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING'; renderRoster(); }
 
   function simBeat(){
     for(const st of stories){ if(['done','held','press'].includes(st.stage) || Math.random()>0.74) continue;
@@ -619,33 +657,41 @@
         const res=roleAgent('research');
         if(res){ st.researcher=res.ci; st.stage='researching'; res.status='working';                 // the researcher digs first
           agentSay(chief,`${res.label.split(' ')[0]}, dig up ${st.short}.`,44); agentSay(res,`On it — sources first.`,34);
-          handoff(WINDOW_XB, deskX(res.ci)); logEvent(`Chief → ${res.label}: research ${st.short}`); focusOn(res); }
+          handoff(WINDOW_XB, deskX(res.ci)); logEvent(`Chief → ${res.label}: research ${st.short}`); focusOn(res);
+          charLog(chief,'act',`Assigned "${st.short}" to ${res.label}`); charLog(res,'do',`Researching: ${st.short}`); }
         else { const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; rep.status='working';
-          agentSay(chief,`${rep.label.split(' ')[0]}, chase ${st.short}.`,44); handoff(WINDOW_XB, deskX(rep.ci)); logEvent(`Chief → ${rep.label}: cover ${st.short}`); focusOn(rep); } }
+          agentSay(chief,`${rep.label.split(' ')[0]}, chase ${st.short}.`,44); handoff(WINDOW_XB, deskX(rep.ci)); logEvent(`Chief → ${rep.label}: cover ${st.short}`); focusOn(rep);
+          charLog(chief,'act',`Assigned "${st.short}" to ${rep.label}`); charLog(rep,'do',`Reporting: ${st.short}`); } }
       else if(st.stage==='researching'){ const res=staff.find(s=>s.ci===st.researcher); if(!canAfford(res,3000)){ escalate('budget',res,st); continue; }
         if(!st.real) spend(res,2500+((Math.random()*1500)|0)); res.status='working'; focusOn(res); setSceneFor(res,'type'); st.rq=(st.rq||0)+38+((Math.random()*30)|0);
         if(Math.random()<0.5) agentSay(res, researcherLine(st),40);
         if(st.rq>=100){ const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; res.status='idle'; rep.status='working';   // hands sourced findings to the reporter
-          handoff(deskX(res.ci), deskX(rep.ci)); agentSay(res,`Sourced — ${st.short}.`,34); logEvent(`${res.label} hands sources to ${rep.label}`); } }
+          handoff(deskX(res.ci), deskX(rep.ci)); agentSay(res,`Sourced — ${st.short}.`,34); logEvent(`${res.label} hands sources to ${rep.label}`);
+          charLog(res,'act',`Filed the sourcing on ${st.short} → ${rep.label}`); charLog(rep,'do',`Reporting: ${st.short}`); } }
       else if(st.stage==='reporting'){ const rep=staff.find(s=>s.ci===st.owner); if(rep.status==='blocked') continue;
         if(!canAfford(rep,4500)){ rep.status='blocked'; escalate('budget',rep,st); logEvent(`${rep.label} is out of budget on ${st.short}`); continue; }
         if(!st.real) spend(rep,3500+((Math.random()*3000)|0)); st.quality+=30+((Math.random()*28)|0); rep.status='working'; focusOn(rep); setSceneFor(rep,'type');
         if(Math.random()<0.5) agentSay(rep, reporterLine(st),40);
         if(st.quality>=100){ st.stage='checking'; rep.status='idle'; handoff(deskX(rep.ci), deskX(roleAgent('copydesk').ci));
-          logEvent(`${rep.label} files on ${st.short}`); agentSay(rep,`Filed — ${st.short}.`,34); } }
+          logEvent(`${rep.label} files on ${st.short}`); agentSay(rep,`Filed — ${st.short}.`,34);
+          charLog(rep,'act',`Filed the story on ${st.short}`); charLog(roleAgent('copydesk'),'do',`Checking: ${st.short}`); } }
       else if(st.stage==='checking'){ const mac=roleAgent('copydesk'); if(!canAfford(mac,3000)){ escalate('budget',mac,st); continue; }
         if(!st.real) spend(mac,3000); focusOn(mac); setSceneFor(mac,'idle');
         if(Math.random()<0.42 && st.checks<2 && !st.real){ st.checks++; st.quality=Math.max(40,st.quality-45); st.stage='reporting';
           const rep=staff.find(s=>s.ci===st.owner); rep.status='working'; handoff(deskX(mac.ci), deskX(st.owner));
-          agentSay(mac,`Thin recon on ${st.short}. Verify it.`,48); logEvent(`${mac.label}: ${st.short} needs a 2nd source — back to ${rep.label}`); }
-        else { const w=roleAgent('copywriter')||roleAgent('editor'); st.stage='writing'; handoff(deskX(mac.ci), deskX(w.ci)); agentSay(mac,`Stands up — ${st.short}.`,34); logEvent(`${mac.label} clears ${st.short}`); } }
+          agentSay(mac,`Thin recon on ${st.short}. Verify it.`,48); logEvent(`${mac.label}: ${st.short} needs a 2nd source — back to ${rep.label}`);
+          charLog(mac,'act',`Thin recon on ${st.short} — bounced back to ${rep.label}`); charLog(staff.find(s=>s.ci===st.owner),'do',`Re-verifying ${st.short}`); }
+        else { const w=roleAgent('copywriter')||roleAgent('editor'); st.stage='writing'; handoff(deskX(mac.ci), deskX(w.ci)); agentSay(mac,`Stands up — ${st.short}.`,34); logEvent(`${mac.label} clears ${st.short}`);
+          charLog(mac,'act',`Cleared ${st.short} — stands up`); charLog(w,'do',`Rewriting: ${st.short}`); } }
       else if(st.stage==='writing'){ const w=roleAgent('copywriter')||roleAgent('editor'); if(!canAfford(w,3500)){ escalate('budget',w,st); continue; }   // the rewrite desk turns recon into copy
         if(!st.real) spend(w,3500); focusOn(w); setSceneFor(w,'type'); st.wt=(st.wt||0)+1;
         if(Math.random()<0.5) agentSay(w, writerLine(st),40);
-        if(st.wt>=2){ st.stage='editing'; handoff(deskX(w.ci), deskX(roleAgent('editor').ci)); agentSay(w,`Copy's ready — ${st.short}.`,34); logEvent(`${w.label} files copy on ${st.short}`); } }
+        if(st.wt>=2){ st.stage='editing'; handoff(deskX(w.ci), deskX(roleAgent('editor').ci)); agentSay(w,`Copy's ready — ${st.short}.`,34); logEvent(`${w.label} files copy on ${st.short}`);
+          charLog(w,'act',`Filed the copy on ${st.short}`); charLog(roleAgent('editor'),'do',`Making the call: ${st.short}`); } }
       else if(st.stage==='editing'){ const ed=roleAgent('editor'); if(!canAfford(ed,4000)){ escalate('budget',ed,st); continue; }        // the editor makes the call
         if(!st.real) spend(ed,4000); focusOn(ed); setSceneFor(ed,'idle'); st.t=(st.t||0)+1;
-        if(st.t>=2){ if(st.real){ st.stage='done'; runFrontPage(st); } else { st.stage='press'; escalate('press',ed,st); agentSay(ed,`${st.short} — ready for page one.`,46); logEvent(`${ed.label} has ${st.short} ready — the Chief wants your call`); } } }
+        if(st.t>=2){ if(st.real){ st.stage='done'; runFrontPage(st); } else { st.stage='press'; escalate('press',ed,st); agentSay(ed,`${st.short} — ready for page one.`,46); logEvent(`${ed.label} has ${st.short} ready — the Chief wants your call`);
+          charLog(ed,'act',`${st.short} — held for page one; the Chief's call`); } } }
     }
     aliveBeat(); }
   function reporterLine(st){ const L=['Chasing the paper trail…',`Who leaked ${st.short}?`,'Two sources, then it runs.','This one has legs.']; return L[(tick+st.id)%L.length]; }
@@ -674,7 +720,7 @@
       set('research',b.researcher||0); set('reporter',b.reporter||0); set('copywriter',b.writer||0); set('copydesk',b.copydesk||0);
       const ed=roleAgent('editor'); if(ed) ed.spent=b.editor||0; if(b.chief!=null) chief.spent=b.chief; renderRoster(); }
     fpHead.textContent=headlineFor(st); fpStand.textContent=st.standfirst||`Two sources, one long night. The Daily Bit's account of ${tidy(st.topic)} — chased, corrected on the copy desk, and put to bed.`;
-    frontpage.hidden=false; const ed=roleAgent('editor'); focusOn(ed); setSceneFor(ed,'stop'); logEvent(`STOP THE PRESS — ${st.short} runs page one`); mScene.textContent=st.real?'REAL EDITION FILED':'EDITION FILED'; }
+    frontpage.hidden=false; const ed=roleAgent('editor'); focusOn(ed); setSceneFor(ed,'stop'); logEvent(`STOP THE PRESS — ${st.short} runs page one`); charLog(ed,'act',`Page one: ${headlineFor(st)}`); mScene.textContent=st.real?'REAL EDITION FILED':'EDITION FILED'; }
   // Load a real edition's reel.json (produced by `late-edition run --brief … `) and replay it here.
   function loadReel(reel){ if(!reel||!reel.stories||!reel.stories[0]) return; const s0=reel.stories[0], br=(reel.tokens&&reel.tokens.byRole)||{};
     const topic=(reel.topic||s0.headline||'a real edition');
@@ -718,13 +764,14 @@
     card.append(pc,mid,end); staffEl.append(card);
     if(s.ci>=0) portrait(pc,CAST[s.ci]); else chiefPortrait(pc);
     s.el={ card, st, bi, tk };
-    card.addEventListener('click',e=>{ if(e.target.closest('[data-boost]')) return; if(s.ci>=0) selectCast(s.ci); else { clearGoto(); state.panMode=false; focusOn(chief); } });
-    card.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&!e.target.closest('[data-boost]')){ e.preventDefault(); if(s.ci>=0) selectCast(s.ci); else focusOn(chief); } });
+    card.addEventListener('click',e=>{ if(e.target.closest('[data-boost]')) return; if(s.ci>=0) selectCast(s.ci); else { clearGoto(); state.panMode=false; focusOn(chief); selectLog(s); } });
+    card.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&!e.target.closest('[data-boost]')){ e.preventDefault(); if(s.ci>=0) selectCast(s.ci); else { focusOn(chief); selectLog(s); } } });
     bst.addEventListener('click',e=>{ e.stopPropagation(); boost(s.id,100000); });
   } renderRoster(); }
   function renderRoster(){ for(const s of staff){ if(!s.el) continue; const pct=Math.min(100,s.spent/s.budget*100);
     s.el.st.textContent=statusText(s); s.el.bi.style.width=pct+'%'; s.el.tk.textContent=fmtK(s.spent)+'/'+fmtK(s.budget);
-    s.el.card.classList.toggle('blk', s.status==='blocked'); s.el.card.setAttribute('aria-pressed', String(s.ci===state.castIdx)); } }
+    s.el.card.classList.toggle('blk', s.status==='blocked'); s.el.card.setAttribute('aria-pressed', String(s===logSel)); }
+    if(logSel&&clogCur) clogCur.textContent=statusText(logSel)||'IDLE'; }
   function renderApprovals(){ approvalsEl.hidden=!approvals.length; apListEl.innerHTML = !approvals.length?'':approvals.map(a=> a.kind==='budget'
     ? `<div class="ap"><span>${a.text}</span><button class="chip primary" data-ap="${a.id}" data-ok="1">Bump +100k</button><button class="chip" data-ap="${a.id}" data-ok="0">Hold</button></div>`
     : `<div class="ap"><span>${a.text}</span><button class="chip danger2" data-ap="${a.id}" data-ok="1">Run it ▸</button><button class="chip" data-ap="${a.id}" data-ok="0">Hold</button></div>`).join(''); }
