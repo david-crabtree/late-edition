@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { loadNewsroom } from '../main/config/newsroom.js';
 import { scaffoldNewsroom } from '../main/config/scaffold.js';
 import type { DistributionConfig } from '../main/config/types.js';
+import type { Edition } from '../main/core/edition.js';
 import { distributeEdition } from '../main/distribute/run.js';
 import { runAssignment, runDueAssignments } from '../main/pipeline/assignment.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
@@ -127,6 +128,39 @@ function cmdInit(positionals: string[]): number {
   return 0;
 }
 
+/** Per-role token breakdown + an auth-aware cost line (plan usage vs. metered API spend). */
+async function printUsage(edition: Edition): Promise<void> {
+  const spent = edition.tokenUsage.reduce(
+    (n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0),
+    0,
+  );
+  if (spent <= 0) return;
+  const tok = new Map<string, number>();
+  let totalCost = 0;
+  for (const u of edition.tokenUsage) {
+    tok.set(u.role, (tok.get(u.role) ?? 0) + (u.inputTokens ?? 0) + (u.outputTokens ?? 0));
+    totalCost += u.costUsd ?? 0;
+  }
+  const roles = [...tok.entries()].sort((a, b) => b[1] - a[1]);
+  console.log(`  By role (tokens): ${roles.map(([r, t]) => `${r} ${t}`).join(' · ')}`);
+  const used = [...new Set(edition.tokenUsage.map((u) => u.provider))];
+  const modes: BillingMode[] = await Promise.all(
+    used.map(async (id) => (await getProvider(id)?.detect())?.billing ?? 'unknown'),
+  );
+  if (modes.includes('api')) {
+    console.log(
+      `  ⚠️  This run used a metered API key — REAL SPEND: $${totalCost.toFixed(2)}. Every run costs money.`,
+    );
+  } else if (modes.includes('subscription')) {
+    const notional = totalCost > 0 ? ` (≈$${totalCost.toFixed(2)} at API rates — NOT charged)` : '';
+    console.log(
+      `  Plan usage: ${spent} tokens — counts toward your subscription's usage allowance, not billed${notional}.`,
+    );
+  } else {
+    console.log(`  ${spent} tokens — local/offline, no cost.`);
+  }
+}
+
 async function cmdRun(flags: Record<string, string | boolean>): Promise<number> {
   const root = resolve(typeof flags.newsroom === 'string' ? flags.newsroom : '.');
   const forceProvider = typeof flags.provider === 'string' ? flags.provider : undefined;
@@ -192,38 +226,7 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
       tokenCap ? ` / ${tokenCap} cap` : ''
     }.`,
   );
-  if (spent > 0) {
-    const tok = new Map<string, number>();
-    const cost = new Map<string, number>();
-    let totalCost = 0;
-    for (const u of result.edition.tokenUsage) {
-      tok.set(u.role, (tok.get(u.role) ?? 0) + (u.inputTokens ?? 0) + (u.outputTokens ?? 0));
-      cost.set(u.role, (cost.get(u.role) ?? 0) + (u.costUsd ?? 0));
-      totalCost += u.costUsd ?? 0;
-    }
-    // Highest-usage role first — research usually dominates, which is the tuning signal.
-    const roles = [...tok.entries()].sort((a, b) => b[1] - a[1]);
-    console.log(`  By role (tokens): ${roles.map(([r, t]) => `${r} ${t}`).join(' · ')}`);
-
-    // How was this paid for? Warn hard on metered API; reassure on a subscription plan.
-    const used = [...new Set(result.edition.tokenUsage.map((u) => u.provider))];
-    const modes: BillingMode[] = await Promise.all(
-      used.map(async (id) => (await getProvider(id)?.detect())?.billing ?? 'unknown'),
-    );
-    if (modes.includes('api')) {
-      console.log(
-        `  ⚠️  This run used a metered API key — REAL SPEND: $${totalCost.toFixed(2)}. Every run costs money.`,
-      );
-    } else if (modes.includes('subscription')) {
-      const notional =
-        totalCost > 0 ? ` (≈$${totalCost.toFixed(2)} at API rates — NOT charged)` : '';
-      console.log(
-        `  Plan usage: ${spent} tokens — counts toward your subscription's usage allowance, not billed${notional}.`,
-      );
-    } else {
-      console.log(`  ${spent} tokens — local/offline, no cost.`);
-    }
-  }
+  await printUsage(result.edition);
   console.log(`  Reel for the animation → ${result.editionDir}/reel.json`);
   if (result.edition.weatherLine) console.log(`  Weather line: ${result.edition.weatherLine}`);
   if (result.warnings.length) {
@@ -377,6 +380,7 @@ async function cmdAssignment(
       console.log(`Edition ${result.editionId} printed → ${result.editionDir}`);
       console.log(`  Assignment "${assignment.title}": ${result.edition.stories.length} stories.`);
       for (const s of result.edition.stories) console.log(`   • ${s.headline}`);
+      await printUsage(result.edition);
       if (result.warnings.length) console.log(`  ${result.warnings.length} warning(s).`);
       console.log('');
       return 0;
