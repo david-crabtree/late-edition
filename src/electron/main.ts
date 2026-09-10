@@ -22,7 +22,7 @@ import { StaffNotConfiguredError } from '../main/pipeline/staffing.js';
 import { VerificationNeededError } from '../main/pipeline/verify.js';
 import { detectAll, listProviders } from '../main/providers/registry.js';
 import { type EditionSummary, listEditions } from '../main/store/edition-store.js';
-import { clearHalt, isHalted, setHalt } from '../main/store/halt.js';
+import { PipelineHaltError, clearHalt, isHalted, setHalt } from '../main/store/halt.js';
 import type { LogEvent } from '../main/store/log.js';
 import { paths } from '../main/store/paths.js';
 import {
@@ -551,6 +551,36 @@ function createWindow(): void {
           })()`),
         );
       }
+      // The stop switch survives a restart, so a halt set in an earlier session must show
+      // up on launch with a way out — not two hidden buttons and a run that fails.
+      console.log(
+        'LE_DEBUG halt:',
+        await js(`(async () => {
+          const stop = document.getElementById('appStop'), res = document.getElementById('appResume');
+          const before = { stopVisible: !stop.hidden, resumeVisible: !res.hidden, bar: !!document.getElementById('haltBar') };
+          await window.lateEdition.halt();
+          // Pretend this is a fresh launch with the switch already on.
+          await window.__leProbe.paintHalt(true, true);
+          const bar = document.getElementById('haltBar');
+          const on = {
+            resumeVisible: !res.hidden, stopHidden: stop.hidden,
+            barShown: !!(bar && !bar.hidden),
+            barOffersLift: !!(bar && bar.querySelector('#haltLift')),
+            engineAgrees: await window.lateEdition.isHalted(),
+          };
+          // A run while halted must say it was the switch.
+          const r = await window.lateEdition.run('anything', { provider: 'fake', research: 0 });
+          on.runReportsHalted = !!r.halted;
+          bar.querySelector('#haltLift').click();
+          await new Promise(r2 => setTimeout(r2, 300));
+          const after = {
+            stillHalted: await window.lateEdition.isHalted(),
+            barGone: !document.getElementById('haltBar') || document.getElementById('haltBar').hidden,
+            stopBack: !stop.hidden,
+          };
+          return JSON.stringify({ before, on, after });
+        })()`),
+      );
       // Back issues: the list handler, and the drawer that opens onto it.
       console.log(
         'LE_DEBUG editions:',
@@ -559,6 +589,16 @@ function createWindow(): void {
           document.getElementById('appBack').click();
           await new Promise(r => setTimeout(r, 300));
           const rows = document.querySelectorAll('.backissues .bi').length;
+          // Deleting takes two clicks and goes to the recycle bin, not rm -rf.
+          let armed = 'no delete button', after = null;
+          const del = document.querySelector('.backissues [data-del]');
+          if (del) {
+            del.click();
+            armed = del.textContent;
+            del.click();
+            await new Promise(r => setTimeout(r, 900));
+            after = (await window.lateEdition.editions()).length;
+          }
           const empty = document.querySelector('.backissues .bi-empty');
           document.getElementById('biClose').click();
           return JSON.stringify({
@@ -567,6 +607,10 @@ function createWindow(): void {
             drawerRows: rows,
             emptyState: empty ? empty.textContent.slice(0, 60) : null,
             newest: eds[0] ? eds[0].id + ' — ' + eds[0].headline.slice(0, 40) : '(none)',
+            // Deleting takes two clicks and goes to the recycle bin.
+            deleteArms: armed,
+            deletedOne: after !== null && after === eds.length - 1,
+            countAfter: after,
           });
         })()`),
       );
@@ -763,6 +807,11 @@ handle(
       if (err instanceof StaffNotConfiguredError) {
         return { ok: false as const, needsStaffing: true as const, desk: err.deskLabel };
       }
+      // The stop switch is a file that outlives the app, so a run can hit it in a session
+      // that never pressed Stop. The interface needs to know it was the switch, not a crash.
+      if (err instanceof PipelineHaltError) {
+        return { ok: false as const, halted: true as const, editionId: err.editionId };
+      }
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }
   },
@@ -831,6 +880,11 @@ handle(
       // crash, and the app says so in character rather than printing "RUN FAILED".
       if (err instanceof StaffNotConfiguredError) {
         return { ok: false as const, needsStaffing: true as const, desk: err.deskLabel };
+      }
+      // The stop switch is a file that outlives the app, so a run can hit it in a session
+      // that never pressed Stop. The interface needs to know it was the switch, not a crash.
+      if (err instanceof PipelineHaltError) {
+        return { ok: false as const, halted: true as const, editionId: err.editionId };
       }
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }
@@ -931,6 +985,11 @@ handle(
       // crash, and the app says so in character rather than printing "RUN FAILED".
       if (err instanceof StaffNotConfiguredError) {
         return { ok: false as const, needsStaffing: true as const, desk: err.deskLabel };
+      }
+      // The stop switch is a file that outlives the app, so a run can hit it in a session
+      // that never pressed Stop. The interface needs to know it was the switch, not a crash.
+      if (err instanceof PipelineHaltError) {
+        return { ok: false as const, halted: true as const, editionId: err.editionId };
       }
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }
@@ -1071,6 +1130,23 @@ handle('le:edition', (_e, editionId: string) => {
     return JSON.parse(readFileSync(file, 'utf8')) as Edition;
   } catch {
     return null;
+  }
+});
+
+/**
+ * Delete a past edition.
+ *
+ * Goes to the OS recycle bin, not `rm -rf`. This is the user's own writing and their own
+ * token spend; a misclick should be recoverable from the bin rather than gone.
+ */
+handle('le:deleteEdition', async (_e, editionId: string) => {
+  const dir = paths(newsroomRoot()).editionDir(editionId);
+  if (!existsSync(dir)) return { ok: false as const, error: 'That edition is already gone.' };
+  try {
+    await shell.trashItem(dir);
+    return { ok: true as const, editionId };
+  } catch (err) {
+    return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
   }
 });
 

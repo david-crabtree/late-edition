@@ -51,6 +51,8 @@ contextBridge.exposeInMainWorld('lateEdition', {
   editions: () => ipcRenderer.invoke('le:editions'),
   /** One past edition in full, to show it again without rerunning it. */
   edition: (editionId) => ipcRenderer.invoke('le:edition', editionId),
+  /** Delete a past edition — to the recycle bin, not permanently. */
+  deleteEdition: (editionId) => ipcRenderer.invoke('le:deleteEdition', editionId),
   /** Open the finished paper in the user's real browser. */
   openPaper: (editionId) => ipcRenderer.invoke('le:openPaper', editionId),
   /** The rendered HTML of a finished edition (for the front-page view). */

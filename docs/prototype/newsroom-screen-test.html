@@ -230,6 +230,14 @@
   .clarify .cl-qs li::marker{ color:var(--amber-dim); font-family:var(--pixel); font-size:.6rem; }
   .clarify .cl-foot{ font-size:.7rem; color:var(--bone-dim); margin-top:9px; }
   .clarify .cl-foot a{ color:var(--amber-dim); cursor:pointer; text-decoration:underline; margin-left:6px; }
+  /* All stop. Loud, and carries the way out — the switch survives a restart, so this is
+     the only thing that tells you why nothing is happening. */
+  .haltbar{ background:#2a1410; border:1px solid #8a3226; border-left:3px solid #c2412d; border-radius:6px;
+            padding:10px 13px; margin:10px 0 4px; font-size:.78rem; line-height:1.55; color:#e8c0ac;
+            display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .haltbar[hidden]{ display:none; }
+  .haltbar b{ color:#f0a48c; }
+  .haltbar .chip{ margin-left:auto; }
   .casefile{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .casefile[hidden]{ display:none; }
   .casefile .cf-card{ width:min(700px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
@@ -275,6 +283,9 @@
   .backissues .bi-meta{ grid-column:2; font-size:.64rem; color:#6a6250; }
   .backissues .bi-act{ grid-column:3; grid-row:1/3; display:flex; gap:5px; }
   .backissues .bi-act .chip[disabled]{ opacity:.4; cursor:default; }
+  .backissues .bi-del{ color:#a8837a; border-color:#3a2a26; }
+  .backissues .bi-del:hover:not([disabled]){ color:#e8926a; border-color:#8a3226; }
+  .backissues .bi-del.armed{ color:#12161c; background:#c2412d; border-color:#c2412d; }
   .backissues .bi-empty{ padding:22px 14px; text-align:center; font-size:.76rem; color:var(--bone-dim); }
   .startgate{ position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .startgate[hidden]{ display:none; }
@@ -1181,6 +1192,29 @@
     if(!watching) return null;
     if(watching.ci<0) return (WINDOW_XB-VW/2)/BP;            // the Chief is in the office, on the back wall
     return people&&people[watching.ci] ? people[watching.ci].px-VW/2 : deskX(watching.ci)-VW/2; };
+  /**
+   * Show the stop switch's real state. It persists on disk between sessions, so this has to
+   * be driven by what the engine says rather than by what was clicked in this window.
+   */
+  function paintHalt(on, fromLaunch){
+    haltViz=!!on;
+    const stop=document.getElementById('appStop'), res=document.getElementById('appResume');
+    if(stop) stop.hidden=!!on; if(res) res.hidden=!on;
+    let bar=document.getElementById('haltBar');
+    if(on){
+      if(!bar){ bar=document.createElement('div'); bar.className='haltbar'; bar.id='haltBar';
+        const anchor=document.querySelector('.appbar'); if(anchor) anchor.after(bar); else document.body.appendChild(bar); }
+      bar.innerHTML=`<b>All stop.</b> ${fromLaunch
+        ? 'The stop switch was left on — it lives in the newsroom folder, so it survives a restart.'
+        : 'No new agent calls will start.'}
+        Nothing will run until you lift it. <button class="chip primary" id="haltLift">Lift the stop</button>`;
+      bar.hidden=false;
+      bar.querySelector('#haltLift').addEventListener('click', async()=>{
+        await window.lateEdition.resume(); paintHalt(false); mScene.textContent='Resumed — brief the Chief.'; });
+      if(mScene) mScene.textContent='ALL STOP — nothing will run until you lift it.';
+      charLog(chief,'ask','All stop is on. Nothing runs until it is lifted.');
+    } else if(bar) bar.hidden=true;
+    renderRoster(); }
   function setFollow(on){ if(on){ state.panMode=false; } else { if(!state.panMode) state.panX=cam; state.panMode=true; }
     if(followBtn){ followBtn.setAttribute('aria-pressed', String(on)); followBtn.textContent = on?'⦿ Auto-focus':'○ Free look'; }
     if(mScene && window.lateEdition && !realBusy) mScene.textContent = on?'Ready — brief the Chief.':'Free look · ◀ ▶ to pan'; }
@@ -1662,7 +1696,7 @@
     let eds=[];
     try{ eds=await window.lateEdition.editions(); }
     catch(err){ list.innerHTML='<div class="bi-empty">Could not read the archive: '+escH((err&&err.message)||err)+'</div>'; return; }
-    count.textContent = eds.length ? `${eds.length} filed` : '';
+    count.textContent = eds.length ? `${eds.length} filed · deleting sends to the recycle bin` : '';
     if(!eds.length){ list.innerHTML='<div class="bi-empty">Nothing filed yet. Brief the Chief and this fills up.</div>'; return; }
     list.innerHTML='';
     for(const ed of eds){
@@ -1673,6 +1707,7 @@
         <div class="bi-act">
           <button class="chip" data-read="${escH(ed.id)}"${ed.finished?'':' disabled'}>Read</button>
           <button class="chip" data-open="${escH(ed.id)}"${ed.finished?'':' disabled'}>Open ↗</button>
+          <button class="chip bi-del" data-del="${escH(ed.id)}" title="Delete this edition (goes to the recycle bin)">Delete</button>
         </div>`;
       list.appendChild(row); }
     list.querySelectorAll('[data-read]').forEach(b=>b.addEventListener('click', async()=>{
@@ -1681,7 +1716,19 @@
       lastEditionId=b.dataset.read; el.hidden=true; fpRenderEdition(ed);
       const openBtn=document.getElementById('appOpen'); if(openBtn) openBtn.hidden=false; }));
     list.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click', ()=>
-      window.lateEdition.openPaper(b.dataset.open))); }
+      window.lateEdition.openPaper(b.dataset.open)));
+    // Two clicks, because this is your own writing and your own token spend. It goes to
+    // the recycle bin either way, so a mistake stays recoverable outside the app.
+    list.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', async()=>{
+      if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='Sure?'; b.classList.add('armed');
+        setTimeout(()=>{ if(b.dataset.armed==='1'){ b.dataset.armed=''; b.textContent='Delete'; b.classList.remove('armed'); } }, 4000);
+        return; }
+      b.disabled=true; b.textContent='…';
+      const r=await window.lateEdition.deleteEdition(b.dataset.del);
+      if(r&&r.ok){ if(lastEditionId===b.dataset.del){ lastEditionId=null;
+          const ob=document.getElementById('appOpen'); if(ob) ob.hidden=true; }
+        openBackIssues(); }
+      else { b.disabled=false; b.classList.remove('armed'); b.textContent=(r&&r.error)||'Failed'; } })); }
   // ---- The Chief putting a mid-run call to you -------------------------------------------
   // A reporter who doesn't trust what they've got walks to the office; the Chief walks it to
   // you. Yes sends the researcher back over that story, no runs it as it stands and the
@@ -1741,6 +1788,7 @@
     if(r&&r.needsClarification){ askClarification(r.editionId, r.questions||[]); return; }
     if(r&&r.needsDecision){ askDecision(r); return; }
     if(r&&r.needsStaffing){ askStaffing(r.desk); return; }
+    if(r&&r.halted){ paintHalt(true); return; }
     pendingClarify=null; charLog(chief,'act',`Run failed: ${(r&&r.error)||'unknown error'}`); mScene.textContent='RUN FAILED'; }
   // An empty desk. The Chief comes out and tells you which one, with the way to fix it —
   // this is the first thing anyone who downloads the app runs into, and "RUN FAILED" is
@@ -1879,8 +1927,13 @@
       b.addEventListener('pointerdown',on); b.addEventListener('pointerup',off); b.addEventListener('pointerleave',off); b.addEventListener('pointercancel',off); };
     holdPan($('appLeft'),-1); holdPan($('appRight'),1);
     $('appFollow').addEventListener('click', ()=> setFollow(state.panMode));   // in free-look → turn follow on; while following → free look
-    $('appStop').addEventListener('click', async()=>{ haltViz=true; await window.lateEdition.halt(); $('appStop').hidden=true; $('appResume').hidden=false; mScene.textContent='ALL STOP — agents idled. Resume to continue.'; });
-    $('appResume').addEventListener('click', async()=>{ haltViz=false; await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
+    $('appStop').addEventListener('click', async()=>{ await window.lateEdition.halt(); paintHalt(true); });
+    $('appResume').addEventListener('click', async()=>{ await window.lateEdition.resume(); paintHalt(false);
+      mScene.textContent='Resumed — brief the Chief.'; });
+    // The stop switch is a file in the newsroom folder, so it outlives the window. Ask on
+    // launch: otherwise a halt set in a previous session leaves both buttons hidden and no
+    // way out of the app at all.
+    if(window.lateEdition.isHalted){ window.lateEdition.isHalted().then(h=>{ if(h) paintHalt(true, true); }).catch(()=>{}); }
     $('appOpen').addEventListener('click', ()=>{ if(lastEditionId) window.lateEdition.openPaper(lastEditionId); });
     $('appBack').addEventListener('click', openBackIssues);
     $('appCases').addEventListener('click', ()=>{
@@ -2080,6 +2133,7 @@
       applyResult: applyRunResult,
       refreshWatches: (check) => refreshWatches(check),
       shakeHands: (need) => shakeHands(need),
+      paintHalt: (on, fromLaunch) => paintHalt(on, fromLaunch),
       // Put one staffer into a named idle beat and hold them there, so an animation can be
       // sampled frame by frame instead of waited for.
       forceBeat: (i, beat) => { const p=people[i]; p.st='idle'; p.beat=beat; p.t=99999; p.coffeeT=0;
