@@ -401,10 +401,13 @@ Each line is one commit; see `git log` for the exact SHAs.
 
 ## 7. What's NOT done (roadmap)
 
-**David's requested backlog (2026-09-10, not yet built):**
-- **Kill switch** — a way to stop all agent calls and put the newsroom idle if something goes
-  wrong (safety for a tool that spawns many CLI calls). Likely a sentinel file the pipeline checks
-  between stages/calls + a `halt` command; abort in-flight where possible.
+**David's requested backlog (2026-09-10):**
+- ✅ **Kill switch** (commit `e8dfaa4`) — `store/halt.ts` + a `HALT` sentinel checked at every stage
+  boundary and before each agent call; `late-edition halt` / `halt --clear`. A halted run goes idle,
+  persisted and resumable.
+- ✅ **Auth-aware cost framing** (commit `e8dfaa4`) — `Detection.billing` (subscription|api|free);
+  a plan login is reassured ("counts toward your subscription usage, not billed"; USD only as a
+  notional parenthetical), an API key gets a hard spend warning. `detect` labels each desk.
 - **Clarification requests** — agents (researcher/editor) should be able to ask the user for
   clarification when a brief is too vague, instead of guessing: return a "needs clarification"
   result, pause the run, surface the question, resume with an answer.
