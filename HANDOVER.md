@@ -330,6 +330,18 @@ It has grown from a single-desk bust into a **whole newsroom floor**:
 
 ### 6.6 Progress log (newest first)
 Each line is one commit; see `git log` for the exact SHAs.
+- **Efficiency pass + citation-artifact fix** (this session, commit `d4da78c`): a `--brief` now uses
+  a synthetic `brief` beat, so it stops inheriting an arbitrary beat's extra angles (the first real
+  run silently ran two reporters + Competing Takes) and no longer mislabels the beat in prompts.
+  **Real USD cost** is captured per call (`total_cost_usd`), summed per role/edition, printed by the
+  CLI and written to `reel.json` — cost, not tokens, is the efficiency signal once models are tiered
+  (a tiered haiku/sonnet run printed **$0.62/edition**, research dominant). Scaffold documents model
+  tiering; findings cap 8→6. **Artifacts:** inline `[sourceId:hash]` citations now render as clean
+  numbered footnotes `[1]`/`[5,6]` → a numbered Sources list, the `brief:` instruction is dropped
+  from sources, the writer prompt was hardened (weak models invented `[#3]`), and a renderer safety
+  net scrubs stray `[#n]`/`[ref]` tokens. `npm run check` green (58 tests).
+  **Open trade-off:** on cheap models the writer under-cites inline (copy desk flags it); the
+  hardened prompt targets this but wasn't re-validated on a fresh paid run.
 - **First REAL edition — the `claude` provider works on Windows** (this session, after the tier):
   `detect` was wrongly reporting `claude` "not installed" — a Windows bug: `execFile('claude')`
   can't launch npm's `claude.cmd` shim (ENOENT). Fixed `runCli` to launch through `cmd.exe /c` on
@@ -388,6 +400,21 @@ Each line is one commit; see `git log` for the exact SHAs.
 ---
 
 ## 7. What's NOT done (roadmap)
+
+**David's requested backlog (2026-09-10, not yet built):**
+- **Kill switch** — a way to stop all agent calls and put the newsroom idle if something goes
+  wrong (safety for a tool that spawns many CLI calls). Likely a sentinel file the pipeline checks
+  between stages/calls + a `halt` command; abort in-flight where possible.
+- **Clarification requests** — agents (researcher/editor) should be able to ask the user for
+  clarification when a brief is too vague, instead of guessing: return a "needs clarification"
+  result, pause the run, surface the question, resume with an answer.
+- **Cadence control + per-newsroom history** — a "run the story" trigger with history/context saved
+  to a local folder per newsroom (context the agents carry across runs). The autonomy unit:
+  reporters holding multiple standing assignments on a cadence (extends `watch`).
+- **Roster characters** — the prototype cast predates the researcher tier; it needs new characters
+  so the visual aid matches the real org (researchers → reporters → copywriters → editors).
+- **Cheap-model citation discipline** — re-validate the hardened writer prompt on a paid tiered run.
+
 
 - **M3 — the app UI** (Electron + PixiJS): the Newsroom, Editor's Office, Press Room rooms; the
   proof-reader with red-pencil verbs (Spike/Move/Dig/Note/Approve); talk-to-a-reporter; beats &
