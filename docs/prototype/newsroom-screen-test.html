@@ -104,6 +104,19 @@
   .usage{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.03em; }
   .usage.plan{ color:#7bb661; } .usage.api{ color:#e8a85a; } .usage.free{ color:var(--amber-dim); }
   .chip.danger2{ border-color:#7a2d1d; color:#e8a17a; } .chip.danger2:hover{ background:#2a140d; }
+  /* First-run gate: resume the last newsroom or start a fresh one */
+  .startgate{ position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
+  .startgate[hidden]{ display:none; }
+  .startgate .card{ width:min(440px,92vw); background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; padding:22px 22px 18px; box-shadow:0 18px 60px rgba(0,0,0,.6); text-align:center; }
+  .startgate .mast{ font-family:var(--pixel); font-size:.72rem; letter-spacing:.06em; color:var(--amber); }
+  .startgate .tag{ font-size:.74rem; color:var(--bone-dim); margin:8px 0 16px; }
+  .startgate .opt{ display:block; width:100%; text-align:left; background:#12100b; border:1px solid #2c2519; border-radius:6px; padding:11px 13px; margin:8px 0; color:var(--bone); cursor:pointer; }
+  .startgate .opt:hover{ border-color:var(--amber); background:#171208; }
+  .startgate .opt b{ display:block; font-size:.86rem; margin-bottom:3px; color:var(--bone); }
+  .startgate .opt small{ font-size:.68rem; color:var(--bone-dim); overflow-wrap:anywhere; }
+  .startgate .opt.primary{ border-color:#5a4620; }
+  .startgate .foot{ font-size:.66rem; color:#7a7259; margin-top:10px; }
+  .startgate .foot a{ color:var(--amber-dim); cursor:pointer; text-decoration:underline; }
   body.real .wrap{ max-width:1120px; }                 /* a bit larger in the app window */
   .staff .budgetcard{ display:flex; flex-direction:column; justify-content:center; gap:8px; padding:10px 12px; }
   .staff .budgetcard .row{ margin:0 !important; }
@@ -959,6 +972,7 @@
       <div class="row" style="margin-top:12px; gap:8px"><button class="chip primary" id="setupSave">Save staff</button><span class="hint" id="setupMsg"></span></div>
       <p class="note">Not signed in? Run the agent's own login once — e.g. <b>claude auth login</b> in a terminal — then hit <b>Recheck</b> and it turns <b>ready</b>. Usage on a signed-in plan counts toward that plan, not billed as API. Default desks are <b>fake</b> (offline) until you set real ones.</p>`;
     anchor.parentNode.insertBefore(box, anchor);   // put Setup at the TOP, above the newsroom
+    box.hidden=true;                               // hidden on launch — the start gate + ⚙ Settings reveal it
     const $=id=>box.querySelector('#'+id);
     if(LE.getRoot) LE.getRoot().then(r=>{ $('setupRoot').textContent=r; });
     $('setupPick').addEventListener('click', async()=>{ if(!LE.pickRoot) return; const r=await LE.pickRoot(); if(r){ $('setupRoot').textContent=r; refreshRoles(); $('setupMsg').textContent='Newsroom folder set.'; } });
@@ -982,7 +996,26 @@
       try{ await LE.setStaff(out); $('setupMsg').textContent='Saved — the desks use these next run.'; }
       catch(e){ $('setupMsg').textContent='Could not save: '+((e&&e.message)||e); } }); }
 
-  if(window.lateEdition){ document.body.classList.add('real'); state.banter=false; buildAppChrome(); buildSetup(); }
+  // First-run gate: pick up the last newsroom or start a fresh one, before the floor is briefed.
+  function buildStartupModal(){ const LE=window.lateEdition;
+    const gate=document.createElement('div'); gate.className='startgate';
+    gate.innerHTML=`<div class="card">
+      <div class="mast">LATE EDITION</div>
+      <div class="tag">Your agents, your paper. Where should this newsroom live?</div>
+      <button class="opt primary" id="gateResume"><b>Resume this newsroom →</b><small id="gateRoot">…</small></button>
+      <button class="opt" id="gateNew"><b>Start a new newsroom…</b><small>Pick a fresh folder — config, staff & history start clean.</small></button>
+      <div class="foot">You can re-open <a id="gateSetup">⚙ Setup — wire your agents</a> any time from the Settings button.</div>
+    </div>`;
+    document.body.appendChild(gate);
+    const $=id=>gate.querySelector('#'+id);
+    if(LE.getRoot) LE.getRoot().then(r=>{ $('gateRoot').textContent=r; });
+    const close=()=>{ gate.hidden=true; };
+    $('gateResume').addEventListener('click', close);
+    $('gateNew').addEventListener('click', async()=>{ if(LE.pickRoot){ const r=await LE.pickRoot(); const sr=document.getElementById('setupRoot'); if(sr&&r) sr.textContent=r; } close(); });
+    $('gateSetup').addEventListener('click', ()=>{ close(); const s=document.querySelector('.setup'); if(s){ s.hidden=false; s.scrollIntoView({behavior:'smooth',block:'start'}); } });
+  }
+
+  if(window.lateEdition){ document.body.classList.add('real'); state.banter=false; buildAppChrome(); buildSetup(); buildStartupModal(); }
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);
 })();
