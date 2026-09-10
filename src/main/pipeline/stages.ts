@@ -236,7 +236,7 @@ export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): 
       beatName: t.story.beatName,
       style: ctx.newsroom.style,
       topic,
-      maxFindings: String(beat?.maxFindings ?? DEFAULT_MAX_FINDINGS),
+      maxFindings: String(ctx.maxFindings ?? beat?.maxFindings ?? DEFAULT_MAX_FINDINGS),
     });
     ctx.log.emit('researcher', 'leave_desk', { story: t.story.slug, pass: t.pass + 1 });
     try {
@@ -267,7 +267,7 @@ export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): 
   // cap per story to bound downstream tokens, and archive them to the wire like any signal.
   for (const story of draft.stories) {
     const beat = ctx.newsroom.beats.find((b) => b.id === story.beatId);
-    const cap = beat?.maxFindings ?? DEFAULT_MAX_FINDINGS;
+    const cap = ctx.maxFindings ?? beat?.maxFindings ?? DEFAULT_MAX_FINDINGS;
     const found = collected.filter((c) => c.story === story).flatMap((c) => c.findings);
     const seen = new Set(story.signals.map((s) => s.id));
     const added: Signal[] = [];
@@ -833,6 +833,7 @@ export function assembleEdition(draft: EditionDraft): Edition {
     tagline: draft.tagline,
     weatherLine: draft.weatherLine,
     lateExtra: draft.lateExtra,
+    assignmentId: draft.assignmentId,
     stories,
     briefs,
     editorsLog: draft.editorsLog,

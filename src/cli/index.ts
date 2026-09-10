@@ -4,10 +4,12 @@ import { loadNewsroom } from '../main/config/newsroom.js';
 import { scaffoldNewsroom } from '../main/config/scaffold.js';
 import type { DistributionConfig } from '../main/config/types.js';
 import { distributeEdition } from '../main/distribute/run.js';
+import { runAssignment, runDueAssignments } from '../main/pipeline/assignment.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { detectAll, getProvider } from '../main/providers/registry.js';
 import type { BillingMode } from '../main/providers/types.js';
+import { assignmentStatus, readAssignmentState } from '../main/store/assignments.js';
 import { PipelineHaltError, clearHalt, isHalted, setHalt } from '../main/store/halt.js';
 import { searchMorgue } from '../main/store/morgue.js';
 import { runWatchOnce } from '../main/watch/run.js';
@@ -25,6 +27,7 @@ Commands:
   run                    Run one edition through the pipeline (WIRE → PRESS).
   distribute <editionId> Send an already-printed edition to configured channels.
   watch                  Poll sources for tripwires; fire Late Extra bulletins.
+  assignment <sub>       Standing assignments on a cadence: list | run <id> | tick.
   halt                   Stop all agent calls: idle the newsroom (--clear to resume).
   search <query>         Search the morgue (archive of past editions).
   help                   Show this help.
@@ -324,6 +327,92 @@ async function cmdWatch(flags: Record<string, string | boolean>): Promise<number
   return 0;
 }
 
+async function cmdAssignment(
+  positionals: string[],
+  flags: Record<string, string | boolean>,
+): Promise<number> {
+  const sub = positionals[0];
+  const root = resolve(typeof flags.newsroom === 'string' ? flags.newsroom : '.');
+  const nr = typeof flags.newsroom === 'string' ? flags.newsroom : '.';
+  const forceProvider = typeof flags.provider === 'string' ? flags.provider : undefined;
+
+  if (sub === 'list') {
+    const newsroom = await loadNewsroom(root);
+    if (newsroom.assignments.length === 0) {
+      console.log('No assignments. Add one at newsroom/assignments/<id>.yaml.\n');
+      return 0;
+    }
+    const now = new Date();
+    console.log('Assignments:\n');
+    for (const a of newsroom.assignments) {
+      const s = assignmentStatus(a, readAssignmentState(root, a.id), now);
+      const flag = s.due ? 'DUE' : s.auto ? 'auto' : 'manual';
+      console.log(
+        `  ${a.id.padEnd(16)} ${flag.padEnd(6)} cadence ${s.cadence}, last ${s.lastRun}, ${s.runs} run(s)`,
+      );
+      console.log(`  ${' '.repeat(16)} ${a.title}`);
+    }
+    console.log('');
+    return 0;
+  }
+
+  if (sub === 'run') {
+    const id = positionals[1];
+    if (!id) {
+      console.error('Usage: late-edition assignment run <id> [--newsroom DIR] [--provider ID]');
+      return 2;
+    }
+    if (isHalted(root)) {
+      console.log(
+        `Newsroom is halted. Clear it first:\n  late-edition halt --clear --newsroom ${nr}\n`,
+      );
+      return 0;
+    }
+    try {
+      console.log(`Running assignment "${id}"…\n`);
+      const { assignment, result } = await runAssignment(root, id, { forceProvider });
+      console.log(`Edition ${result.editionId} printed → ${result.editionDir}`);
+      console.log(`  Assignment "${assignment.title}": ${result.edition.stories.length} stories.`);
+      for (const s of result.edition.stories) console.log(`   • ${s.headline}`);
+      if (result.warnings.length) console.log(`  ${result.warnings.length} warning(s).`);
+      console.log('');
+      return 0;
+    } catch (err) {
+      if (err instanceof PipelineHaltError) {
+        console.log(
+          '\n⏸  Halted mid-run. State saved; clear the switch and re-run the assignment.\n',
+        );
+        return 0;
+      }
+      throw err;
+    }
+  }
+
+  if (sub === 'tick') {
+    if (isHalted(root)) {
+      console.log('Newsroom is halted; no assignments will run. Clear with `halt --clear`.\n');
+      return 0;
+    }
+    console.log('Running assignments whose cadence is due…\n');
+    const outcomes = await runDueAssignments(root, { forceProvider });
+    if (outcomes.length === 0) {
+      console.log('  Nothing due right now.\n');
+      return 0;
+    }
+    for (const o of outcomes) {
+      if (o.ran) console.log(`  ✓ ${o.id}: edition ${o.editionId} (${o.stories} stories)`);
+      else console.log(`  ✗ ${o.id}: ${o.error}`);
+    }
+    console.log('');
+    return 0;
+  }
+
+  console.error(
+    'Usage: late-edition assignment <list|run <id>|tick> [--newsroom DIR] [--provider ID]',
+  );
+  return 2;
+}
+
 function cmdSearch(positionals: string[], flags: Record<string, string | boolean>): number {
   const query = positionals.join(' ').trim();
   if (!query) {
@@ -367,6 +456,8 @@ async function main(): Promise<number> {
       return cmdDistribute(positionals, flags);
     case 'watch':
       return cmdWatch(flags);
+    case 'assignment':
+      return cmdAssignment(positionals, flags);
     case 'halt':
       return cmdHalt(positionals, flags);
     case 'search':

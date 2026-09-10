@@ -5,6 +5,7 @@ import { parse as parseYaml } from 'yaml';
 import type { SourceConfig } from '../adapters/types.js';
 import { paths } from '../store/paths.js';
 import type {
+  Assignment,
   BeatConfig,
   DistChannelConfig,
   DistributionConfig,
@@ -27,9 +28,10 @@ export async function loadNewsroom(root: string): Promise<Newsroom> {
   const staff = readYamlFile<StaffConfig>(p.staffFile, normalizeStaff);
   const style = await readTextOr(p.styleFile, '');
   const beats = await loadBeats(p.beatsDir);
+  const assignments = await loadAssignments(p.assignmentsDir);
   const personas = await loadPersonas(p.personasDir);
 
-  return { root: abs, config, staff, beats, style, personas };
+  return { root: abs, config, staff, beats, assignments, style, personas };
 }
 
 function readYamlFile<T>(file: string, normalize: (raw: unknown, file: string) => T): T {
@@ -208,6 +210,38 @@ function normalizeTripwires(raw: unknown, file: string): TripwireConfig[] | unde
       label: str(tr.label),
     };
   });
+}
+
+async function loadAssignments(dir: string): Promise<Assignment[]> {
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return [];
+  }
+  const assignments: Assignment[] = [];
+  for (const entry of entries.sort()) {
+    if (!/\.ya?ml$/i.test(entry)) continue;
+    const file = join(dir, entry);
+    const raw = parseYaml(await readFile(file, 'utf8'));
+    assignments.push(normalizeAssignment(raw, file, basename(entry).replace(/\.ya?ml$/i, '')));
+  }
+  return assignments;
+}
+
+function normalizeAssignment(raw: unknown, file: string, fallbackId: string): Assignment {
+  const r = asRecord(raw, file);
+  const brief = str(r.brief);
+  if (!brief) throw new NewsroomConfigError(`Assignment ${file} needs a \`brief:\` string.`);
+  return {
+    id: str(r.id) ?? fallbackId,
+    title: str(r.title) ?? str(r.id) ?? fallbackId,
+    brief,
+    cadence: str(r.cadence) ?? 'manual',
+    research: num(r.research),
+    maxFindings: num(r.max_findings ?? r.maxFindings),
+    provider: str(r.provider),
+  };
 }
 
 async function loadPersonas(dir: string): Promise<Map<string, string>> {

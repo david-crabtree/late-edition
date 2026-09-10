@@ -55,6 +55,8 @@ export interface EditionDraft {
   briefs: Brief[];
   /** True for a tripwire-fired Late Extra bulletin. */
   lateExtra?: boolean;
+  /** The standing assignment this edition belongs to, if any. */
+  assignmentId?: string;
   /** Set when the Chief asked for clarification on a vague brief; `answer` resumes the run. */
   clarification?: { questions: string[]; answer?: string };
   weatherLine?: string;

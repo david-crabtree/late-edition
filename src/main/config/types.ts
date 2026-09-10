@@ -105,6 +105,30 @@ export interface TripwireConfig {
   label?: string;
 }
 
+/**
+ * A standing assignment: an ongoing topic the newsroom works on a cadence, building on its
+ * own past coverage each run. This is the autonomous unit — a reporter can hold several.
+ * (`newsroom/assignments/<id>.yaml`.)
+ */
+export interface Assignment {
+  id: string;
+  /** Short human label for the assignment. */
+  title: string;
+  /** The standing brief the desk works each run (e.g. "competitor launches this week"). */
+  brief: string;
+  /**
+   * How often it may run automatically: `manual` (default — only via `assignment run`), or a
+   * duration like `30m`, `6h`, `1d`, `1w`. `assignment tick` runs the ones whose cadence is due.
+   */
+  cadence: string;
+  /** Researcher passes per run (overrides the brief default of 1). */
+  research?: number;
+  /** Cap on findings kept per run. */
+  maxFindings?: number;
+  /** Force one provider for this assignment's runs (else the newsroom's staff config). */
+  provider?: string;
+}
+
 /** A fully-loaded newsroom, resolved from disk. */
 export interface Newsroom {
   /** Absolute path to the newsroom root (the dir containing config.yaml). */
@@ -112,6 +136,8 @@ export interface Newsroom {
   config: PaperConfig;
   staff: StaffConfig;
   beats: BeatConfig[];
+  /** Standing assignments worked on a cadence (`assignments/*.yaml`). */
+  assignments: Assignment[];
   /** House style text (`style.md`). */
   style: string;
   /** Persona texts keyed by persona name, from `staff/*.md`. */

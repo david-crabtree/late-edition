@@ -11,6 +11,7 @@ export function scaffoldNewsroom(root: string): void {
   const p = paths(root);
   mkdirSync(p.newsroom, { recursive: true });
   mkdirSync(p.beatsDir, { recursive: true });
+  mkdirSync(p.assignmentsDir, { recursive: true });
   mkdirSync(p.personasDir, { recursive: true });
   mkdirSync(join(p.newsroom, 'prompts'), { recursive: true });
 
@@ -19,6 +20,7 @@ export function scaffoldNewsroom(root: string): void {
   writeFileSync(p.styleFile, STYLE_MD);
   writeFileSync(join(p.beatsDir, 'the-wire.yaml'), BEAT_WIRE);
   writeFileSync(join(p.beatsDir, 'the-codebase.yaml'), BEAT_CODEBASE);
+  writeFileSync(join(p.assignmentsDir, 'competitor-watch.yaml'), ASSIGNMENT_SAMPLE);
   writeFileSync(join(p.personasDir, 'sam-vance.md'), PERSONA_SAM);
 
   // We deliberately do NOT pre-copy the prompt templates: a newsroom tracks the
@@ -104,6 +106,29 @@ writers:
   default: { provider: fake }         # mid model; e.g. { provider: claude, model: sonnet }
 
 copy_desk: { provider: fake }         # cheap + strict; e.g. { provider: claude, model: haiku }
+`;
+
+const ASSIGNMENT_SAMPLE = `# A standing assignment: an ongoing topic the newsroom works on a cadence, building on its
+# own past coverage each run. Run it by hand ("run the story") or let a scheduler run the
+# due ones:
+#   late-edition assignment run competitor-watch --newsroom .
+#   late-edition assignment list --newsroom .
+#   late-edition assignment tick --newsroom .     # runs the ones whose cadence is due (for cron)
+
+id: competitor-watch
+title: "Competitor watch"
+
+# The standing brief the desk works each run. Each run is seeded with the prior editions of
+# this assignment, so the desk advances the story ("what's new / changed") instead of repeating.
+brief: "New competitor product launches, pricing moves and announcements in our market over the past week."
+
+# How often it may run automatically: manual (default — only \`assignment run\`), or a duration
+# like 6h, 1d, 1w (also hourly/daily/weekly). \`assignment tick\` runs the ones that are due.
+cadence: manual
+
+research: 1        # researcher passes per run
+# max_findings: 6 # cap sourced findings per run (bounds cost)
+# provider: claude # force one provider for this assignment's runs
 `;
 
 const STYLE_MD = `# House style — "Noir"

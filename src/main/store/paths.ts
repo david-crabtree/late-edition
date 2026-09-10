@@ -14,6 +14,10 @@ export function paths(root: string) {
     styleFile: join(newsroom, 'style.md'),
     beatsDir: join(newsroom, 'beats'),
     personasDir: join(newsroom, 'staff'),
+    /** Standing assignments the newsroom works on a cadence. */
+    assignmentsDir: join(newsroom, 'assignments'),
+    /** Per-assignment run state (last run, count), kept out of the editable config. */
+    assignmentStateDir: join(root, 'wire', '.assignments'),
     /** Raw signals, before anyone has looked at them. */
     wireDir: join(root, 'wire'),
     /** Persistent adapter "seen" state, one JSON file per source. */

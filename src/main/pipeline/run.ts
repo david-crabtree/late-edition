@@ -43,10 +43,16 @@ export interface RunOptions {
   resumeId?: string;
   /** A free-text topic to put on the front page — seeds one synthetic story and starts at ASSIGN (no WIRE). */
   brief?: string;
+  /** The standing assignment this run belongs to (tags the edition for its history). */
+  assignmentId?: string;
+  /** Prior-coverage context for a standing assignment — folded into the brief so the run builds on it. */
+  priorContext?: string;
   /** Hard cap on total tokens for this edition (overrides config). */
   tokenCap?: number;
   /** Override researcher passes for every story (0 disables research; overrides beat config). */
   research?: number;
+  /** Override the cap on findings kept per story (else beat config or the default). */
+  maxFindings?: number;
   /** Let the Chief pause a vague brief to ask for clarification (default true). */
   clarify?: boolean;
   /** The user's answer to a prior clarification request (used when resuming). */
@@ -91,7 +97,7 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
   const draft = opts.resumeId
     ? loadDraft(opts.root, opts.resumeId)
     : opts.brief
-      ? briefDraft(opts.root, newsroom, opts.brief, now)
+      ? briefDraft(opts.root, newsroom, opts.brief, now, opts)
       : newDraft(opts.root, newsroom.config.paper.name, newsroom.config.paper.tagline, now);
 
   const logFile = join(p.editionDir(draft.id), 'log.jsonl');
@@ -100,6 +106,7 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     root: opts.root,
     forceProvider: opts.forceProvider,
     research: opts.research,
+    maxFindings: opts.maxFindings,
     clarify: opts.clarify !== false,
     researcherTimeoutMs: opts.researcherTimeoutMs ?? 180_000,
     reporterTimeoutMs: opts.reporterTimeoutMs ?? 120_000,
@@ -198,7 +205,13 @@ function newDraft(
 }
 
 /** Seed one synthetic story from a free-text brief and start at ASSIGN (skips WIRE). */
-function briefDraft(root: string, newsroom: Newsroom, topic: string, now: Date): EditionDraft {
+function briefDraft(
+  root: string,
+  newsroom: Newsroom,
+  topic: string,
+  now: Date,
+  opts: RunOptions,
+): EditionDraft {
   const date = now.toISOString().slice(0, 10);
   const { id, number } = nextEditionId(root, date);
   // A brief is topic-agnostic: use a synthetic `brief` beat so it never inherits an
@@ -209,14 +222,17 @@ function briefDraft(root: string, newsroom: Newsroom, topic: string, now: Date):
   const beatId = 'brief';
   const beatName = 'The Newsdesk';
   const reporterName = beat?.reporter ?? 'The Newsdesk';
-  const hash = shortHash('brief', topic, date);
+  const hash = shortHash('brief', topic, date, opts.priorContext ?? '');
+  const priorBlock = opts.priorContext
+    ? `\n\nPrior coverage of this ongoing assignment (newest first):\n${opts.priorContext}\nReport what is NEW or has CHANGED since — advance the story, do not repeat what is already covered.`
+    : '';
   const signal: Signal = {
     id: makeSignalId('brief', hash),
     sourceId: 'brief',
     sourceType: 'brief',
     timestamp: now.toISOString(),
     title: topic,
-    body: `Editor's brief — front-page it: "${topic}". Investigate, tie every claim to a source, and file what stands up.`,
+    body: `Editor's brief — front-page it: "${topic}". Investigate, tie every claim to a source, and file what stands up.${priorBlock}`,
     hash,
   };
   return {
@@ -225,6 +241,7 @@ function briefDraft(root: string, newsroom: Newsroom, topic: string, now: Date):
     date,
     paperName: newsroom.config.paper.name,
     tagline: newsroom.config.paper.tagline,
+    assignmentId: opts.assignmentId,
     stage: 'ASSIGN',
     stories: [
       {

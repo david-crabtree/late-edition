@@ -70,6 +70,8 @@ export interface Edition {
   weatherLine?: string;
   /** True for a between-editions bulletin fired by a tripwire, not the daily cycle. */
   lateExtra?: boolean;
+  /** The standing assignment this edition was produced for, if any. */
+  assignmentId?: string;
   stories: Story[];
   briefs: Brief[];
   /** The managing editor's notes on judgement calls. */

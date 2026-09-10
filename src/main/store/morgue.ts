@@ -120,6 +120,45 @@ export function searchMorgue(root: string, query: string, limit = 20): MorgueEnt
   return scored.slice(0, limit).map((x) => x.e);
 }
 
+/** One assignment's recent editions, newest first — the history a new run builds on. */
+export interface CoverageItem {
+  editionId: string;
+  date: string;
+  headline: string;
+  standfirst: string;
+}
+
+/** Recent coverage for a standing assignment, to feed the next run as "what we've done". */
+export function assignmentCoverage(root: string, assignmentId: string, limit = 5): CoverageItem[] {
+  const dir = paths(root).editionsDir;
+  let names: string[] = [];
+  try {
+    names = readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort()
+      .reverse();
+  } catch {
+    return [];
+  }
+  const out: CoverageItem[] = [];
+  for (const name of names) {
+    if (out.length >= limit) break;
+    let ed: Edition;
+    try {
+      ed = JSON.parse(readFileSync(join(dir, name, 'edition.json'), 'utf8')) as Edition;
+    } catch {
+      continue;
+    }
+    if (ed.assignmentId !== assignmentId) continue;
+    for (const s of ed.stories) {
+      out.push({ editionId: ed.id, date: ed.date, headline: s.headline, standfirst: s.standfirst });
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
+
 /** Past stories related to a given one, by shared terms (excludes the current edition). */
 export function relatedCoverage(
   entries: MorgueEntry[],
