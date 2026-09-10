@@ -75,9 +75,10 @@ function ensureNewsroom(root: string): string {
 }
 /** The active newsroom folder — the user's chosen one, or a default under userData. */
 function newsroomRoot(): string {
-  // A diagnostic run files real editions and can spend real allowance, so it gets its own
-  // throwaway newsroom. It must never write into — or bill against — the user's own.
-  if (process.env.LE_DEBUG_RUN) {
+  // A diagnostic run files real editions, so by default it gets its own throwaway newsroom
+  // and the offline stand-in: it must never write into — or bill against — the user's own.
+  // `LE_DEBUG_RUN=real` is the deliberate opt-out, for checking a real setup end to end.
+  if (process.env.LE_DEBUG_RUN && process.env.LE_DEBUG_RUN !== 'real') {
     return ensureNewsroom(join(tmpdir(), 'late-edition-debug-newsroom'));
   }
   const chosen = readAppConfig().root;
@@ -212,14 +213,18 @@ function createWindow(): void {
             const off2 = window.lateEdition.onEvent(ev => {
               if (ev.stage === 'usage') readouts.push(window.__leProbe.usageText());
             });
-            let r = await window.lateEdition.run('the price of tea', { provider: 'fake', research: 0 });
+            // Offline by default. LE_DEBUG_RUN=real uses the configured staff and spends
+            // real allowance, so it only happens when someone asks for it by name.
+            const real = ${JSON.stringify(process.env.LE_DEBUG_RUN === 'real')};
+            const brief = ${JSON.stringify(process.env.LE_DEBUG_BRIEF || 'the price of tea')};
+            const runOpts = real ? { research: 1 } : { provider: 'fake', research: 0 };
+            let r = await window.lateEdition.run(brief, runOpts);
             // An offline story is always thinly sourced, so the desk stops to ask. Answer
             // "run it as it stands" and carry on to the press.
             let stoppedToAsk = false;
             if (r.needsDecision) {
               stoppedToAsk = true;
-              r = await window.lateEdition.answerVerify(r.editionId, false,
-                { provider: 'fake', research: 0 });
+              r = await window.lateEdition.answerVerify(r.editionId, false, runOpts);
             }
             off(); off2();
             const seenTokens = readouts.filter(t => /\\d/.test(t));
@@ -232,6 +237,10 @@ function createWindow(): void {
               readoutStates: climbed, midRunReadout: seenTokens[0] || '(never showed a figure)',
               finalReadout: window.__leProbe.usageText(),
               desksWithConsole: desks.map(d => d.role + ':' + d.lines + '[' + d.kinds.join(',') + ']'),
+              editionId: r.editionId,
+              headline: ((((r.edition || {}).stories || [])[0]) || {}).headline,
+              bodyChars: (((((r.edition || {}).stories || [])[0]) || {}).body || '').length,
+              sources: (((((r.edition || {}).stories || [])[0]) || {}).sources || []).length,
             });
           })()`),
         );
@@ -276,7 +285,7 @@ function createWindow(): void {
             if (read) read.click();
             await new Promise(r2 => setTimeout(r2, 400));
             const r = await window.lateEdition.rewrite(target,
-              { format: 'linkedin', tone: 'conversational', length: 'short' });
+              { format: 'linkedin', tone: 'conversational', length: 'standard' });
             const panel = document.getElementById('fpRewrite');
             const buttons = [...panel.querySelectorAll('[data-fmt]')].map(b => b.dataset.fmt);
             return JSON.stringify({

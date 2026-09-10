@@ -2,8 +2,10 @@
 
 How to build the installers, and what to do about code signing.
 
-> Prices, eligibility rules and URLs move. Check the current terms before committing money
-> to any of them.
+> The signing figures below were checked against first-party sources (Microsoft Learn,
+> SignPath, Certum's shop, Apple's membership comparison) on 10 September 2026. Prices and
+> eligibility move — recheck before spending anything. The full sourced write-up is edition
+> `2026-09-10-009` in the newsroom.
 
 ## Build them
 
@@ -77,39 +79,62 @@ self-contained installer or a single portable executable, and producing one is f
 is a separate question about how the operating system greets that file when someone
 downloads it.
 
-### Windows — you can ship unsigned
+### Windows — you can ship unsigned, mostly
 
-An unsigned build is **not blocked**. Windows shows a full-screen blue "Windows protected
-your PC" panel; the user clicks **More info**, then **Run anyway**. It frightens people and
-it costs you downloads, but it works.
+An unsigned build is usually **warned about rather than blocked**. Windows shows a
+full-screen blue "Windows protected your PC" panel; the user clicks **More info**, then
+**Run anyway**. Two caveats that matter:
 
-One thing that catches people out: since 2023 Microsoft has required code-signing keys to
-live on certified hardware, so the old cheap "download a .pfx" certificates no longer exist.
-Every route below involves a physical token or a hosted signing service.
+- **Windows 11 Smart App Control can block an unsigned file outright**, not merely warn.
+- **Enterprise policy can remove the "Run anyway" click entirely.**
 
-| Route | Roughly | Notes |
+The bigger cost is reputation. An unsigned file starts at zero reputation with *every new
+version* and cannot inherit it, so every release begins the climb again. A consistent
+signing identity carries reputation across releases. Building reputation takes weeks and
+hundreds of clean installs, and there is no way to submit a build to speed it up.
+
+Since 2023 Microsoft has required code-signing keys to live on certified hardware, so the
+old cheap "download a .pfx" certificates no longer exist.
+
+| Route | Cost | Notes |
 | --- | --- | --- |
-| Ship unsigned | Free | SmartScreen warning on first run. Publish SHA-256 checksums and tell people plainly what they'll see. |
-| **SignPath Foundation** | Free | Free code signing for open-source projects. Application and review required. **Start here** — it costs nothing and the review takes time. |
-| Certum open-source certificate | ~£25–30/yr | Cheapest certificate an individual can actually get. Ships on a hardware token. |
-| Azure Trusted Signing | ~$10/mo | Microsoft's own service, runs from CI. Needs a verified legal identity; individuals are eligible with a few years of verifiable history. |
+| Ship unsigned | Free | SmartScreen warning; Smart App Control may block. Publish checksums and say plainly what people will see. |
+| **SignPath Foundation** | Free | Free OV-level signing for open source, and Microsoft's own docs point you there. **Start here.** |
+| Certum open source | €25 / €49 / €69 | €25 certificate only if you already have a cryptoCertum card and reader; **€49 cloud version, no hardware**; €69 for the set with the card. |
+| Microsoft Store (MSIX) | Free | Free, and no warning at all. Worth considering as a second distribution channel. |
+| Azure Artifact Signing | ~$10/mo | Formerly Trusted Signing. **Individual developers are limited to the USA and Canada** — so as a UK individual this route is closed to you. Organisations in the UK/EU are eligible. |
+| OV certificate | $150–300/yr | Microsoft's own advice to an individual outside the US/Canada. |
+| EV certificate | $400+/yr | **Don't.** EV lost its instant SmartScreen bypass in 2024 and now behaves like OV. Microsoft's own docs call the premium "no longer justified". |
 
-An OV certificate does not grant instant trust — SmartScreen reputation accrues over
-downloads and takes weeks. An EV certificate is trusted immediately but costs several
-hundred a year.
+**SignPath Foundation's conditions**, since they shape the project rather than just the
+build: an OSI-approved licence with no commercial dual-licensing, no proprietary components
+beyond system libraries, active maintenance, an existing release, and nothing that reads as
+malware or a hacking/vulnerability-scanning tool. Operationally: you sign only artifacts
+built from your own source, builds must be verifiable from source, every release needs
+manual approval, and every contributor needs multi-factor authentication. The certificate is
+issued in SignPath Foundation's name, not yours, with the key on their HSM.
+
+Late Edition is MIT with no proprietary parts, so it qualifies on licence. The contributor
+MFA requirement is the one to check before applying.
+
+**One date to diary:** from 27 February 2026 a single code-signing certificate may be valid
+for a maximum of 459 days. Certum reissues free during a longer service period, but a €69
+set buys less calendar time than the price suggests.
 
 ### macOS — there is no free route
 
-This is the honest answer. An unsigned, un-notarised app is quarantined on download, and on
-Apple Silicon a downloaded unsigned app is **refused outright**, not merely warned about.
-The workaround is right-click → Open, or stripping the quarantine flag by hand:
+An unsigned, un-notarised app is quarantined on download, and on Apple Silicon a downloaded
+unsigned app is **refused outright**, not merely warned about. The workaround is right-click
+→ Open, or stripping the quarantine flag by hand:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Late Edition.app"
 ```
 
-Asking strangers to run that is a bad first experience and reads as sketchy. Notarising
-requires the Apple Developer Program at $99/yr, and there is no open-source exemption.
+Asking strangers to run that is a bad first experience and reads as sketchy. Apple lists Mac
+notarisation and Developer ID certificates as **paid** Apple Developer Program benefits; the
+free registered-developer tier gets beta releases, on-device testing through Xcode and the
+forums, and no notarisation. There is no open-source exemption.
 
 The `mac` block sets `identity: null` so a build on a machine with no certificate doesn't
 fail looking for one.
@@ -121,11 +146,16 @@ normal for the format.
 
 ## What I would ship first
 
-1. **Windows, unsigned**, both the installer and the portable build. Publish checksums.
-2. **Linux AppImage.**
-3. **Hold macOS** until someone asks. £80/yr on a guess is worse than a note in the README
-   saying Mac builds aren't available yet.
-4. **Apply to SignPath in parallel.** It's free and the wait is the only cost.
+1. **Apply to SignPath Foundation now.** It's free, it's the route Microsoft's own docs
+   point at, and the review is the only thing standing between you and a signed Windows
+   build. Check the contributor-MFA condition first.
+2. **Windows, unsigned**, both the installer and the portable build, while that's pending.
+   Publish checksums.
+3. **Linux AppImage.**
+4. **Hold macOS.** $99/yr on a guess is worse than a note in the README saying Mac builds
+   aren't available yet.
+5. If SignPath doesn't work out, **Certum's €49 cloud certificate** is the cheapest real
+   option for a UK individual. Azure Artifact Signing is not open to you personally.
 
 Put one honest line in the README about the Windows warning and how to get past it. Plenty
 of well-regarded free tools do exactly this, and being upfront about it reads far better

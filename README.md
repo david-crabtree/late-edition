@@ -30,7 +30,9 @@ Download the build for your platform from the
 
 **Windows will warn you the first time.** The build is not code-signed yet, so you'll get a
 blue "Windows protected your PC" panel. Click **More info**, then **Run anyway**. Checksums
-are published with every release if you'd like to verify the download first. Mac builds
+are published with every release if you'd like to verify the download first. On Windows 11,
+Smart App Control may block it outright rather than warn; turning it off, or waiting for a
+signed build, are the only ways round that. Mac builds
 aren't available yet — see [`docs/releasing.md`](docs/releasing.md) for why.
 
 You'll also need at least one AI agent CLI installed and signed in, since Late Edition
