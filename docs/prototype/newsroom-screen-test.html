@@ -124,12 +124,23 @@
   body.real .masthead h1{ font-size:clamp(1.7rem,5.5vw,2.6rem); letter-spacing:.05em; }
   .staff .budgetcard{ display:flex; flex-direction:column; justify-content:center; gap:8px; padding:10px 12px; }
   .staff .budgetcard .row{ margin:0 !important; }
-  .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:5% 8%; gap:10px; z-index:5; line-height:1.35; overflow:auto; }
+  .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; z-index:5; overflow:auto; padding:4% 6%; }
   .frontpage[hidden]{ display:none; }
+  .frontpage .fp-paper{ max-width:680px; margin:0 auto; display:flex; flex-direction:column; align-items:center; text-align:center; gap:9px; line-height:1.35; }
   .frontpage .fp-mast{ font-family:var(--display); font-weight:700; text-transform:uppercase; letter-spacing:.08em; line-height:1.1; font-size:clamp(1.1rem,4vw,2rem); color:#20180c; border-bottom:3px double #20180c; padding-bottom:5px; width:100%; }
   .frontpage .fp-kicker{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.14em; line-height:1.4; color:#7a2d1d; }
-  .frontpage .fp-head{ font-family:var(--display); font-weight:700; text-transform:uppercase; line-height:1.1; font-size:clamp(1.05rem,4.2vw,2.1rem); margin:0; text-wrap:balance; color:#161009; }
-  .frontpage .fp-stand{ font-family:var(--type); font-size:clamp(.78rem,2.4vw,1rem); line-height:1.4; color:#3a3227; margin:0; max-width:44ch; }
+  .frontpage .fp-head{ font-family:var(--display); font-weight:700; text-transform:uppercase; line-height:1.1; font-size:clamp(1.15rem,4.4vw,2.2rem); margin:0; text-wrap:balance; color:#161009; }
+  .frontpage .fp-stand{ font-family:var(--type); font-size:clamp(.82rem,2.4vw,1.02rem); line-height:1.4; color:#3a3227; margin:0; max-width:46ch; }
+  .frontpage .fp-byline{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.1em; text-transform:uppercase; color:#6a6250; margin:0; }
+  .frontpage .fp-body{ text-align:left; max-width:62ch; font-family:var(--type); font-size:clamp(.82rem,2.2vw,1rem); line-height:1.6; color:#241c10; margin-top:2px; }
+  .frontpage .fp-body p{ margin:0 0 .72em; text-align:justify; } .frontpage .fp-body p:last-child{ margin-bottom:0; }
+  .frontpage .fp-body sup{ color:#7a2d1d; font-weight:700; font-size:.68em; }
+  .frontpage .fp-sources{ text-align:left; max-width:62ch; width:100%; font-size:.74rem; color:#574f3f; border-top:1px solid #cdbfa0; padding-top:7px; }
+  .frontpage .fp-sources ol{ margin:.25rem 0 0; padding-left:1.4rem; } .frontpage .fp-sources li{ margin:.12rem 0; }
+  .frontpage .fp-also{ text-align:left; max-width:62ch; width:100%; font-size:.8rem; color:#40382a; border-top:1px solid #cdbfa0; padding-top:7px; }
+  .frontpage .fp-also ul{ margin:.25rem 0 0; padding-left:1.1rem; } .frontpage .fp-also li{ margin:.14rem 0; }
+  .frontpage .fp-sources b, .frontpage .fp-also b{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.1em; text-transform:uppercase; color:#7a2d1d; display:block; margin-bottom:2px; }
+  .frontpage .fp-actions{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
   .frontpage .chip{ background:#20180c; color:var(--bone); border-color:#20180c; margin-top:2px; }
   .roster{ margin-top:9px; display:grid; gap:5px; }
   .ag{ display:grid; grid-template-columns:minmax(72px,1fr) minmax(84px,1.3fr) minmax(70px,1fr) 62px auto auto; gap:8px; align-items:center; font-family:var(--pixel); font-size:.5rem; padding:5px 7px; background:#160f08; border:1px solid #2c2519; border-radius:4px; }
@@ -156,11 +167,20 @@
     <div class="stage">
       <canvas id="screen" width="470" height="180" tabindex="0" aria-label="Walkable pixel-art newsroom"></canvas>
       <div class="frontpage" id="frontpage" hidden>
-        <div class="fp-mast">THE DAILY BIT</div>
-        <div class="fp-kicker">LATE EDITION · CITY DESK</div>
-        <h2 class="fp-head" id="fpHead"></h2>
-        <p class="fp-stand" id="fpStand"></p>
-        <button class="chip" id="fpClose">◂ Back to the floor</button>
+        <div class="fp-paper">
+          <div class="fp-mast">THE DAILY BIT</div>
+          <div class="fp-kicker">LATE EDITION · CITY DESK</div>
+          <h2 class="fp-head" id="fpHead"></h2>
+          <p class="fp-stand" id="fpStand"></p>
+          <p class="fp-byline" id="fpByline"></p>
+          <div class="fp-body" id="fpBody"></div>
+          <div class="fp-sources" id="fpSources"></div>
+          <div class="fp-also" id="fpAlso"></div>
+          <div class="fp-actions">
+            <button class="chip" id="fpOpen">Open the full paper ↗</button>
+            <button class="chip" id="fpClose">◂ Back to the floor</button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="marquee"><span id="mScene">ROAMING · ← → TO WALK</span><span><span class="on">●</span> REC · PARALLAX · 12 FPS</span></div>
@@ -696,6 +716,7 @@
   const briefInput=document.getElementById('briefInput'), budgetRange=document.getElementById('budgetRange'),
         budgetLabel=document.getElementById('budgetLabel'), frontpage=document.getElementById('frontpage'),
         fpHead=document.getElementById('fpHead'), fpStand=document.getElementById('fpStand'),
+        fpByline=document.getElementById('fpByline'), fpBody=document.getElementById('fpBody'), fpSources=document.getElementById('fpSources'), fpAlso=document.getElementById('fpAlso'),
         staffEl=document.getElementById('staff'), approvalsEl=document.getElementById('approvals'), apListEl=document.getElementById('apList');
   const fmtK=n=>Math.round(n/1000)+'k';
   const tidy=t=>t.replace(/^\s*(rumou?rs?\s+(of|about|on)\s+|the\s+|a\s+|an\s+)/i,'').replace(/\s+/g,' ').trim();
@@ -868,6 +889,7 @@
   briefInput.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); briefChief(briefInput.value); briefInput.value=''; growBrief(); } });
   document.getElementById('examples').addEventListener('click',e=>{ const b=e.target.closest('.ex'); if(b){ briefInput.value=b.textContent; briefChief(b.textContent); } });
   document.getElementById('fpClose').addEventListener('click',()=>{ frontpage.hidden=true; });
+  { const fo=document.getElementById('fpOpen'); if(fo) fo.addEventListener('click',()=>{ if(window.lateEdition&&lastEditionId) window.lateEdition.openPaper(lastEditionId); }); }
   document.getElementById('reelInput').addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ loadReel(JSON.parse(String(fr.result))); }catch(_){ logEvent('could not read that reel.json'); } }; fr.readAsText(f); e.target.value=''; });
   approvalsEl.addEventListener('click',e=>{ const b=e.target.closest('[data-ap]'); if(b) resolveApproval(+b.dataset.ap, b.dataset.ok==='1'); });
   budgetLabel.textContent=fmtK(+budgetRange.value); buildStaffCards();
@@ -950,10 +972,25 @@
       el.textContent = b==='api' ? `⚠ ${fmtK(usage.total)} tokens · REAL API SPEND $${(usage.costUsd||0).toFixed(2)}` : b==='subscription' ? `${fmtK(usage.total)} tokens · plan usage — not billed` : `${fmtK(usage.total)} tokens · offline`;
       el.className='usage '+(b==='api'?'api':b==='subscription'?'plan':'free'); } }
   let realBusy=false, pendingClarify=null;
+  // Render a filed edition into the in-window front page: the lead story in full (byline, body,
+  // numbered sources) plus the other headlines — not just the headline + standfirst teaser.
+  const FP_CITE=/\[((?:[a-z0-9_]+:[0-9a-f]{6,})(?:\s*,\s*[a-z0-9_]+:[0-9a-f]{6,})*)\]/gi, FP_STRAY=/\[#[^\]\n]{0,60}\]|\[(?:ref|citation needed|source)\]/gi;
+  const fpEsc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  function fpRenderEdition(edition){ const stories=(edition&&edition.stories)||[]; const st=stories[0];
+    if(!st){ fpHead.textContent='A quiet day on the wire'; fpStand.textContent='Nothing stood up for page one.'; fpByline.textContent=''; fpBody.innerHTML=''; fpSources.innerHTML=''; fpAlso.innerHTML=''; frontpage.hidden=false; return; }
+    fpHead.textContent=st.headline||'A quiet day on the wire'; fpStand.textContent=st.standfirst||'';
+    fpByline.textContent=st.byline?('By '+st.byline):'';
+    const srcs=st.sources||[], numOf=new Map(); srcs.forEach((r,i)=>{ if(r&&r.signalId) numOf.set(r.signalId,i+1); });
+    fpBody.innerHTML=(st.body||'').split(/\n{2,}/).map(p=>{ const h=fpEsc(p.trim())
+        .replace(FP_CITE,(_m,ids)=>{ const ns=ids.split(',').map(id=>numOf.get(id.trim())).filter(Boolean); return ns.length?('<sup>['+ns.join(',')+']</sup>'):''; })
+        .replace(FP_STRAY,'').replace(/\n/g,'<br>'); return h?('<p>'+h+'</p>'):''; }).join('');
+    fpSources.innerHTML=srcs.length?('<b>Sources</b><ol>'+srcs.map(r=>'<li>'+fpEsc(r.title||r.url||'source')+'</li>').join('')+'</ol>'):'';
+    const others=stories.slice(1); fpAlso.innerHTML=others.length?('<b>Also inside</b><ul>'+others.map(s=>'<li>'+fpEsc(s.headline||'')+'</li>').join('')+'</ul>'):'';
+    frontpage.hidden=false; }
   // Handle whatever the engine returns: a finished edition, a clarification request, or a failure.
   function applyRunResult(r){ const openBtn=document.getElementById('appOpen');
     if(r&&r.ok){ pendingClarify=null; lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
-      if(st){ fpHead.textContent=st.headline||'A quiet day on the wire'; fpStand.textContent=st.standfirst||''; frontpage.hidden=false; }
+      fpRenderEdition(r.edition);
       const ed=roleAgent('editor'); if(ed) charLog(ed,'act',`Page one: ${st?st.headline:'(quiet day)'}`);
       applyUsage(r.usage); mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`);
       if(openBtn) openBtn.hidden=false; return; }
