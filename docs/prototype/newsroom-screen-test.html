@@ -122,8 +122,11 @@
   body.real .wrap{ max-width:1120px; padding:14px 0 48px; }   /* a bit larger in the app window; keep the last card off the bottom edge */
   body.real .masthead{ margin-bottom:14px; }
   body.real .masthead h1{ font-size:clamp(1.7rem,5.5vw,2.6rem); letter-spacing:.05em; }
-  .staff .budgetcard{ display:flex; flex-direction:column; justify-content:center; gap:8px; padding:10px 12px; }
+  .staff .budgetcard{ display:flex; flex-direction:column; justify-content:center; gap:9px; padding:10px 12px; }
   .staff .budgetcard .row{ margin:0 !important; }
+  .staff .budgetcard .rdepth{ align-items:center; gap:8px; flex-wrap:wrap; border-top:1px solid #2c2519; padding-top:9px; }
+  .staff .budgetcard select{ background:#12100b; color:var(--bone); border:1px solid #3a2e1b; border-radius:4px; padding:4px 7px; font-family:var(--type); font-size:.84rem; cursor:pointer; }
+  .staff .budgetcard select:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
   .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; z-index:5; overflow:auto; padding:4% 6%; }
   .frontpage[hidden]{ display:none; }
   .frontpage .fp-paper{ max-width:680px; margin:0 auto; display:flex; flex-direction:column; align-items:center; text-align:center; gap:9px; line-height:1.35; }
@@ -972,6 +975,11 @@
       el.textContent = b==='api' ? `⚠ ${fmtK(usage.total)} tokens · REAL API SPEND $${(usage.costUsd||0).toFixed(2)}` : b==='subscription' ? `${fmtK(usage.total)} tokens · plan usage — not billed` : `${fmtK(usage.total)} tokens · offline`;
       el.className='usage '+(b==='api'?'api':b==='subscription'?'plan':'free'); } }
   let realBusy=false, pendingClarify=null;
+  // Research depth — how many sources the desk digs up before writing. Standard is the baseline;
+  // Deep runs a second pass and keeps more; Light keeps it cheap. Passed to the engine per run.
+  const RESEARCH_LEVELS={ light:{research:1, maxFindings:3, label:'Light'}, standard:{research:1, maxFindings:6, label:'Standard'}, deep:{research:2, maxFindings:10, label:'Deep'} };
+  let researchKey='standard';
+  const researchOpts=()=>{ const l=RESEARCH_LEVELS[researchKey]||RESEARCH_LEVELS.standard; return { research:l.research, maxFindings:l.maxFindings }; };
   // Render a filed edition into the in-window front page: the lead story in full (byline, body,
   // numbered sources) plus the other headlines — not just the headline + standfirst teaser.
   const FP_CITE=/\[((?:[a-z0-9_]+:[0-9a-f]{6,})(?:\s*,\s*[a-z0-9_]+:[0-9a-f]{6,})*)\]/gi, FP_STRAY=/\[#[^\]\n]{0,60}\]|\[(?:ref|citation needed|source)\]/gi;
@@ -1009,7 +1017,7 @@
     charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
     const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;
     const unsub=window.lateEdition.onEvent(applyRealEvent);
-    try{ const r=await window.lateEdition.run(brief,{}); applyRunResult(r); }
+    try{ const r=await window.lateEdition.run(brief, researchOpts()); applyRunResult(r); }
     catch(err){ charLog(chief,'act',`Run error: ${(err&&err.message)||err}`); mScene.textContent='RUN FAILED'; }
     finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   // The user's answer to the Chief → resume the paused edition and finish it.
@@ -1017,7 +1025,7 @@
     chief.status='working'; chief.doing='ON IT'; charLog(chief,'do',`Answer taken: "${answer}" — running the floor.`); bubbleOnly(chief,'Right — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE';
     const openBtn=document.getElementById('appOpen'); if(openBtn) openBtn.hidden=true; renderRoster();
     const unsub=window.lateEdition.onEvent(applyRealEvent);
-    try{ const r=await window.lateEdition.answerClarification(editionId, answer); applyRunResult(r); }
+    try{ const r=await window.lateEdition.answerClarification(editionId, answer, researchOpts()); applyRunResult(r); }
     catch(err){ charLog(chief,'act',`Run error: ${(err&&err.message)||err}`); mScene.textContent='RUN FAILED'; }
     finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   function buildAppChrome(){
@@ -1037,7 +1045,15 @@
     if(deck && deck.children.length>=2){ const briefCol=deck.children[1], controlsCol=deck.children[2];
       if(briefCol){ bar.after(briefCol); briefCol.style.margin='16px 0 6px'; }   // don't let the brief box crowd the appbar or the log below
       const budgetRow=document.getElementById('budgetRange') && document.getElementById('budgetRange').closest('.row');
-      if(budgetRow){ const card=document.createElement('div'); card.className='sc budgetcard'; card.appendChild(budgetRow); const st=document.getElementById('staff'); if(st) st.appendChild(card); }
+      if(budgetRow){ const card=document.createElement('div'); card.className='sc budgetcard'; card.appendChild(budgetRow);
+        // Research-depth control, baseline "Standard", up to "Deep" or down to "Light".
+        const rr=document.createElement('div'); rr.className='row rdepth';
+        rr.innerHTML='<label class="hint" for="researchLevel">Research depth</label><select id="researchLevel">'+Object.keys(RESEARCH_LEVELS).map(k=>`<option value="${k}"${k===researchKey?' selected':''}>${RESEARCH_LEVELS[k].label}</option>`).join('')+'</select><span class="hint" id="researchHint"></span>';
+        card.appendChild(rr);
+        const st=document.getElementById('staff'); if(st) st.appendChild(card);
+        const sel=rr.querySelector('#researchLevel'), hint=rr.querySelector('#researchHint');
+        const setHint=()=>{ const l=RESEARCH_LEVELS[researchKey]; if(hint) hint.textContent=`~${l.maxFindings} sources${l.research>1?' · 2 passes':''}`; };
+        setHint(); sel.addEventListener('change',()=>{ researchKey=sel.value; setHint(); }); }
       if(controlsCol) controlsCol.style.display='none';   // the sim's control column — the appbar has the app's own look-around
     }
     const $=id=>document.getElementById(id);

@@ -135,8 +135,13 @@ MATERIALS.
 House style:
 {{style}}
 
-Write the finished story as Markdown prose: 2-4 tight paragraphs. Lead with the angle the
-editor chose ("{{chosenAngle}}"). Every factual claim must trace to a source.
+Write the finished story as Markdown prose. Lead with the angle the editor chose
+("{{chosenAngle}}").
+
+Length follows substance, not a quota. You have {{sourceCount}} sourced facts to work with:
+give the story the room it earns — a well-sourced piece usually runs four to six tight
+paragraphs, a thin one should stay short rather than pad. Never waffle: cut any sentence that
+doesn't add a fact or move the story forward. Every factual claim must trace to a source.
 
 CITATIONS — follow exactly: cite by writing the source's id verbatim in square brackets,
 copied character-for-character from the MATERIALS, e.g. [research:1a2b3c4d5e6f]. Group

@@ -168,7 +168,11 @@ ipcMain.handle('le:setStaff', async (_e, a: Record<string, RolePick>) => {
 /** Brief the Chief → run the real pipeline, streaming every event to the renderer. */
 ipcMain.handle(
   'le:run',
-  async (e, brief: string, opts: { provider?: string; research?: number }) => {
+  async (
+    e,
+    brief: string,
+    opts: { provider?: string; research?: number; maxFindings?: number },
+  ) => {
     const root = newsroomRoot();
     const send = (ev: LogEvent) => {
       if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
@@ -179,6 +183,7 @@ ipcMain.handle(
         brief,
         forceProvider: opts?.provider || undefined,
         research: opts?.research,
+        maxFindings: opts?.maxFindings,
         clarify: true, // let the Chief pause a vague brief and ask the user
         onEvent: send,
       });
@@ -204,38 +209,48 @@ ipcMain.handle(
 );
 
 /** The user's answer to the Chief's clarification → resume the paused edition and finish it. */
-ipcMain.handle('le:answerClarification', async (e, editionId: string, answer: string) => {
-  const root = newsroomRoot();
-  const send = (ev: LogEvent) => {
-    if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
-  };
-  try {
-    const res = await runEdition({
-      root,
-      resumeId: editionId,
-      clarificationAnswer: answer,
-      clarify: true,
-      onEvent: send,
-    });
-    return {
-      ok: true as const,
-      editionId: res.editionId,
-      edition: res.edition,
-      warnings: res.warnings,
-      usage: await summarizeUsage(res.edition),
+ipcMain.handle(
+  'le:answerClarification',
+  async (
+    e,
+    editionId: string,
+    answer: string,
+    opts: { research?: number; maxFindings?: number } = {},
+  ) => {
+    const root = newsroomRoot();
+    const send = (ev: LogEvent) => {
+      if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
     };
-  } catch (err) {
-    if (err instanceof ClarificationNeededError) {
+    try {
+      const res = await runEdition({
+        root,
+        resumeId: editionId,
+        clarificationAnswer: answer,
+        research: opts?.research,
+        maxFindings: opts?.maxFindings,
+        clarify: true,
+        onEvent: send,
+      });
       return {
-        ok: false as const,
-        needsClarification: true as const,
-        editionId: err.editionId,
-        questions: err.questions,
+        ok: true as const,
+        editionId: res.editionId,
+        edition: res.edition,
+        warnings: res.warnings,
+        usage: await summarizeUsage(res.edition),
       };
+    } catch (err) {
+      if (err instanceof ClarificationNeededError) {
+        return {
+          ok: false as const,
+          needsClarification: true as const,
+          editionId: err.editionId,
+          questions: err.questions,
+        };
+      }
+      return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }
-    return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
-  }
-});
+  },
+);
 
 /** Per-role token totals + how it's paid for — the app's honest usage readout. */
 async function summarizeUsage(edition: Edition) {

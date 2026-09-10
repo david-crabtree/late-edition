@@ -603,6 +603,9 @@ export async function stageWrite(draft: EditionDraft, ctx: PipelineContext): Pro
       beatName: story.beatName,
       style: ctx.newsroom.style,
       chosenAngle: story.call?.chosenAngle ?? story.reports[0]?.proposedAngle ?? '',
+      // Let the writer scale length to how much reporting it actually has (fuller when
+      // well-sourced, short when thin — never padded).
+      sourceCount: String(story.signals.length),
     });
     try {
       const outcome = await runJob<string>({

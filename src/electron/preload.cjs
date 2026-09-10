@@ -17,8 +17,8 @@ contextBridge.exposeInMainWorld('lateEdition', {
   /** Brief the Chief -> run the real pipeline. Resolves with the finished edition + usage, or a clarification request. */
   run: (brief, opts) => ipcRenderer.invoke('le:run', brief, opts || {}),
   /** Answer the Chief's clarification -> resume the paused edition and finish it. */
-  answerClarification: (editionId, answer) =>
-    ipcRenderer.invoke('le:answerClarification', editionId, answer),
+  answerClarification: (editionId, answer, opts) =>
+    ipcRenderer.invoke('le:answerClarification', editionId, answer, opts || {}),
   /** Stop switch: halt all agent calls / lift the halt / query it. */
   halt: () => ipcRenderer.invoke('le:halt'),
   resume: () => ipcRenderer.invoke('le:resume'),
