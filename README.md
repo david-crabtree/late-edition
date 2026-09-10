@@ -19,8 +19,9 @@ read the paper before it goes to your team.
 - **Provider neutral.** Claude, OpenAI, Google, local models — all first class.
 - **MIT licensed.** Free and open source, contributor friendly from day one.
 
-> Status: early construction. See [`docs/build-plan.md`](docs/build-plan.md) for the full
-> vision and [`docs/decisions.md`](docs/decisions.md) for what's actually been decided.
+> Status: early. See [`docs/architecture.md`](docs/architecture.md) for how it's put
+> together, [`docs/build-plan.md`](docs/build-plan.md) for the full vision, and
+> [`docs/decisions.md`](docs/decisions.md) for what's actually been decided.
 
 ## Installing
 

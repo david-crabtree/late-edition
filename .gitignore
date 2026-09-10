@@ -27,3 +27,6 @@ Thumbs.db
 
 # Packaged installers
 release/
+
+# Local working notes (not part of the release)
+notes/

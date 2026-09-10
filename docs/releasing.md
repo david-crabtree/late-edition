@@ -44,6 +44,32 @@ one file thinking you shipped two. They are named `-Setup-` and `-portable-` for
 - [ ] `npm audit --omit=dev` should report zero. The dev-only advisories come from the build
       toolchain and don't ship, but check the production number before every release.
 
+## Before the very first push
+
+The repository has no remote yet, which is the cheap moment to do all of this.
+
+- [ ] **Drop the pre-scrub history.** Commit messages have been rewritten to remove AI
+      attribution trailers, but the originals are still reachable locally:
+
+      ```bash
+      git log --format=%B --all | grep -ci co-authored-by   # should be 0 after the next two lines
+      git branch -D backup/pre-attribution-scrub
+      git for-each-ref --format='%(refname)' refs/original | xargs -n1 git update-ref -d
+      git reflog expire --expire=now --all && git gc --prune=now --aggressive
+      ```
+
+      Then check nothing came back:
+
+      ```bash
+      git log --all --format='%H %B' | grep -iE 'co-authored-by|generated with' | head
+      ```
+
+- [ ] **Push only `main`.** `git push -u origin main`, not `--all` and not `--mirror`, or the
+      backup branch goes up with it.
+- [ ] Older commit *diffs* still contain the development notes that were removed from the
+      working tree. Nobody reads those, but if it matters, squashing to a smaller history is
+      the only clean fix, and it's a decision to make before the first push, not after.
+
 ## Code signing: what you actually have to do
 
 **Nobody needs Node or a command prompt either way.** A packaged Electron app is a

@@ -3,7 +3,7 @@
 
 Working title. Rename freely. Free, open source, MIT.
 
-This document is written for an autonomous build agent (Claude Opus or similar). Read it fully before writing code. Where a detail is marked VERIFY, check it against the real tool at build time rather than trusting this document. Where something is marked DECIDE, make the call, write it in `docs/decisions.md`, and move on.
+This document is the original build plan. Read it fully before writing code. Where a detail is marked VERIFY, check it against the real tool at build time rather than trusting this document. Where something is marked DECIDE, make the call, write it in `docs/decisions.md`, and move on.
 
 ---
 
