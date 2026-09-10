@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('lateEdition', {
   halt: () => ipcRenderer.invoke('le:halt'),
   resume: () => ipcRenderer.invoke('le:resume'),
   isHalted: () => ipcRenderer.invoke('le:isHalted'),
+  /** Every edition this newsroom has filed, newest first. */
+  editions: () => ipcRenderer.invoke('le:editions'),
+  /** One past edition in full, to show it again without rerunning it. */
+  edition: (editionId) => ipcRenderer.invoke('le:edition', editionId),
   /** Open the finished paper in the user's real browser. */
   openPaper: (editionId) => ipcRenderer.invoke('le:openPaper', editionId),
   /** The rendered HTML of a finished edition (for the front-page view). */

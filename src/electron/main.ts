@@ -15,6 +15,7 @@ import type { Edition } from '../main/core/edition.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { detectAll, listProviders } from '../main/providers/registry.js';
+import { type EditionSummary, listEditions } from '../main/store/edition-store.js';
 import { clearHalt, isHalted, setHalt } from '../main/store/halt.js';
 import type { LogEvent } from '../main/store/log.js';
 import { paths } from '../main/store/paths.js';
@@ -197,6 +198,25 @@ function createWindow(): void {
           })()`),
         );
       }
+      // Back issues: the list handler, and the drawer that opens onto it.
+      console.log(
+        'LE_DEBUG editions:',
+        await js(`(async () => {
+          const eds = await window.lateEdition.editions();
+          document.getElementById('appBack').click();
+          await new Promise(r => setTimeout(r, 300));
+          const rows = document.querySelectorAll('.backissues .bi').length;
+          const empty = document.querySelector('.backissues .bi-empty');
+          document.getElementById('biClose').click();
+          return JSON.stringify({
+            filed: eds.length,
+            newestFirst: eds.every((e, i) => i === 0 || eds[i - 1].id >= e.id),
+            drawerRows: rows,
+            emptyState: empty ? empty.textContent.slice(0, 60) : null,
+            newest: eds[0] ? eds[0].id + ' — ' + eds[0].headline.slice(0, 40) : '(none)',
+          });
+        })()`),
+      );
     } catch (e) {
       console.log('LE_DEBUG error:', e instanceof Error ? e.message : e);
     }
@@ -432,6 +452,19 @@ ipcMain.handle('le:resume', () => {
   return true;
 });
 ipcMain.handle('le:isHalted', () => isHalted(newsroomRoot()));
+
+/** Every edition this newsroom has filed, newest first — the back-issues drawer. */
+ipcMain.handle('le:editions', (): EditionSummary[] => listEditions(newsroomRoot()));
+
+/** One past edition in full, so the front page can show it again without a rerun. */
+ipcMain.handle('le:edition', (_e, editionId: string) => {
+  try {
+    const file = join(paths(newsroomRoot()).editionDir(editionId), 'edition.json');
+    return JSON.parse(readFileSync(file, 'utf8')) as Edition;
+  } catch {
+    return null;
+  }
+});
 
 /** Open the finished paper in the user's real browser (a full-size, shareable view). */
 ipcMain.handle('le:openPaper', (_e, editionId: string) => {

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Edition } from '../core/edition.js';
 import { paths } from './paths.js';
@@ -72,4 +72,79 @@ export function writeEdition(
 /** True if an edition directory already exists (used by resume). */
 export function editionExists(root: string, editionId: string): boolean {
   return existsSync(paths(root).editionDir(editionId));
+}
+
+/** One past edition, as the back-issues list needs it. */
+export interface EditionSummary {
+  id: string;
+  /** ISO date the edition carries, or the folder's date prefix as a fallback. */
+  date: string;
+  number: number;
+  lateExtra: boolean;
+  headline: string;
+  standfirst: string;
+  storyCount: number;
+  tokens: number;
+  /** False when the run never got as far as writing the paper (crashed or was stopped). */
+  finished: boolean;
+}
+
+/**
+ * Every edition this newsroom has filed, newest first.
+ *
+ * Editions have always been saved; nothing could list them, so the only way back to
+ * yesterday's paper was the file browser. Reads `edition.json` where a run finished and
+ * still lists the folder where it didn't, so an abandoned run is visible rather than gone.
+ */
+export function listEditions(root: string, limit = 200): EditionSummary[] {
+  const p = paths(root);
+  let dirs: string[];
+  try {
+    dirs = readdirSync(p.editionsDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+  } catch {
+    return []; // a newsroom that has never filed
+  }
+  const out: EditionSummary[] = [];
+  for (const id of dirs) {
+    const fallbackDate = /^(\d{4}-\d{2}-\d{2})/.exec(id)?.[1] ?? '';
+    try {
+      const ed = JSON.parse(
+        readFileSync(join(p.editionDir(id), 'edition.json'), 'utf8'),
+      ) as Edition;
+      const lead = ed.stories?.[0];
+      out.push({
+        id: ed.id ?? id,
+        date: ed.date ?? fallbackDate,
+        number: ed.number ?? 0,
+        // `nextExtraId` encodes it in the id, so trust that too — an older edition.json
+        // written before the flag existed would otherwise list as an ordinary edition.
+        lateExtra: Boolean(ed.lateExtra) || id.includes('-x'),
+        headline: lead?.headline ?? 'A quiet day on the wire',
+        standfirst: lead?.standfirst ?? '',
+        storyCount: ed.stories?.length ?? 0,
+        tokens: (ed.tokenUsage ?? []).reduce(
+          (n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0),
+          0,
+        ),
+        finished: existsSync(join(p.editionDir(id), 'edition.html')),
+      });
+    } catch {
+      out.push({
+        id,
+        date: fallbackDate,
+        number: 0,
+        lateExtra: id.includes('-x'),
+        headline: 'Never went to press',
+        standfirst: 'This run stopped before the paper was written.',
+        storyCount: 0,
+        tokens: 0,
+        finished: false,
+      });
+    }
+  }
+  // Ids are date-then-sequence, so a plain descending sort is newest first.
+  out.sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
+  return out.slice(0, limit);
 }

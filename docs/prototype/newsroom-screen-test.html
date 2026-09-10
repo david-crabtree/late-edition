@@ -141,6 +141,27 @@
   .usage.plan{ color:#7bb661; } .usage.api{ color:#e8a85a; } .usage.free{ color:var(--amber-dim); }
   .chip.danger2{ border-color:#7a2d1d; color:#e8a17a; } .chip.danger2:hover{ background:#2a140d; }
   /* First-run gate: resume the last newsroom or start a fresh one */
+  /* Back issues: the archive that was always on disk but had no door. */
+  .backissues{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
+  .backissues[hidden]{ display:none; }
+  .backissues .bi-card{ width:min(680px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
+  .backissues .bi-hd{ display:flex; align-items:center; gap:10px; padding:11px 14px; background:#14100b; border-bottom:1px solid #2c2519; }
+  .backissues .bi-hd b{ font-family:var(--display); text-transform:uppercase; letter-spacing:.03em; font-size:.9rem; color:var(--amber); }
+  .backissues .bi-sub{ font-family:var(--pixel); font-size:.5rem; color:var(--bone-dim); }
+  .backissues .bi-hd .chip{ margin-left:auto; }
+  .backissues .bi-list{ overflow-y:auto; padding:6px; display:flex; flex-direction:column; gap:4px; }
+  .backissues .bi{ display:grid; grid-template-columns:96px minmax(0,1fr) auto; gap:4px 12px; align-items:center; padding:9px 10px; border:1px solid #23201a; border-radius:5px; background:#0e1116; }
+  .backissues .bi:hover{ border-color:#3a2e1b; }
+  .backissues .bi.unfinished{ opacity:.62; }
+  .backissues .bi-when{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.03em; color:var(--bone-dim); line-height:1.5; }
+  .backissues .bi-tag{ color:#e8926a; }
+  .backissues .bi-main{ min-width:0; }
+  .backissues .bi-main b{ display:block; font-size:.86rem; color:var(--bone); line-height:1.3; }
+  .backissues .bi-main small{ display:block; font-size:.7rem; color:var(--bone-dim); line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .backissues .bi-meta{ grid-column:2; font-size:.64rem; color:#6a6250; }
+  .backissues .bi-act{ grid-column:3; grid-row:1/3; display:flex; gap:5px; }
+  .backissues .bi-act .chip[disabled]{ opacity:.4; cursor:default; }
+  .backissues .bi-empty{ padding:22px 14px; text-align:center; font-size:.76rem; color:var(--bone-dim); }
   .startgate{ position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .startgate[hidden]{ display:none; }
   .startgate .gatecard{ display:block; width:min(440px,92vw); max-height:92vh; overflow-y:auto; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; padding:22px 22px 18px; box-shadow:0 18px 60px rgba(0,0,0,.6); text-align:center; }
@@ -1122,6 +1143,48 @@
     fpSources.innerHTML=srcs.length?('<b>Sources</b><ol>'+srcs.map(r=>'<li>'+fpEsc(r.title||r.url||'source')+'</li>').join('')+'</ol>'):'';
     const others=stories.slice(1); fpAlso.innerHTML=others.length?('<b>Also inside</b><ul>'+others.map(s=>'<li>'+fpEsc(s.headline||'')+'</li>').join('')+'</ul>'):'';
     frontpage.hidden=false; }
+  // ---- Back issues ---------------------------------------------------------------------
+  // Every edition has always been saved to disk; nothing could list them, so the only way
+  // back to yesterday's paper was the file browser. This is that list.
+  let backIssuesEl=null;
+  function buildBackIssues(){
+    const el=document.createElement('div'); el.className='backissues'; el.hidden=true;
+    el.innerHTML=`<div class="bi-card">
+      <div class="bi-hd"><b>Back issues</b><span class="bi-sub" id="biCount"></span><button class="chip" id="biClose">Close</button></div>
+      <div class="bi-list" id="biList"></div>
+    </div>`;
+    document.body.appendChild(el);
+    el.addEventListener('click', e=>{ if(e.target===el) el.hidden=true; });
+    el.querySelector('#biClose').addEventListener('click', ()=>{ el.hidden=true; });
+    backIssuesEl=el; return el; }
+  const biDate=d=>{ try{ return new Date(d).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}); }catch(_){ return d||''; } };
+  async function openBackIssues(){
+    const el=backIssuesEl||buildBackIssues(); el.hidden=false;
+    const list=el.querySelector('#biList'), count=el.querySelector('#biCount');
+    list.innerHTML='<div class="bi-empty">Looking through the archive…</div>';
+    let eds=[];
+    try{ eds=await window.lateEdition.editions(); }
+    catch(err){ list.innerHTML='<div class="bi-empty">Could not read the archive: '+escH((err&&err.message)||err)+'</div>'; return; }
+    count.textContent = eds.length ? `${eds.length} filed` : '';
+    if(!eds.length){ list.innerHTML='<div class="bi-empty">Nothing filed yet. Brief the Chief and this fills up.</div>'; return; }
+    list.innerHTML='';
+    for(const ed of eds){
+      const row=document.createElement('div'); row.className='bi'+(ed.finished?'':' unfinished');
+      row.innerHTML=`<div class="bi-when">${escH(biDate(ed.date))}${ed.lateExtra?' <span class="bi-tag">EXTRA</span>':''}</div>
+        <div class="bi-main"><b>${escH(ed.headline)}</b><small>${escH(ed.standfirst||'')}</small></div>
+        <div class="bi-meta">${ed.storyCount} ${ed.storyCount===1?'story':'stories'}${ed.tokens?' · '+fmtK(ed.tokens)+' tok':''}</div>
+        <div class="bi-act">
+          <button class="chip" data-read="${escH(ed.id)}"${ed.finished?'':' disabled'}>Read</button>
+          <button class="chip" data-open="${escH(ed.id)}"${ed.finished?'':' disabled'}>Open ↗</button>
+        </div>`;
+      list.appendChild(row); }
+    list.querySelectorAll('[data-read]').forEach(b=>b.addEventListener('click', async()=>{
+      const ed=await window.lateEdition.edition(b.dataset.read);
+      if(!ed){ b.textContent='Missing'; return; }
+      lastEditionId=b.dataset.read; el.hidden=true; fpRenderEdition(ed);
+      const openBtn=document.getElementById('appOpen'); if(openBtn) openBtn.hidden=false; }));
+    list.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click', ()=>
+      window.lateEdition.openPaper(b.dataset.open))); }
   // Handle whatever the engine returns: a finished edition, a clarification request, or a failure.
   function applyRunResult(r){ const openBtn=document.getElementById('appOpen');
     if(r&&r.ok){ pendingClarify=null; lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
@@ -1164,7 +1227,7 @@
     if(mScene) mScene.textContent='Ready — brief the Chief.';
     const cab=document.querySelector('.cabinet');
     const bar=document.createElement('div'); bar.className='appbar';
-    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><span class="grow"></span><button class="chip pan" id="appLeft" aria-label="Look left" title="Look left">◀</button><button class="chip pan" id="appRight" aria-label="Look right" title="Look right">▶</button><button class="chip" id="appFollow" aria-pressed="true" title="Auto-focus follows the working desk — turn off to look around freely">⦿ Auto-focus</button><button class="chip" id="appSettings">⚙ Settings</button>`;
+    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><button class="chip" id="appBack">Back issues</button><span class="grow"></span><button class="chip pan" id="appLeft" aria-label="Look left" title="Look left">◀</button><button class="chip pan" id="appRight" aria-label="Look right" title="Look right">▶</button><button class="chip" id="appFollow" aria-pressed="true" title="Auto-focus follows the working desk — turn off to look around freely">⦿ Auto-focus</button><button class="chip" id="appSettings">⚙ Settings</button>`;
     if(cab) cab.parentNode.insertBefore(bar, cab.nextSibling);
     const ex=document.getElementById('examples'); if(ex) ex.style.display='none';   // demo brief chips are a sim aid, not app chrome
     // Reorder for the app: brief right under the stage, budget becomes a staff card, controls hidden.
@@ -1194,6 +1257,7 @@
     $('appStop').addEventListener('click', async()=>{ haltViz=true; await window.lateEdition.halt(); $('appStop').hidden=true; $('appResume').hidden=false; mScene.textContent='ALL STOP — agents idled. Resume to continue.'; });
     $('appResume').addEventListener('click', async()=>{ haltViz=false; await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
     $('appOpen').addEventListener('click', ()=>{ if(lastEditionId) window.lateEdition.openPaper(lastEditionId); });
+    $('appBack').addEventListener('click', openBackIssues);
     $('appSettings').addEventListener('click', ()=>{ const s=document.querySelector('.setup'); if(s){ s.hidden=!s.hidden; if(!s.hidden) s.scrollIntoView({behavior:'smooth',block:'start'}); } });
   }
 
