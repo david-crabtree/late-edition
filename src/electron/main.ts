@@ -71,15 +71,59 @@ function createWindow(): void {
   // then quits — a headless way to confirm "real mode" is wired without a visible window.
   win.webContents.once('did-finish-load', async () => {
     if (!process.env.LE_DEBUG || !win) return;
+    const wc = win.webContents;
+    const js = (src: string) => wc.executeJavaScript(src);
     try {
-      const bridge = await win.webContents.executeJavaScript(
-        "typeof window.lateEdition + ' | realMode=' + document.body.classList.contains('real') + ' | setupPanel=' + !!document.querySelector('.setup')",
+      console.log(
+        'LE_DEBUG bridge:',
+        await js(
+          "typeof window.lateEdition + ' | realMode=' + document.body.classList.contains('real') + ' | setupPanel=' + !!document.querySelector('.setup')",
+        ),
       );
-      const det = await win.webContents.executeJavaScript(
-        "window.lateEdition.detect().then(d=>d.map(x=>x.id+':'+(x.installed&&x.authenticated?('ready/'+(x.billing||'?')):'no')).join(', '))",
+      console.log(
+        'LE_DEBUG detect:',
+        await js(
+          "window.lateEdition.detect().then(d=>d.map(x=>x.id+':'+(x.installed&&x.authenticated?('ready/'+(x.billing||'?')):'no')).join(', '))",
+        ),
       );
-      console.log('LE_DEBUG bridge:', bridge);
-      console.log('LE_DEBUG detect:', det);
+      // Watch the animated floor for a few seconds. This is how the staff's real pace, the
+      // resting camera and the banter get checked without a person sitting in front of it.
+      // `LE_DEBUG_SECONDS=14` is long enough to catch a quip (they run every ~14–27s).
+      interface Snap {
+        tick: number;
+        cam: number;
+        banter: boolean;
+        follow: boolean;
+        quipping: string[];
+        people: { id: string; x: number; st: string }[];
+      }
+      const snap = async (): Promise<Snap> =>
+        JSON.parse((await js('JSON.stringify(window.__leFloor())')) as string);
+      const seconds = Math.max(1, Number(process.env.LE_DEBUG_SECONDS) || 3);
+      const first = await snap();
+      let prev = first;
+      let fastest = 0;
+      const spoke = new Set<string>();
+      for (let i = 0; i < seconds; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        const now = await snap();
+        for (const [j, p] of now.people.entries()) {
+          const was = prev.people[j];
+          if (was) fastest = Math.max(fastest, Math.abs(p.x - was.x));
+        }
+        for (const who of now.quipping) spoke.add(who);
+        prev = now;
+      }
+      const rate = (prev.tick - first.tick) / seconds;
+      console.log(`LE_DEBUG floor: ${rate.toFixed(1)} ticks/sec (expect ~12)`);
+      console.log(
+        `LE_DEBUG pace: fastest ${fastest.toFixed(1)} px/sec (roam ~10, work ~26 at 12/sec)`,
+      );
+      console.log(`LE_DEBUG camera: ${first.cam} at rest (the Chief's office centres at 288)`);
+      console.log(
+        `LE_DEBUG banter: on=${first.banter}, spoke in ${seconds}s: ${[...spoke].join(', ') || 'nobody'}`,
+      );
+      console.log(`LE_DEBUG staff: ${prev.people.map((p) => `${p.id}:${p.st}`).join(' ')}`);
     } catch (e) {
       console.log('LE_DEBUG error:', e instanceof Error ? e.message : e);
     }

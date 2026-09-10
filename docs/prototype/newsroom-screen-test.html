@@ -382,7 +382,9 @@
   // ---- The newsroom: one desk per character, camera on whoever's cast -----
   function drawNewsroom(){
     const appMode=!!window.lateEdition;
-    if(appMode) updatePeople();
+    // NB: updatePeople() is deliberately NOT called here — render() runs once per animation
+    // frame, so stepping the floor from here moved everyone at the display's refresh rate
+    // (5x too fast at 60Hz, 10x at 120Hz). It now runs in frame()'s fixed 12/sec step.
     for(let i=0;i<DESKX.length;i++){ const c=CAST[i], x=DESKX[i], walkingAway=(courier.active&&courier.whoCi===i);
       deskPool(x);
       if(appMode){
@@ -617,7 +619,12 @@
 
   function render(){ const sky=g.createLinearGradient(0,0,0,VH); sky.addColorStop(0,'#101826'); sky.addColorStop(1,'#0a0d13'); g.fillStyle=sky; g.fillRect(0,0,VW,VH);
     layerFar(cam*0.25); layerBack(cam*BP); layerMain(cam); layerFore(cam*1.15);
-    for(const s of staff){ if(s.sayT>0){ const sx=s.ci>=0?deskX(s.ci)-cam:WINDOW_XB-cam*BP; if(sx>-60&&sx<VW+60) bubble(sx, FLOOR-56, s.say); } }
+    // Speech follows the speaker. In app mode people are up and about, so the bubble tracks
+    // their position on the floor, not the desk they happen to be assigned.
+    for(const s of staff){ if(s.sayT>0){
+      const onFloor=people&&s.ci>=0&&!people[s.ci].seated;
+      const sx=s.ci<0 ? WINDOW_XB-cam*BP : (onFloor ? people[s.ci].px-cam : deskX(s.ci)-cam);
+      if(sx>-60&&sx<VW+60) bubble(sx, FLOOR-56, s.say); } }
     if(state.mode==='desk'&&state.banter&&bubbleText && !staff.some(s=>s.ci===state.castIdx&&s.sayT>0)) bubble(AC()-cam, FLOOR-56, bubbleText);
     if(window.lateEdition && haltViz) stopOverlay('ALL STOP · AGENTS IDLED');
     else if(state.mode==='desk'&&state.scene==='stop') stopOverlay();
@@ -631,6 +638,9 @@
 
   function frame(now){ const dt=now-last; last=now; acc+=dt; const step=1000/12;
     while(acc>=step){ acc-=step; tick++;
+      // The alive floor steps on the fixed clock, like everything else — never per animation
+      // frame, or the staff move at the display's refresh rate instead of the sim's.
+      if(window.lateEdition){ updatePeople(); ambientQuip(); }
       if(state.mode==='roam'){
         if(state.goto!=null){
           if(state.phase==='walk'){ const dx=state.goto-player.x; if(Math.abs(dx)>4){ const d=dx>0?1:-1; state.facing=d; player.vx=7*d; player.x+=7*d; } else { player.vx=0; state.phase='gone'; state.timer=state.goneTotal; } }
@@ -643,7 +653,9 @@
       if(window.lateEdition && state.panMode){ if(input.left)state.panX-=14; if(input.right)state.panX+=14; state.panX=Math.max(0,Math.min(WORLD-VW,state.panX)); }
       { let tgt; if(state.camFrozen) tgt=state.camVal; else if(state.panMode) tgt=state.panX;
         else if(window.lateEdition && !director.t && realActive && realActive.ci>=0 && people && people[realActive.ci]) tgt=people[realActive.ci].px-VW/2;   // app: drift with whoever's on the story (watch them walk in + settle)
-        else if(director.t>0&&director.at) tgt=(director.at.ci>=0?deskX(director.at.ci):WINDOW_XB)-VW/2; else tgt=(state.mode==='desk'?AC():player.x)-VW/2; tgt=Math.max(0,Math.min(WORLD-VW,tgt)); cam+=(tgt-cam)*0.14; if(Math.abs(tgt-cam)<0.6)cam=tgt; }
+        else if(director.t>0&&director.at) tgt=(director.at.ci>=0?deskX(director.at.ci):WINDOW_XB)-VW/2;
+        else if(window.lateEdition) tgt=(WINDOW_XB-VW/2)/BP;   // app at rest: hold on the Chief's office (back-wall parallax)
+        else tgt=(state.mode==='desk'?AC():player.x)-VW/2; tgt=Math.max(0,Math.min(WORLD-VW,tgt)); cam+=(tgt-cam)*0.14; if(Math.abs(tgt-cam)<0.6)cam=tgt; }
       if(!reduce&&tick%2===0){ for(const wx of [40,700]) rain.push({win:wx,x:(Math.random()*60)|0,y:0,life:16}); }
       for(let i=rain.length-1;i>=0;i--){ rain[i].y+=3; if(rain[i].y>58) rain.splice(i,1); }
       bubbleTimer--; if(bubbleTimer<=0){ if(state.mode==='desk') newBanter(); bubbleTimer=44; }
@@ -916,9 +928,15 @@
   // ---- The alive floor (app mode): staff wander, take idle beats (smoke/coffee), sit sometimes,
   // walk to their desk to work, and carry the page to the next agent to hand it off in person. ----
   const AMIN=90, AMAX=WORLD-90;
+  // Pace, in world pixels per 12ths-of-a-second tick. Roaming is deliberately well under half
+  // the working pace: drifting round the floor should never read the same as being sent somewhere.
+  const PACE={ roam:0.8, sit:1.5, chief:1.9, work:2.2, handoff:2.4 };
+  const ROAM_RANGE=230;   // how far from their own desk anyone drifts — keeps people in their part of the room
+  const QUIP_EVERY=170, QUIP_SPREAD=150;   // ticks between quips (~14–27s at 12/sec) — dialled back, not off
   const people = window.lateEdition ? CAST.map((c,i)=>({ ci:i, px:DESKX[i]+(i%2?46:-46), tx:DESKX[i], face:1, st:'idle', beat:'none', t:30+((i*53)%150), seated:false, carry:false, walking:false })) : null;
   function approach(p,tx,sp){ const d=tx-p.px; if(Math.abs(d)>2.2){ p.px+=Math.max(-sp,Math.min(sp,d)); p.face=d<0?-1:1; return false; } p.px=tx; return true; }
-  const wander=p=>{ p.st='walk'; p.tx=AMIN+Math.random()*(AMAX-AMIN); };
+  const wander=p=>{ p.st='walk'; const home=DESKX[p.ci];
+    p.tx=Math.max(AMIN,Math.min(AMAX, home+(Math.random()*2-1)*ROAM_RANGE)); };
   const idleBeat=p=>{ const r=Math.random(); p.beat=r<0.34?'smoke':r<0.66?'coffee':'none'; p.st='idle'; p.t=90+((Math.random()*110)|0); };
   // A staffer with a question walks over to the Chief's office door, puts it to them, then heads back.
   const visitChief=p=>{ p.st='chief'; p.tx=OFFICE_XB+18; p.query=true; p.beat='none'; p.t=64+((Math.random()*50)|0); };
@@ -926,17 +944,29 @@
     for(const p of people){ const dx=DESKX[p.ci], bx=p.px; const isActive=realActive && realActive.ci===p.ci;
       if(isActive){ if(p.st!=='work'&&p.st!=='chief'){ p.st='work'; p.query=false; } }   // the active worker may still detour to the Chief with a call
       else if(p.st==='work'){ p.beat='none'; wander(p); }
-      if(p.st==='work'){ p.seated=approach(p,dx,2.4); }
-      else if(p.st==='handoff'){ p.seated=false; if(approach(p,p.tx,2.7)){ if(--p.t<=0){ p.carry=false; wander(p); } } }
-      else if(p.st==='chief'){ p.seated=false; if(approach(p,p.tx,2.0)){ p.face=p.px<WINDOW_XB?1:-1; officeBlipT=Math.max(officeBlipT,4); if(--p.t<=0){ p.query=false; if(isActive) p.st='work'; else wander(p); } } }
-      else if(p.st==='sit'){ if(approach(p,dx,1.7)){ p.seated=true; if(--p.t<=0){ p.seated=false; wander(p); } } else p.seated=false; }
-      else if(p.st==='walk'){ p.seated=false; if(approach(p,p.tx,1.4)) idleBeat(p); }
+      if(p.st==='work'){ p.seated=approach(p,dx,PACE.work); }
+      else if(p.st==='handoff'){ p.seated=false; if(approach(p,p.tx,PACE.handoff)){ if(--p.t<=0){ p.carry=false; wander(p); } } }
+      else if(p.st==='chief'){ p.seated=false; if(approach(p,p.tx,PACE.chief)){ p.face=p.px<WINDOW_XB?1:-1; officeBlipT=Math.max(officeBlipT,4); if(--p.t<=0){ p.query=false; if(isActive) p.st='work'; else wander(p); } } }
+      else if(p.st==='sit'){ if(approach(p,dx,PACE.sit)){ p.seated=true; if(--p.t<=0){ p.seated=false; wander(p); } } else p.seated=false; }
+      else if(p.st==='walk'){ p.seated=false; if(approach(p,p.tx,PACE.roam)) idleBeat(p); }
       else { p.seated=false;
         if(--p.t<=0){ const r=Math.random(); if(r<0.55) wander(p); else if(r<0.72){ p.st='sit'; p.t=120+((Math.random()*120)|0); } else if(r<0.82) visitChief(p); else idleBeat(p); } }
       p.walking = Math.abs(p.px-bx)>0.25;
     } }
   // Send a specific staffer to consult the Chief (drives the "I've got a query" walk on demand).
   function askChief(s){ if(!people||!s||s.ci<0) return; const p=people[s.ci]; if(p && p.st!=='chief') visitChief(p); }
+  // ---- Banter, app-mode. Someone with nothing on says one of their own lines, now and then.
+  // Never the desk that's working (don't talk over a live handoff) and never two at once.
+  let quipT=140;
+  function ambientQuip(){ if(!people||reduce||!state.banter) return;
+    if(--quipT>0) return;
+    quipT=QUIP_EVERY+((Math.random()*QUIP_SPREAD)|0);
+    if(staff.some(s=>s.sayT>0)) return;                                  // someone's already talking
+    const free=people.filter(p=>(p.st==='idle'||p.st==='walk') && !(realActive&&realActive.ci===p.ci));
+    if(!free.length) return;
+    const p=free[(Math.random()*free.length)|0], c=CAST[p.ci], s=staff.find(x=>x.ci===p.ci);
+    if(!s||!c.lines||!c.lines.length) return;
+    agentSay(s, c.lines[(Math.random()*c.lines.length)|0], 46); }
   function drawPeople(){ if(!people) return;
     for(const p of people){ if(p.seated) continue; const c=CAST[p.ci], px=p.px|0; let h=null;
       if(p.walking) drawWalk(c,px,FLOOR,p.face); else h=drawStand(c,px,FLOOR);
@@ -1130,7 +1160,18 @@
     $('gateSetup').addEventListener('click', ()=>{ close(); const s=document.querySelector('.setup'); if(s){ s.hidden=false; s.scrollIntoView({behavior:'smooth',block:'start'}); } });
   }
 
-  if(window.lateEdition){ document.body.classList.add('real'); state.banter=false; buildAppChrome(); buildSetup(); buildStartupModal(); }
+  // Diagnostic surface for headless checks (LE_DEBUG). App mode only, read-only snapshots —
+  // the floor's internals live in this closure, so there's no other way to assert on them.
+  if(window.lateEdition) window.__leFloor = () => ({
+    tick, cam: Math.round(cam), banter: state.banter, follow: !state.panMode,
+    quipping: staff.filter(s=>s.sayT>0).map(s=>s.label),
+    people: (people||[]).map(p=>({ id:CAST[p.ci].id, x:Math.round(p.px*10)/10, st:p.st, seated:p.seated })),
+  });
+  if(window.lateEdition){ document.body.classList.add('real');
+    // Open on the Chief's office, not the far-left wall. The office sits on the back wall, which
+    // draws at BP parallax — so the camera value that centres it is (x - VW/2)/BP, not x - VW/2.
+    cam=state.panX=Math.max(0, Math.min(WORLD-VW, (WINDOW_XB-VW/2)/BP));
+    buildAppChrome(); buildSetup(); buildStartupModal(); }
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);
 })();
