@@ -334,6 +334,13 @@ It has grown from a single-desk bust into a **whole newsroom floor**:
 
 ### 6.6 Progress log (newest first)
 Each line is one commit; see `git log` for the exact SHAs.
+- **App real-mode fix + Setup config** (commit `4951af0`): David's first launch ran the *sim* (fake
+  edition) because **Electron won't reliably load an ESM preload** — `window.lateEdition` was never
+  defined. Rewrote the preload as **CommonJS `preload.cjs`** (copied to dist by a `postbuild` step);
+  confirmed real mode in a real Electron launch (`LE_DEBUG=1 npm run electron`: bridge=object,
+  realMode=true, detect saw `claude:ready/subscription`). Added the missing config to the Setup panel:
+  a **newsroom folder picker** (`le:getRoot`/`le:pickRoot`; persisted in `userData/le-config.json`),
+  a **Recheck** button, and per-agent **auth guidance**. **Lesson: Electron preloads must be `.cjs`.**
 - **M3 — the Electron app (wired to the real engine)**: `src/electron/{main,preload}.ts` — a desktop
   window running the prototype as its renderer, with `window.lateEdition` (preload) bridging to the
   engine **in-process**. Briefing the Chief runs the REAL pipeline; every pipeline event streams to
