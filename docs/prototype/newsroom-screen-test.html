@@ -36,7 +36,7 @@
   @media (prefers-reduced-motion: reduce){ .chip,.card{ transition:none } }
   .brief{ display:flex; gap:8px; flex-wrap:wrap; align-items:stretch; }
   .brief input, .brief textarea{ flex:1 1 100%; font-family:var(--type); font-size:1.1rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:5px; padding:13px 15px; }
-  .brief textarea{ resize:vertical; min-height:48px; line-height:1.4; overflow-y:auto; }
+  .brief textarea{ resize:vertical; min-height:148px; line-height:1.4; overflow-y:auto; }   /* ~5 lines tall by default */
   .brief input:focus-visible, .brief textarea:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; } .brief input::placeholder, .brief textarea::placeholder{ color:#7a7259; }
   .brief .chip.primary{ padding:11px 16px; }
   .chip.primary{ background:var(--amber); color:#231a08; border-color:var(--amber); font-weight:700; } .chip.primary:hover{ background:#f2c15c; }
@@ -118,7 +118,10 @@
   .startgate .opt.primary{ border-color:#5a4620; }
   .startgate .foot{ font-size:.66rem; color:#7a7259; margin-top:10px; }
   .startgate .foot a{ color:var(--amber-dim); cursor:pointer; text-decoration:underline; }
-  body.real .wrap{ max-width:1120px; }                 /* a bit larger in the app window */
+  body.real{ align-items:flex-start; }                     /* don't vertically stretch the wrap — let it size to content so its bottom padding actually shows */
+  body.real .wrap{ max-width:1120px; padding:14px 0 48px; }   /* a bit larger in the app window; keep the last card off the bottom edge */
+  body.real .masthead{ margin-bottom:14px; }
+  body.real .masthead h1{ font-size:clamp(1.7rem,5.5vw,2.6rem); letter-spacing:.05em; }
   .staff .budgetcard{ display:flex; flex-direction:column; justify-content:center; gap:8px; padding:10px 12px; }
   .staff .budgetcard .row{ margin:0 !important; }
   .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:5% 8%; gap:10px; z-index:5; line-height:1.35; overflow:auto; }
@@ -180,7 +183,7 @@
     <div>
       <p class="label">Brief the Chief — what's the front page?</p>
       <div class="brief">
-        <textarea id="briefInput" rows="1" autocomplete="off" spellcheck="false" placeholder="What's the front page? Enter to send · Shift+Enter for a new line"></textarea>
+        <textarea id="briefInput" rows="5" autocomplete="off" spellcheck="false" placeholder="What's the front page? Enter to send · Shift+Enter for a new line"></textarea>
         <button class="chip primary" id="briefBtn">Send to the Chief ▸</button>
       </div>
       <div class="row" id="examples" style="margin-top:8px">
@@ -860,7 +863,7 @@
 
   budgetRange.addEventListener('input',()=>{ budgetLabel.textContent=fmtK(+budgetRange.value); staff.forEach(s=>s.budget=+budgetRange.value); renderRoster(); });
   document.getElementById('briefBtn').addEventListener('click',()=>briefChief(briefInput.value));
-  const growBrief=()=>{ briefInput.style.height='auto'; briefInput.style.height=Math.min(150, briefInput.scrollHeight)+'px'; };
+  const growBrief=()=>{ briefInput.style.height='auto'; briefInput.style.height=Math.min(300, Math.max(148, briefInput.scrollHeight))+'px'; };   /* ~5 lines default, grows to ~11 */
   briefInput.addEventListener('input', growBrief);
   briefInput.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); briefChief(briefInput.value); briefInput.value=''; growBrief(); } });
   document.getElementById('examples').addEventListener('click',e=>{ const b=e.target.closest('.ex'); if(b){ briefInput.value=b.textContent; briefChief(b.textContent); } });
@@ -981,7 +984,7 @@
     catch(err){ charLog(chief,'act',`Run error: ${(err&&err.message)||err}`); mScene.textContent='RUN FAILED'; }
     finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   function buildAppChrome(){
-    const mast=document.querySelector('.masthead'); if(mast) mast.style.display='none';                    // drop "SCREEN TEST" + intro
+    const mast=document.querySelector('.masthead'); if(mast) mast.innerHTML='<h1>Late <span class="rule">Edition</span></h1><p>Your agents · your paper</p>';   // a proper masthead in place of "SCREEN TEST"
     const foot=document.querySelector('.foot'); if(foot) foot.style.display='none';                        // drop the sim blurb (Munder Difflin / "Load real edition" / "Rough on purpose")
     const reelWrap=document.getElementById('reelInput'); if(reelWrap&&reelWrap.closest('label')) reelWrap.closest('label').style.display='none';   // "Load a real edition" is a sim tool
     const scenes=document.getElementById('scenes'); if(scenes) for(const b of [...scenes.children]) b.style.display='none';   // sim scene buttons — the app has its own look-around controls
