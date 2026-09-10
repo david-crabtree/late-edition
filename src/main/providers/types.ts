@@ -19,6 +19,18 @@ export interface AgentCapabilities {
   models?: string[];
 }
 
+/**
+ * How a provider's usage is paid for — the difference between "counts against my plan
+ * allowance" and "costs real money per call". This drives whether the app reassures the
+ * user (subscription/local) or warns them hard (metered API spend).
+ *   subscription — a logged-in plan (Claude/ChatGPT/etc.): usage draws on the plan's
+ *                  allowance/limits, NOT billed per token. Any USD figure is notional.
+ *   api          — a metered API key: every call is real money. Warn loudly.
+ *   free         — local or offline (ollama, the fake provider): no cost at all.
+ *   unknown      — couldn't tell.
+ */
+export type BillingMode = 'subscription' | 'api' | 'free' | 'unknown';
+
 /** Result of probing whether a provider is usable on this machine. */
 export interface Detection {
   installed: boolean;
@@ -27,6 +39,8 @@ export interface Detection {
   version?: string;
   /** Human-readable reason when unavailable, and/or install guidance. */
   detail?: string;
+  /** How usage is paid for — see {@link BillingMode}. */
+  billing?: BillingMode;
 }
 
 /** A unit of work handed to a provider. */

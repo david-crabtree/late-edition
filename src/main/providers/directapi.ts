@@ -40,7 +40,12 @@ export const directApiProvider: AgentProvider = {
         detail: 'Set LATE_EDITION_API_KEY (and optionally _URL/_MODEL/_FORMAT) to enable.',
       };
     }
-    return { installed: true, authenticated: true, detail: `${format} @ ${url}` };
+    return {
+      installed: true,
+      authenticated: true,
+      billing: 'api',
+      detail: `${format} @ ${url} — ⚠️ metered API key: every call is real money.`,
+    };
   },
 
   async *run(job: AgentJob): AsyncIterable<AgentEvent> {

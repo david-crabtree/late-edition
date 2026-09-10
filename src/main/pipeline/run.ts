@@ -7,6 +7,7 @@ import type { Edition } from '../core/edition.js';
 import { type Signal, makeSignalId, shortHash } from '../core/signal.js';
 import { renderHtml, renderMarkdown } from '../paper/render.js';
 import { nextEditionId, writeEdition } from '../store/edition-store.js';
+import { PipelineHaltError, isHalted } from '../store/halt.js';
 import { EditionLog } from '../store/log.js';
 import { paths } from '../store/paths.js';
 import type { PipelineContext } from './context.js';
@@ -109,6 +110,12 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
 
   while (draft.stage !== 'DONE') {
     const stage = draft.stage;
+    // The stop switch, checked at every stage boundary: leave the edition idle & resumable.
+    if (isHalted(opts.root)) {
+      persist();
+      ctx.log.emit(stage, 'halted', {});
+      throw new PipelineHaltError(draft.id);
+    }
     if (stage === 'PRESS') {
       const edition = assembleEdition(draft);
       const editionDir = writeEdition(opts.root, edition, {
@@ -125,7 +132,11 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     try {
       await STAGE_RUNNERS[stage](draft, ctx);
     } catch (err) {
-      persist(); // keep the failed stage so `resume` can retry it
+      persist(); // keep the stage so `resume` can retry (or continue after a halt)
+      if (err instanceof PipelineHaltError) {
+        ctx.log.emit(stage, 'halted', {});
+        throw new PipelineHaltError(draft.id); // carry the edition id up for a clean resume hint
+      }
       ctx.log.emit(stage, 'fatal', { error: err instanceof Error ? err.message : String(err) });
       throw err;
     }

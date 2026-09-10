@@ -3,6 +3,7 @@ import type { BeatConfig } from '../config/types.js';
 import type { Correction, Edition, SourceRef, Story } from '../core/edition.js';
 import { type Signal, makeSignalId, shortHash } from '../core/signal.js';
 import { writeStoryFile } from '../store/edition-store.js';
+import { assertNotHalted } from '../store/halt.js';
 import { relatedCoverage, scanMorgue, terms } from '../store/morgue.js';
 import { paths } from '../store/paths.js';
 import { appendToWire } from '../store/wire.js';
@@ -145,6 +146,7 @@ export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): 
   }
 
   const collected = await mapLimit(tasks, ctx.concurrency, async (t) => {
+    assertNotHalted(ctx.root);
     const resolved = resolveResearcher(ctx.newsroom, t.story.beatId, ctx.forceProvider);
     if (!resolved.provider.capabilities.webSearch) {
       draft.warnings.push(
@@ -317,6 +319,7 @@ export async function stageReport(draft: EditionDraft, ctx: PipelineContext): Pr
   }
 
   const filed = await mapLimit(tasks, ctx.concurrency, async (t) => {
+    assertNotHalted(ctx.root);
     ctx.log.emit('reporter', 'leave_desk', { story: t.story.slug, reporter: t.label });
     const systemPrompt = renderTemplate(template, {
       reporterName: t.label,
@@ -428,6 +431,7 @@ export async function stageCall(draft: EditionDraft, ctx: PipelineContext): Prom
   const editor = resolveEditor(ctx.newsroom, ctx.forceProvider);
 
   for (const story of draft.stories) {
+    assertNotHalted(ctx.root);
     const systemPrompt = renderTemplate(template, {
       paperName: draft.paperName,
       beatName: story.beatName,
@@ -516,6 +520,7 @@ export async function stageWrite(draft: EditionDraft, ctx: PipelineContext): Pro
   const template = await loadPrompt(ctx.root, 'writer');
   const toWrite = draft.stories.filter((s) => s.call?.placement !== 'brief');
   await mapLimit(toWrite, ctx.concurrency, async (story) => {
+    assertNotHalted(ctx.root);
     const resolved = resolveWriter(ctx.newsroom, story.beatId, ctx.forceProvider);
     const systemPrompt = renderTemplate(template, {
       paperName: draft.paperName,
@@ -553,6 +558,7 @@ export async function stageCheck(draft: EditionDraft, ctx: PipelineContext): Pro
   const resolved = resolveCopyDesk(ctx.newsroom, ctx.forceProvider);
   const toCheck = draft.stories.filter((s) => s.copy);
   await mapLimit(toCheck, ctx.concurrency, async (story) => {
+    assertNotHalted(ctx.root);
     // Deterministic verification always runs: every [signalId] cited in the copy must
     // resolve to a real signal for this story. This holds even if the LLM copy desk is
     // weak or unavailable, and it catches links/citations injected by source material.

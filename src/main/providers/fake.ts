@@ -21,7 +21,13 @@ export const fakeProvider: AgentProvider = {
     models: ['fake-1'],
   },
   async detect(): Promise<Detection> {
-    return { installed: true, authenticated: true, version: 'fake-1', detail: 'Always available.' };
+    return {
+      installed: true,
+      authenticated: true,
+      version: 'fake-1',
+      billing: 'free',
+      detail: 'Always available.',
+    };
   },
   async *run(job: AgentJob): AsyncIterable<AgentEvent> {
     yield { type: 'start', provider: 'fake', model: job.model ?? 'fake-1' };

@@ -32,9 +32,10 @@ export const ollamaProvider: AgentProvider = {
       return {
         installed: true,
         authenticated: true,
+        billing: 'free',
         detail:
           models.length > 0
-            ? `Models: ${models.join(', ')}`
+            ? `Models: ${models.join(', ')} — local, no cost.`
             : 'Running, but no models pulled (try `ollama pull llama3.2`).',
       };
     } catch {

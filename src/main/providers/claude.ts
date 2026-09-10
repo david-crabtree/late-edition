@@ -49,12 +49,29 @@ export const claudeProvider: AgentProvider = {
         detail: 'Install Claude Code: https://code.claude.com — then `claude auth login`.',
       };
     }
-    return {
-      installed: true,
-      authenticated: true,
-      version: p.stdout || undefined,
-      detail: 'Auth is managed by the Claude Code CLI.',
-    };
+    // `claude auth status` (JSON) tells us both whether we're logged in and *how*: a
+    // claude.ai login means usage draws on the subscription plan, not metered API spend.
+    let authenticated = true;
+    let billing: Detection['billing'] = 'unknown';
+    let detail = 'Auth is managed by the Claude Code CLI.';
+    try {
+      const { stdout } = await runCli('claude', ['auth', 'status'], { timeoutMs: 8000 });
+      const j = JSON.parse(stdout) as { loggedIn?: boolean; authMethod?: string };
+      authenticated = j.loggedIn === true;
+      if (/claude\.ai|oauth|subscription|console/i.test(String(j.authMethod ?? ''))) {
+        billing = 'subscription';
+        detail =
+          'Logged in via your Claude plan — runs use your subscription usage, not API billing.';
+      } else if (authenticated) {
+        billing = 'api';
+        detail = `Authenticated via ${j.authMethod ?? 'an API key'} — ⚠️ runs are metered API spend.`;
+      } else {
+        detail = 'Installed but not logged in. Run `claude auth login`.';
+      }
+    } catch {
+      // Couldn't read auth status; report installed with unknown billing rather than fail.
+    }
+    return { installed: true, authenticated, version: p.stdout || undefined, billing, detail };
   },
 
   async *run(job: AgentJob): AsyncIterable<AgentEvent> {

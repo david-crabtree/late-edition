@@ -5,7 +5,9 @@ import { scaffoldNewsroom } from '../main/config/scaffold.js';
 import type { DistributionConfig } from '../main/config/types.js';
 import { distributeEdition } from '../main/distribute/run.js';
 import { runEdition } from '../main/pipeline/run.js';
-import { detectAll } from '../main/providers/registry.js';
+import { detectAll, getProvider } from '../main/providers/registry.js';
+import type { BillingMode } from '../main/providers/types.js';
+import { PipelineHaltError, clearHalt, isHalted, setHalt } from '../main/store/halt.js';
 import { searchMorgue } from '../main/store/morgue.js';
 import { runWatchOnce } from '../main/watch/run.js';
 
@@ -22,6 +24,7 @@ Commands:
   run                    Run one edition through the pipeline (WIRE → PRESS).
   distribute <editionId> Send an already-printed edition to configured channels.
   watch                  Poll sources for tripwires; fire Late Extra bulletins.
+  halt                   Stop all agent calls: idle the newsroom (--clear to resume).
   search <query>         Search the morgue (archive of past editions).
   help                   Show this help.
   version                Print the version.
@@ -90,7 +93,15 @@ async function cmdDetect(): Promise<number> {
         : 'installed (not authenticated)'
       : 'not installed';
     const version = d.version ? ` v${d.version}` : '';
-    console.log(`  ${id.padEnd(12)} ${status}${version}`);
+    const bill =
+      d.billing === 'subscription'
+        ? ' · plan usage'
+        : d.billing === 'api'
+          ? ' · ⚠️ metered API spend'
+          : d.billing === 'free'
+            ? ' · free/local'
+            : '';
+    console.log(`  ${id.padEnd(12)} ${status}${version}${bill}`);
     if (d.detail) console.log(`  ${' '.repeat(12)} ${d.detail}`);
   }
   console.log('');
@@ -114,6 +125,14 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
   const brief = typeof flags.brief === 'string' ? flags.brief : undefined;
   const tokenCap = typeof flags.cap === 'string' ? Number(flags.cap) : undefined;
   const research = typeof flags.research === 'string' ? Number(flags.research) : undefined;
+  const nr = typeof flags.newsroom === 'string' ? flags.newsroom : '.';
+
+  if (isHalted(root)) {
+    console.log(
+      `Newsroom is halted — the stop switch is set, so no agent calls will run.\nClear it to resume:\n  late-edition halt --clear --newsroom ${nr}\n`,
+    );
+    return 0;
+  }
 
   console.log(
     `Running an edition from ${root}${forceProvider ? ` (provider: ${forceProvider})` : ''}${
@@ -122,7 +141,18 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
       research !== undefined ? `\n  Research passes: ${research}` : ''
     }…\n`,
   );
-  const result = await runEdition({ root, forceProvider, resumeId, brief, tokenCap, research });
+  let result: Awaited<ReturnType<typeof runEdition>>;
+  try {
+    result = await runEdition({ root, forceProvider, resumeId, brief, tokenCap, research });
+  } catch (err) {
+    if (err instanceof PipelineHaltError) {
+      console.log(
+        `\n⏸  Halted — the newsroom went idle mid-run. Work in progress is saved.\nClear the stop switch and resume when ready:\n  late-edition halt --clear --newsroom ${nr}\n${err.editionId ? `  late-edition run --resume ${err.editionId} --newsroom ${nr}\n` : ''}`,
+      );
+      return 0;
+    }
+    throw err;
+  }
 
   const spent = result.edition.tokenUsage.reduce(
     (n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0),
@@ -143,14 +173,28 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
       cost.set(u.role, (cost.get(u.role) ?? 0) + (u.costUsd ?? 0));
       totalCost += u.costUsd ?? 0;
     }
-    // Highest-spend role first — research usually dominates, which is the tuning signal.
+    // Highest-usage role first — research usually dominates, which is the tuning signal.
     const roles = [...tok.entries()].sort((a, b) => b[1] - a[1]);
-    const fmt = ([r, t]: [string, number]) => {
-      const c = cost.get(r) ?? 0;
-      return `${r} ${t}${c > 0 ? ` ($${c.toFixed(3)})` : ''}`;
-    };
-    console.log(`  By role: ${roles.map(fmt).join(' · ')}`);
-    if (totalCost > 0) console.log(`  Edition cost: $${totalCost.toFixed(2)}`);
+    console.log(`  By role (tokens): ${roles.map(([r, t]) => `${r} ${t}`).join(' · ')}`);
+
+    // How was this paid for? Warn hard on metered API; reassure on a subscription plan.
+    const used = [...new Set(result.edition.tokenUsage.map((u) => u.provider))];
+    const modes: BillingMode[] = await Promise.all(
+      used.map(async (id) => (await getProvider(id)?.detect())?.billing ?? 'unknown'),
+    );
+    if (modes.includes('api')) {
+      console.log(
+        `  ⚠️  This run used a metered API key — REAL SPEND: $${totalCost.toFixed(2)}. Every run costs money.`,
+      );
+    } else if (modes.includes('subscription')) {
+      const notional =
+        totalCost > 0 ? ` (≈$${totalCost.toFixed(2)} at API rates — NOT charged)` : '';
+      console.log(
+        `  Plan usage: ${spent} tokens — counts toward your subscription's usage allowance, not billed${notional}.`,
+      );
+    } else {
+      console.log(`  ${spent} tokens — local/offline, no cost.`);
+    }
   }
   console.log(`  Reel for the animation → ${result.editionDir}/reel.json`);
   if (result.edition.weatherLine) console.log(`  Weather line: ${result.edition.weatherLine}`);
@@ -207,6 +251,24 @@ async function distribute(
     console.log(`  ${mark} ${r.channel}: ${r.detail}`);
   }
   console.log('');
+}
+
+function cmdHalt(positionals: string[], flags: Record<string, string | boolean>): number {
+  const root = resolve(typeof flags.newsroom === 'string' ? flags.newsroom : '.');
+  const nr = typeof flags.newsroom === 'string' ? flags.newsroom : '.';
+  if (flags.clear === true) {
+    clearHalt(root);
+    console.log(
+      `Stop switch cleared. Runs are allowed again.\n  late-edition run --newsroom ${nr}\n`,
+    );
+    return 0;
+  }
+  const reason = positionals.join(' ').trim() || undefined;
+  setHalt(root, reason);
+  console.log(
+    `🛑 Newsroom halted. Any run in progress goes idle at its next checkpoint, and new runs\nare blocked — no agent calls will fire. State is saved and resumable.\nClear it with:\n  late-edition halt --clear --newsroom ${nr}\n`,
+  );
+  return 0;
 }
 
 async function cmdWatch(flags: Record<string, string | boolean>): Promise<number> {
@@ -283,6 +345,8 @@ async function main(): Promise<number> {
       return cmdDistribute(positionals, flags);
     case 'watch':
       return cmdWatch(flags);
+    case 'halt':
+      return cmdHalt(positionals, flags);
     case 'search':
       return cmdSearch(positionals, flags);
     default:
