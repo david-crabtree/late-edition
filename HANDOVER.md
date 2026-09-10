@@ -26,7 +26,7 @@ work through all of them, and tell him plainly when one of his premises is wrong
 
 ## 2. Where it stands
 
-- `npm run check` is green: **107 tests**, typecheck and lint clean.
+- `npm run check` is green: **113 tests**, typecheck and lint clean.
 - `npm run dist:win` produces a **working installer and portable .exe**. The packaged app has
   been booted and confirmed to load, detect the real Claude CLI and run.
 - The app has filed **real editions** on David's Claude plan. It works end to end.
@@ -147,17 +147,38 @@ full checklist and the commands:
 
 **Product, not yet done:**
 
+- The app only files editions from a typed brief or a watched beat. Standing assignments on
+  a cadence, tripwires and Late Extras, distribution to Slack or a webhook, and searching the
+  morgue all exist and are tested — but only in the CLI. Either surface them or keep the
+  README honest about it.
+
 - No landing page. David wants one with a donate / buy-me-a-coffee link and no other payment.
 - Only the Claude provider has been driven end to end. The other five are written, detected,
   and labelled "untested here" in Setup. Each needs a real run to promote.
 - The picture desk writes a brief; nothing consumes the image slot yet.
 - macOS is unbuilt and unsigned by choice.
 
-## 9. First fifteen minutes
+## 9. The field desk
+
+Ida Stringer watches the sources a filed story came from. The design turns on two facts:
+
+- **Polling is free.** No source adapter touches a model, so checking every watched page
+  costs nothing. `checkWatched()` returns `tokens: 0` and a test asserts it.
+- **A follow-up is cheap.** Watched beats are written with `research: 0`, because the
+  digging happened when the original story ran.
+
+The check runs when you open the app and puts whatever moved on a spike. Nothing runs until
+you pick something off it. There is deliberately **no background daemon** — the CLI covers
+anyone who wants a real schedule, and a desktop app that runs a service is a support burden.
+
+`watchBeat` in `RunOptions` seeds a draft from the spike and starts at ASSIGN. It must not
+re-poll: the adapters' seen-state is consumed by the check, so a second fetch returns nothing.
+
+## 10. First fifteen minutes
 
 ```bash
 git log --oneline -15          # the recent work, newest first
-npm run check                  # confirm 107 green
+npm run check                  # confirm 113 green
 LE_DEBUG=1 npm run electron    # confirm the app boots and the probe passes
 npm run app                    # look at it
 ```
