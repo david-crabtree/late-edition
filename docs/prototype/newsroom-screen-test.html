@@ -1598,7 +1598,7 @@
       <div class="roles" id="setupRoles"></div>
       <label class="dryrun"><input type="checkbox" id="setupDry"> Offer the offline stand-in as a dry run</label>
       <p class="drywarn" id="setupDryWarn" hidden>The stand-in writes a complete newspaper without contacting any model. Every word of it is invented. Use it to watch the floor work, never for anything you intend to read or publish.</p>
-      <div class="saverow"><button class="chip primary" id="setupSave">Save staff</button><span class="hint" id="setupMsg"></span></div>
+      <div class="saverow"><button class="chip primary" id="setupSave">Save staff</button><button class="chip" id="setupSuggest" title="Fill every model box with the suggested model for that desk">Use suggested models</button><span class="hint" id="setupMsg"></span></div>
       <div class="foot-help">
         <p>You sign in inside each agent's own tool. Late Edition never sees or stores your login.</p>
         <p>If you are on a paid plan, the work counts against that plan's allowance in the normal way. If you are using an API key instead, you are paying per use.</p>
@@ -1675,6 +1675,15 @@
         wrap.append(mdl,list,rec);
         rolesEl.append(l,sel,wrap); } }
 
+    // Blank means "whatever the agent uses by default", which on most CLIs is the mid model
+    // for every desk — including research, which is by far the biggest spender and wants
+    // the cheap one. This makes taking the suggestion a single click.
+    $('setupSuggest').addEventListener('click', ()=>{ let n=0;
+      for(const [rk] of SETUP_ROLES){
+        const sel=box.querySelector(`select[data-role="${rk}"]`), mdl=box.querySelector(`input[data-role="${rk}"]`);
+        const p=provById(sel.value), rec=p&&(p.recommend||{})[rk];
+        if(rec){ mdl.value=rec; n++; } }
+      $('setupMsg').textContent = n ? `Filled ${n} desk${n>1?'s':''} — Save staff to keep it.` : 'No suggestions for these agents.'; });
     $('setupDry').addEventListener('change', e=>{ showDryRun=e.target.checked;
       $('setupDryWarn').hidden=!showDryRun; refreshRoles(); });
     refreshProviders(); refreshRoles();

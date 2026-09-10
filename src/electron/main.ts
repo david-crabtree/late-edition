@@ -246,6 +246,13 @@ function createWindow(): void {
             saveGap: save && help ? gap(save, help) : null,
             deskRowGaps: gaps,
             hasCloseSettings: !!q('#setupClose'),
+            suggestFills: (() => {
+              // The recommendation is only worth having if it can actually be applied.
+              const before = [...document.querySelectorAll('.setup input.mdl')].map(i => i.value);
+              q('#setupSuggest').click();
+              const after = [...document.querySelectorAll('.setup input.mdl')].map(i => i.value);
+              return after.filter((v, i) => v && v !== before[i]).join(',');
+            })(),
             hasQuipToggle: !!q('#appQuips'),
             contentWidth: window.innerWidth,
             contentHeight: window.innerHeight,
