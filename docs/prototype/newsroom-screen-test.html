@@ -610,9 +610,11 @@
           if(state.phase==='walk'){ const dx=state.goto-player.x; if(Math.abs(dx)>4){ const d=dx>0?1:-1; state.facing=d; player.vx=7*d; player.x+=7*d; } else { player.vx=0; state.phase='gone'; state.timer=state.goneTotal; } }
           else if(state.phase==='gone'){ player.vx=0; state.timer--; if(state.timer<=0){ state.phase='return'; state.timer=8; player.x=state.goto; } }
           else if(state.phase==='return'){ player.vx=0; state.timer--; if(state.timer<=0){ state.phase='none'; state.goto=null; state.meeting=false; state.camFrozen=false; } }
-        } else if(state.panMode){ if(input.left)state.panX-=12; if(input.right)state.panX+=12; state.panX=Math.max(0,Math.min(WORLD-VW,state.panX)); player.vx=0; }
-        else { let vx=0; if(input.left)vx-=7; if(input.right)vx+=7; player.vx=vx; if(vx!==0){ state.facing=vx>0?1:-1; player.x=Math.max(30,Math.min(WORLD-30,player.x+vx)); } }
+        } else if(state.panMode && !window.lateEdition){ if(input.left)state.panX-=12; if(input.right)state.panX+=12; state.panX=Math.max(0,Math.min(WORLD-VW,state.panX)); player.vx=0; }
+        else if(!window.lateEdition){ let vx=0; if(input.left)vx-=7; if(input.right)vx+=7; player.vx=vx; if(vx!==0){ state.facing=vx>0?1:-1; player.x=Math.max(30,Math.min(WORLD-30,player.x+vx)); } }
       } else player.vx=0;
+      // App: ◀ ▶ pan the newsroom (free look), independent of desk/roam mode
+      if(window.lateEdition && state.panMode){ if(input.left)state.panX-=14; if(input.right)state.panX+=14; state.panX=Math.max(0,Math.min(WORLD-VW,state.panX)); }
       { let tgt; if(state.camFrozen) tgt=state.camVal; else if(state.panMode) tgt=state.panX;
         else if(window.lateEdition && !director.t && realActive && realActive.ci>=0 && people && people[realActive.ci]) tgt=people[realActive.ci].px-VW/2;   // app: drift with whoever's on the story (watch them walk in + settle)
         else if(director.t>0&&director.at) tgt=(director.at.ci>=0?deskX(director.at.ci):WINDOW_XB)-VW/2; else tgt=(state.mode==='desk'?AC():player.x)-VW/2; tgt=Math.max(0,Math.min(WORLD-VW,tgt)); cam+=(tgt-cam)*0.14; if(Math.abs(tgt-cam)<0.6)cam=tgt; }
@@ -654,7 +656,7 @@
   const typingInField=e=>{ const t=e.target; return t && /^(input|textarea|select)$/i.test(t.tagName); };
   addEventListener('keydown',e=>{ if(typingInField(e)) return; const k=e.key.toLowerCase();
     if(window.lateEdition){   // app mode: the floor runs itself — arrows only pan the newsroom, nothing walks a character
-      if(k==='arrowleft'||k==='arrowright'){ if(!state.panMode) setPan(true); input[k==='arrowleft'?'left':'right']=true; e.preventDefault(); }
+      if(k==='arrowleft'||k==='arrowright'){ setFollow(false); input[k==='arrowleft'?'left':'right']=true; e.preventDefault(); }
       return; }
     if(k==='arrowleft'||k==='a'){ clearGoto(); if(state.mode!=='roam')setScene('roam'); input.left=true; e.preventDefault(); }
     if(k==='arrowright'||k==='d'){ clearGoto(); if(state.mode!=='roam')setScene('roam'); input.right=true; e.preventDefault(); }
@@ -878,7 +880,11 @@
     if(s==='editor'&&e==='call') return ['act',`Made the call — ${d.placement||''}${d.competingTakes?' (competing takes)':''}`];
     return null; }
   const STAGE2DO={ RESEARCH:['research','Researching the topic'], REPORT:['reporter','Reporting'], WRITE:['copywriter','Rewriting the copy'], CHECK:['copydesk','Checking the copy'], CALL:['editor','Making the call'], TRIAGE:['chief','Sizing up the brief'], ASSIGN:['chief','Assigning the desk'] };
-  let realActive=null, lastEditionId=null, haltViz=false;
+  let realActive=null, lastEditionId=null, haltViz=false, followBtn=null;
+  // App camera: follow ON = auto-focus drifts with the working desk; OFF = free look (◀ ▶ pan, camera stays put).
+  function setFollow(on){ if(on){ state.panMode=false; } else { if(!state.panMode) state.panX=cam; state.panMode=true; }
+    if(followBtn){ followBtn.setAttribute('aria-pressed', String(on)); followBtn.textContent = on?'⦿ Auto-focus':'○ Free look'; }
+    if(mScene && window.lateEdition && !realBusy) mScene.textContent = on?'Ready — brief the Chief.':'Free look · ◀ ▶ to pan'; }
   // ---- The alive floor (app mode): staff wander, take idle beats (smoke/coffee), sit sometimes,
   // walk to their desk to work, and carry the page to the next agent to hand it off in person. ----
   const AMIN=90, AMAX=WORLD-90;
@@ -958,7 +964,7 @@
     selectLog(chief); focusOn(chief); mScene.textContent='The Chief needs a steer — answer below ▸';
     briefInput.placeholder=(questions[0]||'Answer the Chief…'); const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Answer the Chief ▸'; renderRoster(); }
   function clearClarifyUi(){ const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Send to the Chief ▸'; briefInput.placeholder="What's the front page? Enter to send · Shift+Enter for a new line"; }
-  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; pendingClarify=null;
+  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; pendingClarify=null; setFollow(true);
     for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } chief.status='working'; chief.doing='BRIEFING';
     charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
     const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;
@@ -978,12 +984,12 @@
     const mast=document.querySelector('.masthead'); if(mast) mast.style.display='none';                    // drop "SCREEN TEST" + intro
     const foot=document.querySelector('.foot'); if(foot) foot.style.display='none';                        // drop the sim blurb (Munder Difflin / "Load real edition" / "Rough on purpose")
     const reelWrap=document.getElementById('reelInput'); if(reelWrap&&reelWrap.closest('label')) reelWrap.closest('label').style.display='none';   // "Load a real edition" is a sim tool
-    const scenes=document.getElementById('scenes'); if(scenes) for(const b of [...scenes.children]){ const keep=b.id==='panBtn'; if(!keep) b.style.display='none'; }   // keep only Free pan
+    const scenes=document.getElementById('scenes'); if(scenes) for(const b of [...scenes.children]) b.style.display='none';   // sim scene buttons — the app has its own look-around controls
     const mq=document.querySelector('.marquee'); if(mq&&mq.lastElementChild){ mq.lastElementChild.innerHTML='<span id="appUsage" class="usage"></span>'; }   // usage readout replaces "REC · PARALLAX · 12 FPS"
     if(mScene) mScene.textContent='Ready — brief the Chief.';
     const cab=document.querySelector('.cabinet');
     const bar=document.createElement('div'); bar.className='appbar';
-    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><span class="grow"></span><button class="chip" id="appSettings">⚙ Settings</button>`;
+    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><span class="grow"></span><button class="chip pan" id="appLeft" aria-label="Look left" title="Look left">◀</button><button class="chip pan" id="appRight" aria-label="Look right" title="Look right">▶</button><button class="chip" id="appFollow" aria-pressed="true" title="Auto-focus follows the working desk — turn off to look around freely">⦿ Auto-focus</button><button class="chip" id="appSettings">⚙ Settings</button>`;
     if(cab) cab.parentNode.insertBefore(bar, cab.nextSibling);
     const ex=document.getElementById('examples'); if(ex) ex.style.display='none';   // demo brief chips are a sim aid, not app chrome
     // Reorder for the app: brief right under the stage, budget becomes a staff card, controls hidden.
@@ -992,9 +998,16 @@
       if(briefCol){ bar.after(briefCol); briefCol.style.margin='16px 0 6px'; }   // don't let the brief box crowd the appbar or the log below
       const budgetRow=document.getElementById('budgetRange') && document.getElementById('budgetRange').closest('.row');
       if(budgetRow){ const card=document.createElement('div'); card.className='sc budgetcard'; card.appendChild(budgetRow); const st=document.getElementById('staff'); if(st) st.appendChild(card); }
-      if(controlsCol){ const pan=document.getElementById('panBtn'); if(pan){ pan.textContent='⤢ Look around'; bar.insertBefore(pan, bar.querySelector('.grow')); } controlsCol.style.display='none'; }
+      if(controlsCol) controlsCol.style.display='none';   // the sim's control column — the appbar has the app's own look-around
     }
     const $=id=>document.getElementById(id);
+    // Look-around: ◀ ▶ pan the newsroom (hold to keep panning); ⦿ toggles auto-focus on the working desk.
+    followBtn=$('appFollow');
+    const holdPan=(b,dir)=>{ const on=e=>{ if(e&&e.preventDefault)e.preventDefault(); setFollow(false); state.panX=Math.max(0,Math.min(WORLD-VW,state.panX+dir*40)); input[dir<0?'left':'right']=true; };
+      const off=()=>{ input.left=false; input.right=false; };
+      b.addEventListener('pointerdown',on); b.addEventListener('pointerup',off); b.addEventListener('pointerleave',off); b.addEventListener('pointercancel',off); };
+    holdPan($('appLeft'),-1); holdPan($('appRight'),1);
+    $('appFollow').addEventListener('click', ()=> setFollow(state.panMode));   // in free-look → turn follow on; while following → free look
     $('appStop').addEventListener('click', async()=>{ haltViz=true; await window.lateEdition.halt(); $('appStop').hidden=true; $('appResume').hidden=false; mScene.textContent='ALL STOP — agents idled. Resume to continue.'; });
     $('appResume').addEventListener('click', async()=>{ haltViz=false; await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
     $('appOpen').addEventListener('click', ()=>{ if(lastEditionId) window.lateEdition.openPaper(lastEditionId); });
