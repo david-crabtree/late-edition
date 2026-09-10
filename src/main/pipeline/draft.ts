@@ -1,6 +1,7 @@
 import type { Brief, TokenUsage } from '../core/edition.js';
 import type { Signal } from '../core/signal.js';
-import type { CopyCheck, EditorCall, FiledReport } from './contracts.js';
+import type { CopyCheck, EditorCall, FiledReport, PhotoBrief } from './contracts.js';
+import type { VerifyDecision } from './verify.js';
 
 /** The pipeline stages, in order. */
 export const STAGES = [
@@ -41,6 +42,8 @@ export interface StoryDraft {
   stopThePress?: boolean;
   /** Related past coverage from the morgue, linked at CHECK. */
   morgue?: { editionId: string; headline: string; date: string }[];
+  /** The picture desk's brief, when that desk is switched on. */
+  photo?: PhotoBrief;
 }
 
 /** The whole edition in flight. Persisted to `pipeline.json` after every stage. */
@@ -59,6 +62,13 @@ export interface EditionDraft {
   assignmentId?: string;
   /** Set when the Chief asked for clarification on a vague brief; `answer` resumes the run. */
   clarification?: { questions: string[]; answer?: string };
+  /**
+   * The mid-run yes/no the Chief is waiting on, and every one already settled. Answered
+   * decisions are kept so a story is never asked about twice on a resume, and so the
+   * Editor's Log can say plainly which stories ran unchecked.
+   */
+  verify?: { slug: string; question: string; reason: string };
+  verifyDecisions?: VerifyDecision[];
   weatherLine?: string;
   editorsLog: string[];
   tokenUsage: TokenUsage[];

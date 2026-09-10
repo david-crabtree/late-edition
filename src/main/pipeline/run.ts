@@ -30,10 +30,12 @@ import {
   stageProof,
   stageReport,
   stageResearch,
+  stageReverify,
   stageTriage,
   stageWire,
   stageWrite,
 } from './stages.js';
+import { VerificationNeededError, unverifiedNote } from './verify.js';
 
 export interface RunOptions {
   /** Newsroom root (dir containing `newsroom/`). */
@@ -64,6 +66,18 @@ export interface RunOptions {
   shape?: CopyShape;
   /** The user's answer to a prior clarification request (used when resuming). */
   clarificationAnswer?: string;
+  /**
+   * Let a desk that doesn't trust its reporting stop and ask whether to go back and check.
+   * Off by default — an unattended run must never sit blocked waiting for an answer.
+   */
+  askToVerify?: boolean;
+  /**
+   * The answer to the Chief's mid-run question, on resume. `true` sends the researcher back
+   * over that story; `false` runs it as it stands and says so in the Editor's Log.
+   */
+  verifyAnswer?: boolean;
+  /** Switch the picture desk on: a shot list, caption and alt text per story. Off by default. */
+  photoDesk?: boolean;
   /** Live event subscriber — every pipeline event as it happens (for a desktop UI to animate). */
   onEvent?: (ev: LogEvent) => void;
   researcherTimeoutMs?: number;
@@ -118,6 +132,8 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     maxFindings: opts.maxFindings,
     clarify: opts.clarify !== false,
     shape: opts.shape,
+    askToVerify: opts.askToVerify === true,
+    photoDesk: opts.photoDesk === true,
     researcherTimeoutMs: opts.researcherTimeoutMs ?? 180_000,
     reporterTimeoutMs: opts.reporterTimeoutMs ?? 120_000,
     editorTimeoutMs: opts.editorTimeoutMs ?? 120_000,
@@ -128,6 +144,7 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     log: new EditionLog(logFile, opts.onEvent),
     now,
   };
+  const persist = () => saveDraft(opts.root, draft);
   if (opts.brief) ctx.log.emit('ASSIGN', 'brief', { topic: opts.brief });
 
   // A resume that carries an answer to an earlier clarification request records it so
@@ -139,7 +156,26 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     };
   }
 
-  const persist = () => saveDraft(opts.root, draft);
+  // A resume that answers the Chief's mid-run question. Recording the decision is what
+  // stops the same story being asked about again, whichever way it went; "no" is written
+  // into the Editor's Log so the paper says plainly that the story ran unchecked.
+  if (draft.verify && opts.verifyAnswer !== undefined) {
+    const decision = {
+      slug: draft.verify.slug,
+      question: draft.verify.question,
+      verified: opts.verifyAnswer === true,
+    };
+    draft.verifyDecisions = [...(draft.verifyDecisions ?? []), decision];
+    draft.verify = undefined;
+    ctx.log.emit('REPORT', 'decided', { story: decision.slug, verified: decision.verified });
+    if (decision.verified) {
+      await stageReverify(draft, ctx);
+    } else {
+      draft.editorsLog.push(unverifiedNote(decision));
+    }
+    persist();
+  }
+
   persist();
 
   while (draft.stage !== 'DONE') {
@@ -173,6 +209,12 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
       }
       if (err instanceof ClarificationNeededError) {
         ctx.log.emit(stage, 'awaiting_clarification', { questions: err.questions.length });
+        throw err;
+      }
+      // A desk waiting on the Chief. The draft is already saved with the pending question,
+      // so answering resumes from exactly here.
+      if (err instanceof VerificationNeededError) {
+        ctx.log.emit(stage, 'awaiting_decision', { story: err.slug });
         throw err;
       }
       ctx.log.emit(stage, 'fatal', { error: err instanceof Error ? err.message : String(err) });

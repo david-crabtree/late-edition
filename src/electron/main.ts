@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron';
@@ -16,6 +17,7 @@ import { type CopyShape, FORMATS, LENGTHS, TONES } from '../main/core/formats.js
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { rewriteStory } from '../main/pipeline/rewrite.js';
 import { runEdition } from '../main/pipeline/run.js';
+import { VerificationNeededError } from '../main/pipeline/verify.js';
 import { detectAll, listProviders } from '../main/providers/registry.js';
 import { type EditionSummary, listEditions } from '../main/store/edition-store.js';
 import { clearHalt, isHalted, setHalt } from '../main/store/halt.js';
@@ -62,6 +64,11 @@ function ensureNewsroom(root: string): string {
 }
 /** The active newsroom folder — the user's chosen one, or a default under userData. */
 function newsroomRoot(): string {
+  // A diagnostic run files real editions and can spend real allowance, so it gets its own
+  // throwaway newsroom. It must never write into — or bill against — the user's own.
+  if (process.env.LE_DEBUG_RUN) {
+    return ensureNewsroom(join(tmpdir(), 'late-edition-debug-newsroom'));
+  }
   const chosen = readAppConfig().root;
   return ensureNewsroom(chosen || join(app.getPath('userData'), 'newsroom'));
 }
@@ -185,17 +192,48 @@ function createWindow(): void {
             const off2 = window.lateEdition.onEvent(ev => {
               if (ev.stage === 'usage') readouts.push(window.__leProbe.usageText());
             });
-            const r = await window.lateEdition.run('the price of tea', { provider: 'fake', research: 0 });
+            let r = await window.lateEdition.run('the price of tea', { provider: 'fake', research: 0 });
+            // An offline story is always thinly sourced, so the desk stops to ask. Answer
+            // "run it as it stands" and carry on to the press.
+            let stoppedToAsk = false;
+            if (r.needsDecision) {
+              stoppedToAsk = true;
+              r = await window.lateEdition.answerVerify(r.editionId, false,
+                { provider: 'fake', research: 0 });
+            }
             off(); off2();
             const seenTokens = readouts.filter(t => /\\d/.test(t));
             const climbed = new Set(seenTokens).size;
             const desks = window.__leProbe.desks().filter(d => d.lines > 0);
             return JSON.stringify({
-              ok: r.ok, spendEvents: seen.filter(s => s === 'usage/spent').length,
+              ok: r.ok, stoppedToAsk,
+              spendEvents: seen.filter(s => s === 'usage/spent').length,
               chatterEvents: seen.filter(s => s.endsWith('/chatter')).length,
               readoutStates: climbed, midRunReadout: seenTokens[0] || '(never showed a figure)',
               finalReadout: window.__leProbe.usageText(),
               desksWithConsole: desks.map(d => d.role + ':' + d.lines + '[' + d.kinds.join(',') + ']'),
+            });
+          })()`),
+        );
+      }
+      // The Chief's mid-run call: a thin story must actually stop the run and wait, and
+      // answering "no" must reach the press with the paper saying it ran unchecked.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG decision:',
+          await js(`(async () => {
+            const r = await window.lateEdition.run('a deliberately thin topic',
+              { provider: 'fake', research: 0 });
+            if (!r.needsDecision) return JSON.stringify({ stopped: false, ok: r.ok });
+            window.__leProbe.applyResult(r);
+            const box = document.getElementById('decisionBox');
+            const shown = box && !box.hidden ? box.querySelector('.dc-q').textContent : null;
+            const after = await window.lateEdition.answerVerify(r.editionId, false,
+              { provider: 'fake', research: 0 });
+            return JSON.stringify({
+              stopped: true, question: r.question, askedInApp: shown,
+              resumed: after.ok,
+              saidSo: (((after.edition || {}).editorsLog) || []).some(l => /unverified/.test(l)),
             });
           })()`),
         );
@@ -374,7 +412,13 @@ ipcMain.handle(
   async (
     e,
     brief: string,
-    opts: { provider?: string; research?: number; maxFindings?: number; shape?: CopyShape },
+    opts: {
+      provider?: string;
+      research?: number;
+      maxFindings?: number;
+      shape?: CopyShape;
+      photoDesk?: boolean;
+    },
   ) => {
     const root = newsroomRoot();
     const send = (ev: LogEvent) => {
@@ -389,6 +433,8 @@ ipcMain.handle(
         maxFindings: opts?.maxFindings,
         shape: opts?.shape,
         clarify: true, // let the Chief pause a vague brief and ask the user
+        askToVerify: true, // and let a doubtful desk stop and put it to you
+        photoDesk: opts?.photoDesk === true,
         onEvent: send,
       });
       return {
@@ -407,6 +453,16 @@ ipcMain.handle(
           questions: err.questions,
         };
       }
+      if (err instanceof VerificationNeededError) {
+        return {
+          ok: false as const,
+          needsDecision: true as const,
+          editionId: err.editionId,
+          slug: err.slug,
+          question: err.question,
+          reason: err.reason,
+        };
+      }
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }
   },
@@ -419,7 +475,13 @@ ipcMain.handle(
     e,
     editionId: string,
     answer: string,
-    opts: { research?: number; maxFindings?: number; shape?: CopyShape } = {},
+    opts: {
+      provider?: string;
+      research?: number;
+      maxFindings?: number;
+      shape?: CopyShape;
+      photoDesk?: boolean;
+    } = {},
   ) => {
     const root = newsroomRoot();
     const send = (ev: LogEvent) => {
@@ -429,11 +491,14 @@ ipcMain.handle(
       const res = await runEdition({
         root,
         resumeId: editionId,
+        forceProvider: opts?.provider || undefined,
         clarificationAnswer: answer,
         research: opts?.research,
         maxFindings: opts?.maxFindings,
         shape: opts?.shape,
         clarify: true,
+        askToVerify: true,
+        photoDesk: opts?.photoDesk === true,
         onEvent: send,
       });
       return {
@@ -450,6 +515,16 @@ ipcMain.handle(
           needsClarification: true as const,
           editionId: err.editionId,
           questions: err.questions,
+        };
+      }
+      if (err instanceof VerificationNeededError) {
+        return {
+          ok: false as const,
+          needsDecision: true as const,
+          editionId: err.editionId,
+          slug: err.slug,
+          question: err.question,
+          reason: err.reason,
         };
       }
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
@@ -488,6 +563,64 @@ ipcMain.handle('le:resume', () => {
   return true;
 });
 ipcMain.handle('le:isHalted', () => isHalted(newsroomRoot()));
+
+/**
+ * Your answer to the Chief's mid-run question. `true` sends the researcher back over that
+ * story; `false` runs it as it stands, and the Editor's Log says so.
+ */
+ipcMain.handle(
+  'le:answerVerify',
+  async (
+    e,
+    editionId: string,
+    verify: boolean,
+    opts: {
+      provider?: string;
+      research?: number;
+      maxFindings?: number;
+      shape?: CopyShape;
+      photoDesk?: boolean;
+    } = {},
+  ) => {
+    const send = (ev: LogEvent) => {
+      if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
+    };
+    try {
+      const res = await runEdition({
+        root: newsroomRoot(),
+        resumeId: editionId,
+        forceProvider: opts?.provider || undefined,
+        verifyAnswer: verify,
+        research: opts?.research,
+        maxFindings: opts?.maxFindings,
+        shape: opts?.shape,
+        clarify: true,
+        askToVerify: true,
+        photoDesk: opts?.photoDesk === true,
+        onEvent: send,
+      });
+      return {
+        ok: true as const,
+        editionId: res.editionId,
+        edition: res.edition,
+        warnings: res.warnings,
+        usage: await summarizeUsage(res.edition),
+      };
+    } catch (err) {
+      if (err instanceof VerificationNeededError) {
+        return {
+          ok: false as const,
+          needsDecision: true as const,
+          editionId: err.editionId,
+          slug: err.slug,
+          question: err.question,
+          reason: err.reason,
+        };
+      }
+      return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  },
+);
 
 /** The formats, tones and lengths the copy desk can write in — the picker's options. */
 ipcMain.handle('le:formats', () => ({

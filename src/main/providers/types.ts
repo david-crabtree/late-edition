@@ -3,7 +3,15 @@
  * `researcher` runs first and is the one role expected to browse the web / use tools —
  * providers can branch on it to enable their native web capability.
  */
-export type AgentRole = 'triage' | 'researcher' | 'reporter' | 'writer' | 'editor' | 'copydesk';
+export type AgentRole =
+  | 'triage'
+  | 'researcher'
+  | 'reporter'
+  | 'writer'
+  | 'editor'
+  | 'copydesk'
+  /** The picture desk: a shot list, caption and alt text. Never an image. */
+  | 'photo';
 
 /** What a provider can do, surfaced on the "staff available" screen. */
 export interface AgentCapabilities {

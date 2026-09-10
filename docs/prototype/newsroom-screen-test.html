@@ -161,6 +161,21 @@
   .frontpage .rw-out-hd .chip:first-of-type{ margin-left:auto; }
   .frontpage .rw-out textarea{ width:100%; box-sizing:border-box; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.76rem; line-height:1.55; color:#241c10; background:#f7f1e2; border:1px solid #cdbfa0; border-radius:4px; padding:9px 11px; resize:vertical; }
   .frontpage .rw-disclaim{ font-size:.64rem; color:#7a2d1d; margin:6px 0 0; }
+  /* The Chief's mid-run call. Not a modal — the floor stays visible behind it, because
+     watching the room is the point, and the run is genuinely paused either way. */
+  .decision{ margin:10px 0 4px; background:#171208; border:1px solid #5a4620; border-left:3px solid var(--amber); border-radius:6px; padding:11px 13px; }
+  .decision[hidden]{ display:none; }
+  .decision .dc-q{ font-size:.86rem; color:var(--bone); line-height:1.4; }
+  .decision .dc-why{ font-size:.72rem; color:var(--bone-dim); line-height:1.5; margin-top:4px; }
+  .decision .dc-acts{ display:flex; flex-wrap:wrap; gap:7px; align-items:center; margin-top:9px; }
+  .decision .dc-note{ font-size:.66rem; color:#7a7259; }
+  .frontpage .fp-photo{ text-align:left; max-width:62ch; width:100%; font-size:.78rem; color:#40382a; border:1px dashed #a08d68; background:#f2ead6; padding:8px 10px; }
+  .frontpage .fp-photo[hidden]{ display:none; }
+  .frontpage .fp-photo-no{ font-family:var(--pixel); font-size:.44rem; letter-spacing:.06em; text-transform:uppercase; color:#8a2f22; }
+  .frontpage .fp-photo-cap{ margin:5px 0 3px; font-style:italic; }
+  .frontpage .fp-photo-alt{ margin:0 0 3px; font-size:.74rem; color:#574f3f; }
+  .frontpage .fp-photo ul{ margin:3px 0 0; padding-left:1.2rem; font-size:.74rem; color:#574f3f; }
+  .setup .photorow input, .budgetcard .photorow input{ accent-color:#8a5a2a; margin-right:5px; }
   .backissues{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .backissues[hidden]{ display:none; }
   .backissues .bi-card{ width:min(680px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
@@ -262,6 +277,7 @@
           <p class="fp-byline" id="fpByline"></p>
           <div class="fp-body" id="fpBody"></div>
           <div class="fp-sources" id="fpSources"></div>
+          <div class="fp-photo" id="fpPhoto" hidden></div>
           <div class="fp-also" id="fpAlso"></div>
           <div class="fp-rewrite" id="fpRewrite"></div>
           <div class="fp-actions">
@@ -1135,6 +1151,8 @@
     const s=realAgent(ev.stage); if(s){ const f=friendly(ev); if(f){ setWorking(s,f[1].toUpperCase()); charLog(s,f[0],f[1]); bubbleOnly(s,f[1]); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, ev.stage==='copydesk'?'idle':'type'); renderRoster(); } }
     // Real decision points → the agent walks over to put the call to the Chief (mid-run, then back to the desk).
     if(ev.stage==='editor' && ev.event==='call' && ev.competingTakes){ const ed=realAgent('editor'); if(ed){ askChief(ed); charLog(ed,'ask',"Competing takes on page one — the Chief's call."); logEvent(`${ed.label}: competing takes — the Chief's call`); } }
+    if(ev.stage==='reporter' && ev.event==='unsure'){ const rp=realAgent('reporter'); if(rp){ askChief(rp); charLog(rp,'ask',ev.question||"I'm not sure this stands up — the Chief's call."); logEvent(`${rp.label} isn't sure — the Chief's call`); } }
+    if(ev.stage==='researcher' && ev.event==='reverified'){ const rs=realAgent('researcher'); if(rs) charLog(rs,'act',`Went back over it — ${ev.added||0} more source(s), ${ev.sources||0} in total`); }
     if(ev.stage==='reporter' && ev.event==='capped'){ const rp=realAgent('reporter'); if(rp){ askChief(rp); charLog(rp,'ask',"Over the token cap — held a reporter. The Chief's call."); logEvent(`${rp.label}: over budget — the Chief's call`); } } }
   // The finished edition's own totals — authoritative, and they include any desk whose
   // provider never reported usage mid-run.
@@ -1147,7 +1165,8 @@
   // Deep runs a second pass and keeps more; Light keeps it cheap. Passed to the engine per run.
   const RESEARCH_LEVELS={ light:{research:1, maxFindings:3, label:'Light'}, standard:{research:1, maxFindings:6, label:'Standard'}, deep:{research:2, maxFindings:10, label:'Deep'} };
   let researchKey='standard';
-  const researchOpts=()=>{ const l=RESEARCH_LEVELS[researchKey]||RESEARCH_LEVELS.standard; return { research:l.research, maxFindings:l.maxFindings, shape:copyShape() }; };
+  let photoDesk=false;   // the picture desk is an extra agent call per story — off unless asked for
+  const researchOpts=()=>{ const l=RESEARCH_LEVELS[researchKey]||RESEARCH_LEVELS.standard; return { research:l.research, maxFindings:l.maxFindings, shape:copyShape(), photoDesk }; };
   // What shape the copy comes out in. The options come from the engine (le:formats) so the
   // app can never offer a format the writer doesn't know about.
   let shapeOpts={ formats:[{id:'newspaper',label:'Newspaper story',hint:''}], tones:[{id:'house',label:'House style'}], lengths:[{id:'standard',label:'Standard'}] };
@@ -1226,6 +1245,13 @@
         .replace(FP_CITE,(_m,ids)=>{ const ns=ids.split(',').map(id=>numOf.get(id.trim())).filter(Boolean); return ns.length?('<sup>['+ns.join(',')+']</sup>'):''; })
         .replace(FP_STRAY,'').replace(/\n/g,'<br>'); return h?('<p>'+h+'</p>'):''; }).join('');
     fpSources.innerHTML=srcs.length?('<b>Sources</b><ol>'+srcs.map(r=>'<li>'+fpEsc(r.title||r.url||'source')+'</li>').join('')+'</ol>'):'';
+    // The picture desk's brief, if that desk ran. Labelled as a brief, never as a picture.
+    const ph=st.photo, phEl=document.getElementById('fpPhoto');
+    if(phEl){ phEl.innerHTML = ph ? ('<b>Picture desk</b> <span class="fp-photo-no">no image — a brief for a human</span>'
+        + (ph.caption?`<p class="fp-photo-cap">${fpEsc(ph.caption)}</p>`:'')
+        + (ph.altText?`<p class="fp-photo-alt"><b>Alt text:</b> ${fpEsc(ph.altText)}</p>`:'')
+        + ((ph.shotList||[]).length?`<ul>${ph.shotList.map(x=>`<li>${fpEsc(x)}</li>`).join('')}</ul>`:'')) : '';
+      phEl.hidden=!ph; }
     const others=stories.slice(1); fpAlso.innerHTML=others.length?('<b>Also inside</b><ul>'+others.map(s=>'<li>'+fpEsc(s.headline||'')+'</li>').join('')+'</ul>'):'';
     buildRewritePanel();
     frontpage.hidden=false; }
@@ -1271,14 +1297,64 @@
       const openBtn=document.getElementById('appOpen'); if(openBtn) openBtn.hidden=false; }));
     list.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click', ()=>
       window.lateEdition.openPaper(b.dataset.open))); }
+  // ---- The Chief putting a mid-run call to you -------------------------------------------
+  // A reporter who doesn't trust what they've got walks to the office; the Chief walks it to
+  // you. Yes sends the researcher back over that story, no runs it as it stands and the
+  // Editor's Log says so. Left alone, it carries on: the paper never waits forever.
+  let pendingDecision=null, decisionTimer=null;
+  const DECISION_GRACE_MS=90000;   // how long the Chief waits before deciding for himself
+  function askDecision(r){
+    pendingDecision={ editionId:r.editionId, slug:r.slug };
+    realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; }
+    chief.status='working'; chief.doing="YOUR CALL";
+    officeBlipT=Math.max(officeBlipT,120);
+    const rp=realAgent('reporter'); if(rp) askChief(rp);
+    bubbleOnly(chief, r.question||'Your call, boss.');
+    charLog(chief,'ask',r.question||'Your call.'); if(r.reason) charLog(chief,'ask',r.reason);
+    logEvent('The Chief wants your call');
+    selectLog(chief); focusOn(chief);
+    mScene.textContent='The Chief wants your call ▸';
+    showDecisionUi(r); renderRoster();
+    clearTimeout(decisionTimer);
+    decisionTimer=setTimeout(()=>{ if(pendingDecision) answerDecision(false, true); }, DECISION_GRACE_MS);
+  }
+  function showDecisionUi(r){
+    let box=document.getElementById('decisionBox');
+    if(!box){ box=document.createElement('div'); box.className='decision'; box.id='decisionBox';
+      const anchor=document.querySelector('.appbar'); if(anchor) anchor.after(box); else document.body.appendChild(box); }
+    box.innerHTML=`<div class="dc-q" id="dcQ"></div><div class="dc-why" id="dcWhy"></div>
+      <div class="dc-acts"><button class="chip primary" id="dcYes">Yes — go and check</button>
+      <button class="chip" id="dcNo">No — run it as it stands</button>
+      <span class="dc-note">No answer in 90s and it runs as it stands.</span></div>`;
+    box.querySelector('#dcQ').textContent=r.question||'Your call.';
+    box.querySelector('#dcWhy').textContent=r.reason||'';
+    box.hidden=false;
+    box.querySelector('#dcYes').addEventListener('click',()=>answerDecision(true));
+    box.querySelector('#dcNo').addEventListener('click',()=>answerDecision(false));
+  }
+  function clearDecisionUi(){ clearTimeout(decisionTimer); const b=document.getElementById('decisionBox'); if(b) b.hidden=true; }
+  async function answerDecision(verify, byDefault){
+    if(realBusy||!pendingDecision) return;
+    const editionId=pendingDecision.editionId; pendingDecision=null; realBusy=true; clearDecisionUi();
+    chief.status='working'; chief.doing=verify?'CHECKING':'RUNNING IT';
+    charLog(chief,'act', verify ? 'Sent the researcher back to check it.'
+      : (byDefault ? 'Nobody answered — running it as it stands, unverified.'
+                   : 'Running it as it stands, unverified.'));
+    bubbleOnly(chief, verify?'Check it. Then run it.':'Run it.');
+    mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
+    const unsub=window.lateEdition.onEvent(applyRealEvent);
+    try{ const r=await window.lateEdition.answerVerify(editionId, verify, researchOpts()); applyRunResult(r); }
+    catch(err){ charLog(chief,'act',`Run error: ${(err&&err.message)||err}`); mScene.textContent='RUN FAILED'; }
+    finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify&&!pendingDecision){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   // Handle whatever the engine returns: a finished edition, a clarification request, or a failure.
   function applyRunResult(r){ const openBtn=document.getElementById('appOpen');
-    if(r&&r.ok){ pendingClarify=null; lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
+    if(r&&r.ok){ pendingClarify=null; pendingDecision=null; clearDecisionUi(); lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
       fpRenderEdition(r.edition);
       const ed=roleAgent('editor'); if(ed) charLog(ed,'act',`Page one: ${st?st.headline:'(quiet day)'}`);
       applyUsage(r.usage); mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`);
       if(openBtn) openBtn.hidden=false; return; }
     if(r&&r.needsClarification){ askClarification(r.editionId, r.questions||[]); return; }
+    if(r&&r.needsDecision){ askDecision(r); return; }
     pendingClarify=null; charLog(chief,'act',`Run failed: ${(r&&r.error)||'unknown error'}`); mScene.textContent='RUN FAILED'; }
   // The Chief pops out with a question and waits — the brief box becomes the answer box.
   function askClarification(editionId, questions){ pendingClarify={ editionId };
@@ -1288,7 +1364,7 @@
     selectLog(chief); focusOn(chief); mScene.textContent='The Chief needs a steer — answer below ▸';
     briefInput.placeholder=(questions[0]||'Answer the Chief…'); const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Answer the Chief ▸'; renderRoster(); }
   function clearClarifyUi(){ const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Send to the Chief ▸'; briefInput.placeholder="What's the front page? Enter to send · Shift+Enter for a new line"; }
-  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; pendingClarify=null; setFollow(true);
+  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; pendingClarify=null; pendingDecision=null; clearDecisionUi(); setFollow(true);
     for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } resetLiveUsage(); await learnBilling(); chief.status='working'; chief.doing='BRIEFING';
     charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
     const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;
@@ -1337,6 +1413,13 @@
           +'<select id="toneSel" aria-label="Tone"></select><select id="lenSel" aria-label="Length"></select>'
           +'<span class="hint" id="fmtHint"></span>';
         card.appendChild(fr);
+        // The picture desk. It writes a shot list, caption and alt text — it does NOT make
+        // an image, and saying so here stops anyone expecting one.
+        const pr=document.createElement('div'); pr.className='row photorow';
+        pr.innerHTML='<label class="hint"><input type="checkbox" id="photoToggle"> Picture desk</label>'
+          +'<span class="hint">writes a shot list, caption &amp; alt text — no image is made</span>';
+        card.appendChild(pr);
+        pr.querySelector('#photoToggle').addEventListener('change', e=>{ photoDesk=e.target.checked; });
         const fill=(el,items,cur)=>{ el.innerHTML=items.map(o=>`<option value="${o.id}"${o.id===cur?' selected':''}>${escH(o.label)}</option>`).join(''); };
         loadFormats().then(()=>{
           const f=fr.querySelector('#fmtSel'), tn=fr.querySelector('#toneSel'), ln=fr.querySelector('#lenSel'), fh=fr.querySelector('#fmtHint');
@@ -1530,6 +1613,7 @@
     // without a person watching the window. Read-only apart from applyEvent.
     window.__leProbe = {
       applyEvent: applyRealEvent,
+      applyResult: applyRunResult,
       resetUsage: resetLiveUsage,
       usageText: () => (document.getElementById('appUsage')||{}).textContent||'',
       desks: () => staff.map(s=>({ role:s.role, label:s.label, spent:s.spent,

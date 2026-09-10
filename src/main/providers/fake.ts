@@ -5,6 +5,7 @@ import type {
   CopyCheck,
   EditorCall,
   FiledReport,
+  PhotoBrief,
   ResearchDossier,
   TriageResult,
 } from '../pipeline/contracts.js';
@@ -73,9 +74,24 @@ function render(job: AgentJob, signals: Signal[]): string {
       return JSON.stringify(fakeCheck(signals), null, 2);
     case 'writer':
       return fakeCopy(signals);
+    case 'photo':
+      return JSON.stringify(fakePhoto(job), null, 2);
     default:
       return 'Fake provider: nothing to say.';
   }
+}
+
+/** A picture brief, in the same shape a real picture desk returns — and no image. */
+function fakePhoto(job: AgentJob): PhotoBrief {
+  const subject = job.userPrompt.split(/\r?\n/)[0]?.trim() || 'the story';
+  return {
+    shotList: [
+      `Archive or agency picture illustrating: ${subject}`,
+      'A document scan of the primary source, if one is public',
+    ],
+    caption: `A file picture relating to ${subject}.`,
+    altText: `A photograph relating to ${subject}.`,
+  };
 }
 
 function fakeTriage(signals: Signal[], job: AgentJob): TriageResult {

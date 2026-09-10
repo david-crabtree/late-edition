@@ -25,6 +25,7 @@ import type {
   CopyCheck,
   EditorCall,
   FiledReport,
+  PhotoBrief,
   ResearchDossier,
   ResearchFinding,
   TriageResult,
@@ -38,6 +39,7 @@ import {
   sumTokens,
 } from './draft.js';
 import { loadPrompt, renderTemplate } from './prompts.js';
+import { VerificationNeededError, findDoubt } from './verify.js';
 
 /**
  * A tap on an agent's output that the app can show as that desk's console.
@@ -107,6 +109,113 @@ export function chatter(ctx: PipelineContext, role: string, story?: string): Cha
   }) as Chatter;
   write.flush = flush;
   return write;
+}
+
+/**
+ * A desk that doesn't trust what it has goes and puts it to the Chief, who puts it to you.
+ *
+ * Only asks when the app has opted in (`askToVerify`), so the CLI and any unattended run
+ * behave exactly as they did. And it asks once per story: an answered decision is recorded
+ * on the draft, so a resume doesn't walk back into the same question.
+ */
+async function askAboutThinStories(draft: EditionDraft, ctx: PipelineContext): Promise<void> {
+  if (!ctx.askToVerify) return;
+  const settled = new Set((draft.verifyDecisions ?? []).map((d) => d.slug));
+  for (const story of draft.stories) {
+    if (settled.has(story.slug)) continue;
+    const doubt = findDoubt(story);
+    if (!doubt) continue;
+    // The reporter walks to the office — this event is what sends the sprite over, and now
+    // it means something, because the run is about to stop behind it.
+    ctx.log.emit('reporter', 'unsure', {
+      story: story.slug,
+      question: doubt.question,
+      reason: doubt.reason,
+    });
+    draft.verify = doubt;
+    ctx.log.emit('REPORT', 'awaiting_decision', { story: story.slug });
+    throw new VerificationNeededError(draft.id, doubt.slug, doubt.question, doubt.reason);
+  }
+}
+
+/**
+ * The user said yes: send the researcher back over this story before it goes any further.
+ * One extra pass, on the story that was doubted, using the machinery RESEARCH already has.
+ */
+export async function stageReverify(draft: EditionDraft, ctx: PipelineContext): Promise<void> {
+  const pending = (draft.verifyDecisions ?? []).filter((d) => d.verified && !d.done);
+  if (!pending.length) return;
+  for (const decision of pending) {
+    const story = draft.stories.find((s) => s.slug === decision.slug);
+    decision.done = true;
+    if (!story) continue;
+    const before = story.signals.length;
+    ctx.log.emit('RESEARCH', 'reverify', { story: story.slug });
+    await researchStories(draft, ctx, [story], 1);
+    // Clear the reports filed on the thin version so REPORT writes fresh against the better
+    // sourcing, rather than leaving the doubtful take sitting next to the checked one.
+    story.reports = [];
+    ctx.log.emit('researcher', 'reverified', {
+      story: story.slug,
+      sources: story.signals.length,
+      added: story.signals.length - before,
+    });
+  }
+}
+
+/**
+ * The picture desk — a real job for a desk that was previously set dressing.
+ *
+ * It does NOT make an image. The agent CLIs this app wraps can't, and a fabricated
+ * photograph in something shaped like a newspaper would be the most dishonest thing here.
+ * What it produces is the brief a person needs to illustrate the piece: where a picture
+ * could come from, a caption that claims only what the story supports, and alt text.
+ *
+ * Off unless asked for — it's an extra agent call per story.
+ */
+async function pictureDesk(draft: EditionDraft, ctx: PipelineContext): Promise<void> {
+  if (!ctx.photoDesk) return;
+  const withCopy = draft.stories.filter((s) => s.copy);
+  if (!withCopy.length) return;
+  ctx.log.emit('photo', 'stage_start', { stories: withCopy.length });
+  const template = await loadPrompt(ctx.root, 'photo');
+  await mapLimit(withCopy, ctx.concurrency, async (story) => {
+    assertNotHalted(ctx.root);
+    // The picture desk runs on the writers' agent — it's a writing job, not a research one.
+    const resolved = resolveWriter(ctx.newsroom, story.beatId, ctx.forceProvider);
+    const say = chatter(ctx, 'photo', story.slug);
+    try {
+      const outcome = await runJob<PhotoBrief>({
+        role: 'photo',
+        resolved,
+        systemPrompt: renderTemplate(template, {
+          paperName: draft.paperName,
+          style: ctx.newsroom.style,
+        }),
+        userPrompt: `${story.call?.headline ?? story.beatName}\n\n${story.copy ?? ''}`,
+        signals: [],
+        timeoutMs: ctx.writerTimeoutMs,
+        onText: say,
+        wantJson: true,
+      });
+      say.flush();
+      recordUsage(draft, outcome.providerId, 'photo', outcome.usage, ctx.log, outcome.model);
+      const d = outcome.data;
+      if (!d) return;
+      story.photo = {
+        shotList: (Array.isArray(d.shotList) ? d.shotList : []).filter(Boolean).slice(0, 4),
+        caption: typeof d.caption === 'string' ? d.caption : '',
+        altText: typeof d.altText === 'string' ? d.altText : '',
+      };
+      ctx.log.emit('photo', 'briefed', { story: story.slug, shots: story.photo.shotList.length });
+    } catch (err) {
+      // A missing picture brief must never hold the paper.
+      const msg = err instanceof Error ? err.message : String(err);
+      draft.warnings.push(`Picture desk failed on "${story.slug}": ${msg}`);
+      ctx.log.emit('photo', 'error', { story: story.slug, error: msg });
+    }
+  });
+  ctx.log.emit('photo', 'stage_done', { stories: withCopy.length });
 }
 
 function personaBlock(ctx: PipelineContext, reporterName: string): string {
@@ -282,18 +391,30 @@ interface ResearchTask {
  */
 export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): Promise<void> {
   ctx.log.emit('RESEARCH', 'stage_start');
+  const researched = await researchStories(draft, ctx, draft.stories);
+  ctx.log.emit('RESEARCH', 'stage_done', { researched });
+}
+
+/**
+ * Dig on the given stories. Split out of the stage itself so a "go back and check that"
+ * decision can run exactly the same machinery on one story, mid-run, with `passes` forced.
+ * Returns how many passes ran.
+ */
+export async function researchStories(
+  draft: EditionDraft,
+  ctx: PipelineContext,
+  stories: StoryDraft[],
+  forcePasses?: number,
+): Promise<number> {
   const template = await loadPrompt(ctx.root, 'researcher');
 
   const tasks: ResearchTask[] = [];
-  for (const story of draft.stories) {
+  for (const story of stories) {
     const beat = ctx.newsroom.beats.find((b) => b.id === story.beatId);
-    const passes = researchPassesFor(story, beat, ctx);
+    const passes = forcePasses ?? researchPassesFor(story, beat, ctx);
     for (let pass = 0; pass < passes; pass++) tasks.push({ story, pass, passes });
   }
-  if (tasks.length === 0) {
-    ctx.log.emit('RESEARCH', 'stage_done', { researched: 0 });
-    return;
-  }
+  if (tasks.length === 0) return 0;
 
   const collected = await mapLimit(tasks, ctx.concurrency, async (t) => {
     assertNotHalted(ctx.root);
@@ -342,7 +463,7 @@ export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): 
 
   // Fold findings into each story's signals: dedupe against what's there and each other,
   // cap per story to bound downstream tokens, and archive them to the wire like any signal.
-  for (const story of draft.stories) {
+  for (const story of stories) {
     const beat = ctx.newsroom.beats.find((b) => b.id === story.beatId);
     const cap = ctx.maxFindings ?? beat?.maxFindings ?? DEFAULT_MAX_FINDINGS;
     const found = collected.filter((c) => c.story === story).flatMap((c) => c.findings);
@@ -360,7 +481,7 @@ export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): 
     writeStoryFile(ctx.root, draft.id, story.slug, 'research.md', dossierMarkdown(found, added));
     ctx.log.emit('researcher', 'merged', { story: story.slug, added: added.length });
   }
-  ctx.log.emit('RESEARCH', 'stage_done', { researched: tasks.length });
+  return tasks.length;
 }
 
 const DEFAULT_MAX_FINDINGS = 6;
@@ -525,6 +646,7 @@ export async function stageReport(draft: EditionDraft, ctx: PipelineContext): Pr
   for (const f of filed) if (f) f.story.reports.push(f.report);
   // Drop stories that produced no report at all.
   draft.stories = draft.stories.filter((s) => s.reports.length > 0);
+  await askAboutThinStories(draft, ctx);
   ctx.log.emit('REPORT', 'stage_done', { stories: draft.stories.length });
 }
 
@@ -719,6 +841,7 @@ export async function stageWrite(draft: EditionDraft, ctx: PipelineContext): Pro
       story.copy = story.reports[0]?.summary ?? '';
     }
   });
+  await pictureDesk(draft, ctx);
   ctx.log.emit('WRITE', 'stage_done', { written: toWrite.length });
 }
 
@@ -917,6 +1040,7 @@ export function assembleEdition(draft: EditionDraft): Edition {
       morgue: story.morgue,
       sources,
       reports: story.reports,
+      photo: story.photo,
     });
   }
 

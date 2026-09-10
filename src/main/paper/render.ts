@@ -130,6 +130,12 @@ function storyMarkdown(s: Story): string {
     lines.push('\n**Sources:**');
     list.forEach((r, i) => lines.push(`${i + 1}. ${r.title}${r.url ? ` — ${r.url}` : ''}`));
   }
+  if (s.photo) {
+    lines.push('\n**Picture desk** — no image; this is a brief for a human.\n');
+    if (s.photo.caption) lines.push(`- Caption: ${s.photo.caption}`);
+    if (s.photo.altText) lines.push(`- Alt text: ${s.photo.altText}`);
+    for (const shot of s.photo.shotList) lines.push(`- Shot: ${shot}`);
+  }
   if (s.morgue?.length) {
     const past = s.morgue.map((m) => `${m.headline} (${m.editionId})`).join('; ');
     lines.push(`\n**From the morgue:** ${past}`);
@@ -249,11 +255,26 @@ function storyHtml(s: Story): string {
         .join('; ')}</p>`
     : '';
   const kicker = s.stopThePress ? '<p class="stop-kicker">🛑 Stop the Press</p>' : '';
+  // The picture desk writes a brief, never an image — so the slot says so plainly rather
+  // than leaving a reader to assume a photograph was taken or found.
+  const photo = s.photo
+    ? `<aside class="picture">
+      <p class="picture-hd">Picture desk — no image; a brief for a human</p>
+      ${s.photo.caption ? `<p class="picture-cap">${esc(s.photo.caption)}</p>` : ''}
+      ${s.photo.altText ? `<p class="picture-alt"><strong>Alt text:</strong> ${esc(s.photo.altText)}</p>` : ''}
+      ${
+        s.photo.shotList.length
+          ? `<ul class="picture-shots">${s.photo.shotList.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`
+          : ''
+      }
+    </aside>`
+    : '';
   return `<article class="story${s.stopThePress ? ' stop-the-press' : ''}">
     ${kicker}
     <h3>${esc(s.headline)}</h3>
     ${s.standfirst ? `<p class="standfirst">${esc(s.standfirst)}</p>` : ''}
     <p class="byline">By ${esc(s.byline)}</p>
+    ${photo}
     <div class="body">${paragraphs(s.body, numberOf)}</div>
     ${sources}
     ${morgue}
@@ -320,6 +341,11 @@ sup.cite a::after { content: "]"; }
 .story.stop-the-press { border-left: 4px solid #7a2d1d; padding-left: .8rem; }
 .extra-banner { display: inline-block; background: #7a2d1d; color: #f4efe2; font-weight: 800; text-transform: uppercase; letter-spacing: .2em; font-size: .8rem; padding: .25rem .8rem; margin: 0 0 .5rem; }
 .competing li, .briefs li, .corrections li, .editors-log li { margin: .3rem 0; line-height: 1.4; }
+.picture { border: 1px dashed #a08d68; background: #f2ead6; padding: .6rem .8rem; margin: 0 0 1rem; }
+.picture-hd { font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; color: #8a2f22; margin: 0 0 .4rem; }
+.picture-cap { margin: 0 0 .35rem; font-style: italic; }
+.picture-alt { margin: 0 0 .35rem; font-size: .82rem; color: #4a4438; }
+.picture-shots { margin: .2rem 0 0; padding-left: 1.2rem; font-size: .82rem; color: #4a4438; }
 .colophon { border-top: 3px double #1a1712; margin-top: 2rem; padding-top: .8rem; font-size: .72rem; color: #6a6250; text-align: center; }
 .colophon p { margin: 0 0 .5rem; }
 /* The notice has to be readable, not hidden in the small print — it is the one thing on

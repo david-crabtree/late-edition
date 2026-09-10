@@ -1,4 +1,4 @@
-import type { FiledReport, Placement } from '../pipeline/contracts.js';
+import type { FiledReport, PhotoBrief, Placement } from '../pipeline/contracts.js';
 
 /** A resolved reference from the paper back to the raw signal that supports it. */
 export interface SourceRef {
@@ -30,6 +30,8 @@ export interface Story {
   sources: SourceRef[];
   /** Every filed report, kept for transparency and the morgue. */
   reports: FiledReport[];
+  /** The picture desk's brief, when that desk is switched on. Never an actual image. */
+  photo?: PhotoBrief;
 }
 
 /** A one-line item not worth a full story. */

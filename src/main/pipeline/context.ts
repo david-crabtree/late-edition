@@ -17,6 +17,16 @@ export interface PipelineContext {
   clarify: boolean;
   /** Format, tone and length the copy is written in. Unset = a newspaper story in house style. */
   shape?: CopyShape;
+  /**
+   * When true, a desk that doesn't trust its reporting stops the run and asks whether to go
+   * back and check. Off by default: an unattended run must never sit waiting for an answer.
+   */
+  askToVerify?: boolean;
+  /**
+   * When true, the picture desk writes a shot list, caption and alt text for each story.
+   * Off by default — it's an extra agent call, and most runs don't want one.
+   */
+  photoDesk?: boolean;
   researcherTimeoutMs: number;
   reporterTimeoutMs: number;
   editorTimeoutMs: number;

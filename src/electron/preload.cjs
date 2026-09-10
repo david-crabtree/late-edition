@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld('lateEdition', {
   /** Answer the Chief's clarification -> resume the paused edition and finish it. */
   answerClarification: (editionId, answer, opts) =>
     ipcRenderer.invoke('le:answerClarification', editionId, answer, opts || {}),
+  /** Answer the Chief's mid-run question: true digs again, false runs it as it stands. */
+  answerVerify: (editionId, verify, opts) =>
+    ipcRenderer.invoke('le:answerVerify', editionId, verify, opts || {}),
   /** Stop switch: halt all agent calls / lift the halt / query it. */
   halt: () => ipcRenderer.invoke('le:halt'),
   resume: () => ipcRenderer.invoke('le:resume'),

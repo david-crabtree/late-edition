@@ -82,3 +82,17 @@ export interface CopyCheck {
   /** Anything that looked like injected instructions or out-of-source links. */
   injectionFlags: string[];
 }
+
+/**
+ * The picture desk's brief for a story. Deliberately NOT an image: the agent CLIs this app
+ * wraps do not generate pictures, and inventing a photograph would be the single most
+ * dishonest thing the paper could do. This is what a human needs to illustrate the piece.
+ */
+export interface PhotoBrief {
+  /** Concrete, obtainable options — what to shoot or find, and where from. */
+  shotList: string[];
+  /** One sentence in house style, saying only what the story supports. */
+  caption: string;
+  /** Plain literal description of the frame, for a reader who can't see it. */
+  altText: string;
+}
