@@ -18,6 +18,7 @@ import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { sumUsage } from '../main/pipeline/draft.js';
 import { rewriteStory } from '../main/pipeline/rewrite.js';
 import { runEdition } from '../main/pipeline/run.js';
+import { StaffNotConfiguredError } from '../main/pipeline/staffing.js';
 import { VerificationNeededError } from '../main/pipeline/verify.js';
 import { detectAll, listProviders } from '../main/providers/registry.js';
 import { type EditionSummary, listEditions } from '../main/store/edition-store.js';
@@ -348,6 +349,28 @@ function createWindow(): void {
           })()`),
         );
       }
+      // The first-run path nobody has walked: a brand-new newsroom with no agent on any
+      // desk. This is what a stranger who downloads the app sees before they open Setup.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG firstrun:',
+          await js(`(async () => {
+            const r = await window.lateEdition.run('anything at all', {});
+            window.__leProbe.applyResult(r);
+            const chief = window.__leProbe.desks().find(d => d.role === 'chief');
+            const box = document.getElementById('staffingBox');
+            return JSON.stringify({
+              ok: r.ok,
+              needsStaffing: !!r.needsStaffing,
+              desk: r.desk || null,
+              chiefSays: box && !box.hidden ? box.querySelector('.dc-q').textContent : null,
+              offersSetupButton: !!(box && !box.hidden && box.querySelector('#stOpen')),
+              chiefLines: chief ? chief.lines : 0,
+              banner: document.getElementById('mScene').textContent,
+            });
+          })()`),
+        );
+      }
       // The Chief's mid-run call: a thin story must actually stop the run and wait, and
       // answering "no" must reach the press with the paper saying it ran unchecked.
       if (process.env.LE_DEBUG_RUN) {
@@ -595,6 +618,11 @@ ipcMain.handle(
           reason: err.reason,
         };
       }
+      // An empty desk is the first thing a new user hits. It is a setup problem, not a
+      // crash, and the app says so in character rather than printing "RUN FAILED".
+      if (err instanceof StaffNotConfiguredError) {
+        return { ok: false as const, needsStaffing: true as const, desk: err.deskLabel };
+      }
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }
   },
@@ -658,6 +686,11 @@ ipcMain.handle(
           question: err.question,
           reason: err.reason,
         };
+      }
+      // An empty desk is the first thing a new user hits. It is a setup problem, not a
+      // crash, and the app says so in character rather than printing "RUN FAILED".
+      if (err instanceof StaffNotConfiguredError) {
+        return { ok: false as const, needsStaffing: true as const, desk: err.deskLabel };
       }
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }
@@ -753,6 +786,11 @@ ipcMain.handle(
           question: err.question,
           reason: err.reason,
         };
+      }
+      // An empty desk is the first thing a new user hits. It is a setup problem, not a
+      // crash, and the app says so in character rather than printing "RUN FAILED".
+      if (err instanceof StaffNotConfiguredError) {
+        return { ok: false as const, needsStaffing: true as const, desk: err.deskLabel };
       }
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }

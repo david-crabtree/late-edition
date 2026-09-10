@@ -1462,14 +1462,43 @@
     finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify&&!pendingDecision){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   // Handle whatever the engine returns: a finished edition, a clarification request, or a failure.
   function applyRunResult(r){ const openBtn=document.getElementById('appOpen');
-    if(r&&r.ok){ pendingClarify=null; pendingDecision=null; clearDecisionUi(); lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
+    if(r&&r.ok){ pendingClarify=null; pendingDecision=null; clearDecisionUi(); clearStaffingUi(); lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
       fpRenderEdition(r.edition);
       const ed=roleAgent('editor'); if(ed) charLog(ed,'act',`Page one: ${st?st.headline:'(quiet day)'}`);
       applyUsage(r.usage); mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`);
       if(openBtn) openBtn.hidden=false; return; }
     if(r&&r.needsClarification){ askClarification(r.editionId, r.questions||[]); return; }
     if(r&&r.needsDecision){ askDecision(r); return; }
+    if(r&&r.needsStaffing){ askStaffing(r.desk); return; }
     pendingClarify=null; charLog(chief,'act',`Run failed: ${(r&&r.error)||'unknown error'}`); mScene.textContent='RUN FAILED'; }
+  // An empty desk. The Chief comes out and tells you which one, with the way to fix it —
+  // this is the first thing anyone who downloads the app runs into, and "RUN FAILED" is
+  // no way to meet them.
+  function askStaffing(desk){
+    realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; }
+    chief.status='working'; chief.doing='NO STAFF';
+    officeBlipT=Math.max(officeBlipT,120);
+    const say=`Nobody's on the ${desk}. I can't run it.`;
+    bubbleOnly(chief, say);
+    charLog(chief,'ask',say);
+    charLog(chief,'ask','Open Settings, put an agent on every desk, and brief me again.');
+    logEvent(`No agent on the ${desk}`);
+    selectLog(chief); focusOn(chief);
+    mScene.textContent='The Chief needs the desks staffed ▸';
+    let box=document.getElementById('staffingBox');
+    if(!box){ box=document.createElement('div'); box.className='decision'; box.id='staffingBox';
+      const anchor=document.querySelector('.appbar'); if(anchor) anchor.after(box); else document.body.appendChild(box); }
+    box.innerHTML=`<div class="dc-q"></div>
+      <div class="dc-why">Late Edition doesn't run any AI itself — each desk is handed to an agent you've installed and signed into. Nothing was made up; the run stopped instead.</div>
+      <div class="dc-acts"><button class="chip primary" id="stOpen">Open Settings</button>
+      <button class="chip" id="stClose">Not now</button></div>`;
+    box.querySelector('.dc-q').textContent=say;
+    box.hidden=false;
+    box.querySelector('#stOpen').addEventListener('click', ()=>{ box.hidden=true;
+      const s=document.querySelector('.setup'); if(s){ s.hidden=false; s.scrollIntoView({behavior:'smooth',block:'start'}); } });
+    box.querySelector('#stClose').addEventListener('click', ()=>{ box.hidden=true; });
+    renderRoster(); }
+  const clearStaffingUi=()=>{ const b=document.getElementById('staffingBox'); if(b) b.hidden=true; };
   // The Chief pops out with a question and waits — the brief box becomes the answer box.
   function askClarification(editionId, questions){ pendingClarify={ editionId };
     realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } chief.status='working'; chief.doing='NEEDS A STEER';
@@ -1478,7 +1507,7 @@
     selectLog(chief); focusOn(chief); mScene.textContent='The Chief needs a steer — answer below ▸';
     briefInput.placeholder=(questions[0]||'Answer the Chief…'); const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Answer the Chief ▸'; renderRoster(); }
   function clearClarifyUi(){ const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Send to the Chief ▸'; briefInput.placeholder="What's the front page? Enter to send · Shift+Enter for a new line"; }
-  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; watching=null; pendingClarify=null; pendingDecision=null; clearDecisionUi(); setFollow(true);
+  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; watching=null; pendingClarify=null; pendingDecision=null; clearDecisionUi(); clearStaffingUi(); setFollow(true);
     for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } resetLiveUsage(); await learnBilling(); chief.status='working'; chief.doing='BRIEFING';
     charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
     const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;
