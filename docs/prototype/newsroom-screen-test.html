@@ -221,6 +221,15 @@
   .stalebar b{ color:#f0a48c; }
   .stalebar code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.72rem; color:var(--bone);
                   background:#12161c; border:1px solid #3a2e1b; border-radius:3px; padding:1px 5px; }
+  /* The Chief's questions, sitting above the box you answer them in. */
+  .clarify{ background:#171208; border:1px solid #5a4620; border-left:3px solid var(--amber); border-radius:6px; padding:11px 13px; margin:0 0 10px; }
+  .clarify[hidden]{ display:none; }
+  .clarify .cl-hd{ font-family:var(--pixel); font-size:.54rem; letter-spacing:.05em; text-transform:uppercase; color:var(--amber); }
+  .clarify .cl-qs{ margin:9px 0 0; padding-left:1.3rem; display:flex; flex-direction:column; gap:5px; }
+  .clarify .cl-qs li{ font-size:.84rem; color:var(--bone); line-height:1.45; }
+  .clarify .cl-qs li::marker{ color:var(--amber-dim); font-family:var(--pixel); font-size:.6rem; }
+  .clarify .cl-foot{ font-size:.7rem; color:var(--bone-dim); margin-top:9px; }
+  .clarify .cl-foot a{ color:var(--amber-dim); cursor:pointer; text-decoration:underline; margin-left:6px; }
   .casefile{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .casefile[hidden]{ display:none; }
   .casefile .cf-card{ width:min(700px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
@@ -1724,7 +1733,7 @@
     finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify&&!pendingDecision){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   // Handle whatever the engine returns: a finished edition, a clarification request, or a failure.
   function applyRunResult(r){ const openBtn=document.getElementById('appOpen');
-    if(r&&r.ok){ pendingClarify=null; pendingDecision=null; clearDecisionUi(); clearStaffingUi(); lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
+    if(r&&r.ok){ pendingClarify=null; pendingDecision=null; clearClarifyUi(); clearDecisionUi(); clearStaffingUi(); lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
       fpRenderEdition(r.edition);
       const ed=roleAgent('editor'); if(ed) charLog(ed,'act',`Page one: ${st?st.headline:'(quiet day)'}`);
       applyUsage(r.usage); mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`);
@@ -1767,9 +1776,30 @@
     officeBlipT=Math.max(officeBlipT,120); bubbleOnly(chief, questions[0]||'A steer, before we run?');
     charLog(chief,'ask','The Chief needs a steer before the floor runs:'); for(const q of questions) charLog(chief,'ask',`• ${q}`);
     selectLog(chief); focusOn(chief); mScene.textContent='The Chief needs a steer — answer below ▸';
-    briefInput.placeholder=(questions[0]||'Answer the Chief…'); const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Answer the Chief ▸'; renderRoster(); }
-  function clearClarifyUi(){ const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Send to the Chief ▸'; briefInput.placeholder="What's the front page? Enter to send · Shift+Enter for a new line"; }
-  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; watching=null; pendingClarify=null; pendingDecision=null; clearDecisionUi(); clearStaffingUi(); setFollow(true);
+    showClarifyQuestions(questions);
+    briefInput.placeholder=(questions[0]||'Answer the Chief…');
+    const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Answer the Chief ▸';
+    briefInput.focus(); renderRoster(); }
+  // The questions belong next to the box you answer them in. They used to live only in the
+  // desk log, and the first one as a placeholder that vanished the moment you started typing.
+  function showClarifyQuestions(questions){
+    let box=document.getElementById('clarifyBox');
+    if(!box){ box=document.createElement('div'); box.className='clarify'; box.id='clarifyBox';
+      const label=[...document.querySelectorAll('.label')].find(e=>/Brief the Chief/i.test(e.textContent));
+      const host=label||document.querySelector('.brief');
+      if(host&&host.parentNode) host.parentNode.insertBefore(box, host); else document.body.appendChild(box); }
+    box.innerHTML=`<div class="cl-hd">The Chief wants a steer before the floor runs</div>
+      <ol class="cl-qs">${(questions||[]).map(q=>`<li>${fpEsc(q)}</li>`).join('')}</ol>
+      <div class="cl-foot">Answer in the box below — one reply covers all of them.
+        <a id="clSkip">Skip and run it anyway</a></div>`;
+    box.hidden=false;
+    box.querySelector('#clSkip').addEventListener('click',()=>{
+      const b=briefInput.value.trim();
+      answerChief(b||'Use your judgement — run it as briefed.'); });
+    box.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  function clearClarifyUi(){ const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Send to the Chief ▸'; briefInput.placeholder="What's the front page? Enter to send · Shift+Enter for a new line";
+    const box=document.getElementById('clarifyBox'); if(box) box.hidden=true; }
+  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; watching=null; pendingClarify=null; pendingDecision=null; clearClarifyUi(); clearDecisionUi(); clearStaffingUi(); setFollow(true);
     for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } resetLiveUsage(); await learnBilling(); chief.status='working'; chief.doing='BRIEFING';
     charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
     const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;

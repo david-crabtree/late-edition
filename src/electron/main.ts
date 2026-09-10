@@ -392,6 +392,36 @@ function createWindow(): void {
           })()`),
         );
       }
+      // A vague brief must put its questions where you answer them, not only in the log.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG clarify:',
+          await js(`(async () => {
+            // The offline stand-in treats a brief ending in "?" as too vague to run.
+            const r = await window.lateEdition.run('what about the thing?', { provider: 'fake', research: 0 });
+            if (!r.needsClarification) return JSON.stringify({ asked: false, ok: r.ok });
+            window.__leProbe.applyResult(r);
+            const box = document.getElementById('clarifyBox');
+            const brief = document.getElementById('briefInput');
+            const out = {
+              asked: true,
+              questions: r.questions.length,
+              shownAboveBrief: !!(box && !box.hidden && brief &&
+                box.getBoundingClientRect().top < brief.getBoundingClientRect().top),
+              questionsVisible: box ? box.querySelectorAll('.cl-qs li').length : 0,
+              buttonRelabelled: (document.getElementById('briefBtn') || {}).textContent,
+              canSkip: !!(box && box.querySelector('#clSkip')),
+            };
+            // Answer it the way a person would — type in the box and press the button —
+            // rather than calling the channel behind the interface's back.
+            brief.value = 'the price of tea';
+            document.getElementById('briefBtn').click();
+            for (let i = 0; i < 40 && !box.hidden; i++) await new Promise(r2 => setTimeout(r2, 100));
+            out.clearedAfterAnswer = box.hidden;
+            return JSON.stringify(out);
+          })()`),
+        );
+      }
       // The first-run path nobody has walked: a brand-new newsroom with no agent on any
       // desk. This is what a stranger who downloads the app sees before they open Setup.
       if (process.env.LE_DEBUG_RUN) {
