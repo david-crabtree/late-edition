@@ -67,6 +67,12 @@ export function resolveWriter(newsroom: Newsroom, beatId: string, force?: string
   );
 }
 
+/** The picture desk. Falls back to the writers' desk when nobody has set one. */
+export function resolvePhotoDesk(newsroom: Newsroom, beatId: string, force?: string): ResolvedRole {
+  const set = newsroom.staff.photoDesk;
+  return set ? resolve(set, force, 'picture desk') : resolveWriter(newsroom, beatId, force);
+}
+
 export function resolveCopyDesk(newsroom: Newsroom, force?: string): ResolvedRole {
   return resolve(newsroom.staff.copyDesk, force, 'copy desk');
 }
@@ -138,7 +144,7 @@ export interface JobRequest {
 export interface JobOutcome<T> {
   text: string;
   data?: T;
-  usage?: { inputTokens?: number; outputTokens?: number; costUsd?: number };
+  usage?: AgentUsage;
   providerId: string;
   /** Which model actually took the desk — blank means the provider's own default. */
   model?: string;
@@ -161,7 +167,13 @@ async function runStreaming(
       if (onText && ev.text) onText(ev.text);
     } else if (ev.type === 'done') output = ev.output;
     else if (ev.type === 'usage')
-      usage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens, costUsd: ev.costUsd };
+      usage = {
+        inputTokens: ev.inputTokens,
+        outputTokens: ev.outputTokens,
+        cacheReadTokens: ev.cacheReadTokens,
+        cacheWriteTokens: ev.cacheWriteTokens,
+        costUsd: ev.costUsd,
+      };
     else if (ev.type === 'error') throw new Error(`[${provider.id}] ${ev.error}`);
   }
   return { output, usage };

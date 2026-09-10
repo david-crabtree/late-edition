@@ -515,6 +515,7 @@ function createWindow(): void {
             const ed = await window.lateEdition.edition(target);
             const urls = (((ed.stories || [])[0] || {}).sources || []).filter(s => s.url).length;
             const put = await window.lateEdition.watchEdition(target);
+            await window.lateEdition.checkWatches();   // baseline
             const check = await window.lateEdition.checkWatches();
             const list = await window.lateEdition.watches();
             // Render it the way the app does on launch, rather than poking the DOM.
@@ -546,6 +547,15 @@ function createWindow(): void {
             await new Promise(r2 => setTimeout(r2, 300));
             out.offStops = (await window.lateEdition.checkWatches()).beats.length === 0;
             await window.lateEdition.setFieldDesk(true);
+            // Which desks a follow-up actually uses, and which it skips.
+            const cases = await window.lateEdition.watches();
+            if (cases[0]) {
+              const run = await window.lateEdition.runWatch(cases[0].id, {});
+              const ed = run.ok ? run.edition : (run.editionId ? await window.lateEdition.edition(run.editionId) : null);
+              out.followUpDesks = ed
+                ? [...new Set((ed.tokenUsage || []).map(u => u.role))].join(',')
+                : 'run did not reach the press: ' + (run.error || (run.needsDecision ? 'stopped to ask' : '?'));
+            }
             for (const w of await window.lateEdition.watches()) await window.lateEdition.unwatch(w.id);
             return JSON.stringify(out);
           })()`),
@@ -715,6 +725,7 @@ handle('le:staff', async () => {
     reporters: pick(nr.staff.reporters.default),
     writers: pick(nr.staff.writers.default),
     copy_desk: pick(nr.staff.copyDesk),
+    photo_desk: nr.staff.photoDesk ? pick(nr.staff.photoDesk) : { provider: 'unset', model: '' },
   };
 });
 
@@ -739,6 +750,8 @@ handle('le:setStaff', async (_e, a: Record<string, RolePick>) => {
     'writers:',
     `  default: ${line(a.writers)}`,
     `copy_desk: ${line(a.copy_desk)}`,
+    '# The picture desk. Only runs when you switch it on; unset means it borrows the writers.',
+    `photo_desk: ${line(a.photo_desk)}`,
     '',
   ].join('\n');
   writeFileSync(paths(root).staffFile, yaml, 'utf8');

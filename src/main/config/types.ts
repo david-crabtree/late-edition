@@ -67,6 +67,12 @@ export interface StaffConfig {
     [beatId: string]: RoleAssignment;
   };
   copyDesk: RoleAssignment;
+  /**
+   * The picture desk: shot list, caption and alt text. Falls back to the writers when
+   * unset, which is what it did before it had a desk — and meant it paid the writers'
+   * model to write captions. It wants the cheap one.
+   */
+  photoDesk?: RoleAssignment;
 }
 
 /** A beat definition (`newsroom/beats/<id>.yaml`). */

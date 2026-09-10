@@ -58,6 +58,7 @@ export const claudeProvider: AgentProvider = {
       writer: 'sonnet',
       editor: 'opus',
       copydesk: 'haiku',
+      photo: 'haiku',
     },
   },
 

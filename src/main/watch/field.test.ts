@@ -191,3 +191,71 @@ describe('working a case', () => {
     expect(MAX_PER_RUN).toBeGreaterThan(0);
   });
 });
+
+describe('what a follow-up actually costs', () => {
+  let root: string;
+  let editionId: string;
+
+  beforeEach(async () => {
+    root = mkdtempSync(join(tmpdir(), 'le-followup-'));
+    scaffoldNewsroom(root);
+    pageBody = 'The price is £10.';
+    const res = await runEdition({ root, forceProvider: 'fake', brief: 'the price of tea' });
+    editionId = res.editionId;
+    const file = join(paths(root).editionDir(editionId), 'edition.json');
+    const ed = JSON.parse(readFileSync(file, 'utf8')) as Edition;
+    if (ed.stories[0]) {
+      ed.stories[0].sources = [
+        { signalId: 'research:aaaaaaaaaaaa', title: 'The pricing page', url: `${base}/pricing` },
+      ];
+      writeFileSync(file, JSON.stringify(ed), 'utf8');
+    }
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  /** Watch the page, change it, and run the follow-up the app would run. */
+  async function followUp() {
+    await watchEdition(root, editionId);
+    await checkWatched(root); // baseline snapshot
+    pageBody = 'The price is £14. Effective immediately.';
+    await checkWatched(root);
+    const beat = (await listWatched(root))[0];
+    if (!beat) throw new Error('no case');
+    return runEdition({
+      root,
+      forceProvider: 'fake',
+      watchBeat: { beatId: beat.id, beatName: beat.name, signals: beat.pending },
+      research: 0,
+      clarify: false,
+    });
+  }
+
+  // The saving is structural, not a guess: the two most expensive desks never run.
+  it('skips the researcher and the Chief’s triage entirely', async () => {
+    const res = await followUp();
+    const desks = new Set(res.edition.tokenUsage.map((u) => u.role));
+    expect(desks.has('researcher')).toBe(false);
+    expect(desks.has('triage')).toBe(false);
+  });
+
+  it('runs on the ordinary desks — Ida is the byline, not a separate agent', async () => {
+    const res = await followUp();
+    const desks = [...new Set(res.edition.tokenUsage.map((u) => u.role))].sort();
+    expect(desks).toContain('reporter');
+    expect(desks).toContain('writer');
+    // No 'field' desk exists, and none is billed: a follow-up is a normal edition on
+    // material that's already gathered.
+    expect(desks).not.toContain('field');
+    expect(res.edition.stories[0]?.byline).toBe('Ida Stringer');
+  });
+
+  it('costs less than the edition it follows', async () => {
+    const first = JSON.parse(
+      readFileSync(join(paths(root).editionDir(editionId), 'edition.json'), 'utf8'),
+    ) as Edition;
+    const spend = (e: { tokenUsage: Edition['tokenUsage'] }) =>
+      e.tokenUsage.reduce((n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0), 0);
+    const res = await followUp();
+    expect(spend(res.edition)).toBeLessThan(spend(first));
+  });
+});

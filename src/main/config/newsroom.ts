@@ -147,6 +147,11 @@ function normalizeStaff(raw: unknown, file: string): StaffConfig {
     reporters,
     writers,
     copyDesk: role(r.copy_desk ?? r.copyDesk ?? { provider: 'unset' }, file, 'copy_desk'),
+    // Unset means "use the writers", which is exactly what it did before it had a desk.
+    photoDesk:
+      (r.photo_desk ?? r.photoDesk)
+        ? role(r.photo_desk ?? r.photoDesk, file, 'photo_desk')
+        : undefined,
   };
 }
 

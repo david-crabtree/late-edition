@@ -1953,8 +1953,11 @@
   // One row per agent with its status and the exact commands to fix it, then one row per
   // desk. Recommendations come from the provider itself (le:detect), so they follow the
   // agent you pick instead of always showing Claude's aliases.
-  const SETUP_ROLES=[['researcher','Researcher'],['reporter','Reporter'],['writer','Copywriter'],['editor','Editor / Chief'],['copydesk','Copy desk']];
-  const SETUP_KEY={ researcher:'researchers', reporter:'reporters', writer:'writers', editor:'managing_editor', copydesk:'copy_desk' };
+  // Every desk that makes its own agent call gets a row. Ida's field desk isn't here on
+  // purpose: a follow-up runs on the reporter/copywriter/editor/copy desks like any other
+  // edition — she's the byline, not a separate call.
+  const SETUP_ROLES=[['researcher','Researcher'],['reporter','Reporter'],['writer','Copywriter'],['editor','Editor / Chief'],['copydesk','Copy desk'],['photo','Picture desk']];
+  const SETUP_KEY={ researcher:'researchers', reporter:'reporters', writer:'writers', editor:'managing_editor', copydesk:'copy_desk', photo:'photo_desk' };
   const UNSET='unset';
   let noticeText=null, providerInfo=[];
   const provById=id=>providerInfo.find(p=>p.id===id);
@@ -2048,6 +2051,7 @@
         sel.value=cur.provider||UNSET;
         const wrap=document.createElement('div'); wrap.className='mdlwrap';
         const listId='mdl-'+rk;
+        if(rk==='photo') l.title='Only used when the Picture desk is switched on, below the brief.';
         const mdl=document.createElement('input'); mdl.className='mdl'; mdl.dataset.role=rk;
         mdl.setAttribute('list',listId); mdl.placeholder='model (optional)'; mdl.value=cur.model||'';
         const list=document.createElement('datalist'); list.id=listId;

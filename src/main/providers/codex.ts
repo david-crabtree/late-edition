@@ -31,6 +31,7 @@ export const codexProvider: AgentProvider = {
       writer: 'gpt-5',
       editor: 'gpt-5',
       copydesk: 'gpt-5-mini',
+      photo: 'gpt-5-mini',
     },
   },
 

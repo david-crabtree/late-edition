@@ -12,6 +12,7 @@ import {
   type ResolvedRole,
   resolveCopyDesk,
   resolveEditor,
+  resolvePhotoDesk,
   resolveReporter,
   resolveReporterPool,
   resolveResearcher,
@@ -181,8 +182,7 @@ async function pictureDesk(draft: EditionDraft, ctx: PipelineContext): Promise<v
   const template = await loadPrompt(ctx.root, 'photo');
   await mapLimit(withCopy, ctx.concurrency, async (story) => {
     assertNotHalted(ctx.root);
-    // The picture desk runs on the writers' agent — it's a writing job, not a research one.
-    const resolved = resolveWriter(ctx.newsroom, story.beatId, ctx.forceProvider);
+    const resolved = resolvePhotoDesk(ctx.newsroom, story.beatId, ctx.forceProvider);
     const say = chatter(ctx, 'photo', story.slug);
     try {
       const outcome = await runJob<PhotoBrief>({

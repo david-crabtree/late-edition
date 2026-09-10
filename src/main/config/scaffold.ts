@@ -109,6 +109,10 @@ writers:
   default: { provider: unset }        # mid model; e.g. { provider: claude, model: sonnet }
 
 copy_desk: { provider: unset }        # cheap + strict; e.g. { provider: claude, model: haiku }
+
+# The picture desk writes a shot list, caption and alt text - no image is made. It only runs
+# when you switch it on. Leave it unset and it borrows the writers' desk.
+photo_desk: { provider: unset }       # cheap; e.g. { provider: claude, model: haiku }
 `;
 
 const ASSIGNMENT_SAMPLE = `# A standing assignment: an ongoing topic the newsroom works on a cadence, building on its

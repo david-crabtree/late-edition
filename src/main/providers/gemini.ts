@@ -28,6 +28,7 @@ export const geminiProvider: AgentProvider = {
       writer: 'gemini-2.5-pro',
       editor: 'gemini-2.5-pro',
       copydesk: 'gemini-2.5-flash',
+      photo: 'gemini-2.5-flash',
     },
   },
 
