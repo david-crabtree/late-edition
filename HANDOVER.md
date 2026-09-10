@@ -334,6 +334,12 @@ It has grown from a single-desk bust into a **whole newsroom floor**:
 
 ### 6.6 Progress log (newest first)
 Each line is one commit; see `git log` for the exact SHAs.
+- **Per-character log + usage on assignment run** (commits `5bc5cd3`, `03d8b52`): `assignment run`
+  now prints the same per-role/plan-usage cost line as `run` (shared `printUsage`). In the prototype,
+  clicking any staffer (or the Chief) switches a log panel under the stage to *their* stream — a
+  friendly view of their "CLI": ▸ doing / ✓ actions / “thinking” (their dialogue), a live status
+  badge and portrait. Each stage transition logs a do/act for the right character; `agentSay` feeds
+  dialogue in as thinking.
 - **Cadence + standing assignments** (commit `3b4f071`): the autonomy unit — an assignment is an
   ongoing topic (`newsroom/assignments/<id>.yaml`) the newsroom works repeatedly on a cadence,
   building on its own past coverage each run (prior editions folded into the brief). `assignment
