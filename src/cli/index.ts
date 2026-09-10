@@ -47,7 +47,8 @@ Options:
   --distribute           After printing, send to configured channels (opt-in).
   --dry-run              With --distribute/distribute: preview sends without sending.
   --once                 With watch: poll a single time and exit.
-  --interval <seconds>   With watch: poll every N seconds (default 300).
+  --interval <seconds>   With watch: poll every N seconds (default 300). With
+                         assignment tick: keep ticking every N seconds (a simple scheduler).
   -h, --help             Show help.
 
 Examples:
@@ -57,6 +58,8 @@ Examples:
   late-edition run --newsroom ./my-newsroom --provider fake --distribute --dry-run
   late-edition distribute 2026-09-09-001 --newsroom ./my-newsroom
   late-edition watch --once --newsroom ./my-newsroom --provider fake
+  late-edition assignment run competitor-watch --newsroom ./my-newsroom
+  late-edition assignment tick --interval 3600 --newsroom ./my-newsroom
 `;
 
 interface ParsedArgs {
@@ -389,21 +392,40 @@ async function cmdAssignment(
   }
 
   if (sub === 'tick') {
-    if (isHalted(root)) {
-      console.log('Newsroom is halted; no assignments will run. Clear with `halt --clear`.\n');
-      return 0;
-    }
+    // One pass over the due assignments. Honors the halt switch (a halted tick just idles,
+    // so halting pauses autonomy and clearing resumes it) — safe to call on a loop or from cron.
+    const tickOnce = async () => {
+      if (isHalted(root)) {
+        console.log(`[${new Date().toLocaleTimeString()}] halted — skipping this tick.`);
+        return;
+      }
+      const outcomes = await runDueAssignments(root, { forceProvider });
+      if (outcomes.length === 0) {
+        console.log(`[${new Date().toLocaleTimeString()}] nothing due.`);
+        return;
+      }
+      for (const o of outcomes) {
+        if (o.ran) console.log(`  ✓ ${o.id}: edition ${o.editionId} (${o.stories} stories)`);
+        else console.log(`  ✗ ${o.id}: ${o.error}`);
+      }
+    };
+
+    const intervalSec =
+      typeof flags.interval === 'string' && Number(flags.interval) > 0 ? Number(flags.interval) : 0;
     console.log('Running assignments whose cadence is due…\n');
-    const outcomes = await runDueAssignments(root, { forceProvider });
-    if (outcomes.length === 0) {
-      console.log('  Nothing due right now.\n');
+    await tickOnce();
+    if (intervalSec === 0) {
+      console.log('');
       return 0;
     }
-    for (const o of outcomes) {
-      if (o.ran) console.log(`  ✓ ${o.id}: edition ${o.editionId} (${o.stories} stories)`);
-      else console.log(`  ✗ ${o.id}: ${o.error}`);
-    }
-    console.log('');
+    // Poor-man's scheduler: loop in-process so continuous autonomy needs no external cron.
+    console.log(`\nTicking every ${intervalSec}s. Ctrl+C to stop.`);
+    setInterval(() => {
+      tickOnce().catch((err) =>
+        console.error(`tick error: ${err instanceof Error ? err.message : err}`),
+      );
+    }, intervalSec * 1000);
+    await new Promise<void>(() => {}); // run until interrupted
     return 0;
   }
 
