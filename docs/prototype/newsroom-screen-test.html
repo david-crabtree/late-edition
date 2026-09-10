@@ -97,6 +97,11 @@
   .setup .authhint b{ color:var(--amber); }
   .setup .note{ font-size:.68rem; color:#7a7259; margin-top:11px; line-height:1.5; }
   body.real .real-badge{ display:inline-block; font-family:var(--pixel); font-size:.5rem; color:#0b0e13; background:#7bb661; padding:3px 6px; border-radius:3px; margin-left:10px; vertical-align:middle; }
+  .appbar{ display:flex; align-items:center; gap:8px; margin-top:9px; flex-wrap:wrap; }
+  .appbar .grow{ flex:1; }
+  .usage{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.03em; }
+  .usage.plan{ color:#7bb661; } .usage.api{ color:#e8a85a; } .usage.free{ color:var(--amber-dim); }
+  .chip.danger2{ border-color:#7a2d1d; color:#e8a17a; } .chip.danger2:hover{ background:#2a140d; }
   .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:5% 8%; gap:10px; z-index:5; line-height:1.35; overflow:auto; }
   .frontpage[hidden]{ display:none; }
   .frontpage .fp-mast{ font-family:var(--display); font-weight:700; text-transform:uppercase; letter-spacing:.08em; line-height:1.1; font-size:clamp(1.1rem,4vw,2rem); color:#20180c; border-bottom:3px double #20180c; padding-bottom:5px; width:100%; }
@@ -715,7 +720,8 @@
   function reporterLine(st){ const L=['Chasing the paper trail…',`Who leaked ${st.short}?`,'Two sources, then it runs.','This one has legs.']; return L[(tick+st.id)%L.length]; }
   function researcherLine(st){ const L=['Pulling the filings…',`Primary source on ${st.short}?`,'Cross-checking the record.','Found the paper trail.']; return L[(tick+st.id)%L.length]; }
   function writerLine(st){ const L=['Finding the lede…','Tightening the copy.',`Three grafs on ${st.short}.`,'Killing the adjectives.']; return L[(tick+st.id)%L.length]; }
-  function aliveBeat(){ const idle=staff.filter(s=>s.ci>=0 && s.status==='idle' && s.sayT<=0);
+  function aliveBeat(){ if(window.lateEdition) return;   // app mode: no idle quips — bubbles show real actions only
+    const idle=staff.filter(s=>s.ci>=0 && s.status==='idle' && s.sayT<=0);
     if(idle.length>=2 && Math.random()<0.35){ const a=idle.splice((Math.random()*idle.length)|0,1)[0], b=idle[(Math.random()*idle.length)|0];   // a two-way exchange across the room
       agentSay(a, CAST[a.ci].lines[(Math.random()*CAST[a.ci].lines.length)|0],42); pendingReply={ s:b, text:CAST[b.ci].lines[(Math.random()*CAST[b.ci].lines.length)|0], t:24 }; }
     else if(idle.length && Math.random()<0.5){ const s=idle[(Math.random()*idle.length)|0], c=CAST[s.ci]; agentSay(s, c.lines[(Math.random()*c.lines.length)|0],38); }
@@ -758,6 +764,7 @@
     default: return -2; } }
   const stageVerb=role=> role==='research'?'DIGGING ':role==='copydesk'?'CHECKING ':role==='copywriter'?'REWRITING ':role==='editor'?'ON THE CALL ':'ON ';
   function statusText(s){ if(s.status==='blocked') return 'OUT OF BUDGET';
+    if(s.status==='working' && s.doing) return s.doing;   // real-mode live status (no sim story)
     const st=stories.find(x=>!['done','held'].includes(x.stage) && activeCi(x)===s.ci);
     if(st) return stageVerb(s.role)+st.short.toUpperCase();
     if(s.status==='briefing') return 'BRIEFING'; return 'IDLE'; }
@@ -814,26 +821,55 @@
     if(s==='editor'&&e==='call') return ['act',`Made the call — ${d.placement||''}${d.competingTakes?' (competing takes)':''}`];
     return null; }
   const STAGE2DO={ RESEARCH:['research','Researching the topic'], REPORT:['reporter','Reporting'], WRITE:['copywriter','Rewriting the copy'], CHECK:['copydesk','Checking the copy'], CALL:['editor','Making the call'], TRIAGE:['chief','Sizing up the brief'], ASSIGN:['chief','Assigning the desk'] };
+  let realActive=null, lastEditionId=null;
+  function bubbleOnly(s,text){ if(!s) return; s.say=text; s.sayT=78; }        // a bubble of what they're DOING (no quip in the log)
+  function setWorking(s,doing){ if(!s) return; if(realActive&&realActive!==s){ realActive.status='idle'; realActive.doing=''; } s.status='working'; s.doing=doing; realActive=s; }
   function applyRealEvent(ev){ if(!ev||!ev.stage) return;
     const m=STAGE2DO[ev.stage];
-    if(m&&ev.event==='stage_start'){ const s=m[0]==='chief'?chief:roleAgent(m[0]); if(s){ charLog(s,'do',m[1]+'…'); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, m[0]==='copydesk'?'idle':'type'); renderRoster(); } }
-    const s=realAgent(ev.stage); if(s){ const f=friendly(ev); if(f){ charLog(s,f[0],f[1]); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, ev.stage==='copydesk'?'idle':'type'); renderRoster(); } } }
+    if(m&&ev.event==='stage_start'){ const s=m[0]==='chief'?chief:roleAgent(m[0]); if(s){ setWorking(s,m[1].toUpperCase()); charLog(s,'do',m[1]+'…'); bubbleOnly(s,m[1]+'…'); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, m[0]==='copydesk'?'idle':'type'); renderRoster(); } }
+    const s=realAgent(ev.stage); if(s){ const f=friendly(ev); if(f){ setWorking(s,f[1].toUpperCase()); charLog(s,f[0],f[1]); bubbleOnly(s,f[1]); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, ev.stage==='copydesk'?'idle':'type'); renderRoster(); } } }
+  function applyUsage(usage){ if(!usage) return; const map={ triage:chief, researcher:roleAgent('research'), reporter:roleAgent('reporter'), writer:roleAgent('copywriter'), editor:roleAgent('editor'), copydesk:roleAgent('copydesk') };
+    for(const role in (usage.byRole||{})){ const s=map[role], tok=usage.byRole[role]||0; if(s){ s.spent=tok; if(tok>s.budget) s.budget=Math.ceil(tok*1.05); } }
+    renderRoster();
+    const el=document.getElementById('appUsage'); if(el){ const b=usage.billing;
+      el.textContent = b==='api' ? `⚠ ${fmtK(usage.total)} tokens · REAL API SPEND $${(usage.costUsd||0).toFixed(2)}` : b==='subscription' ? `${fmtK(usage.total)} tokens · plan usage — not billed` : `${fmtK(usage.total)} tokens · offline`;
+      el.className='usage '+(b==='api'?'api':b==='subscription'?'plan':'free'); } }
   let realBusy=false;
-  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true;
-    for(const s of staff){ s.status='idle'; } chief.status='briefing';
-    charLog(chief,'do',`Briefing the desk: "${brief}"`); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
+  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null;
+    for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } chief.status='working'; chief.doing='BRIEFING';
+    charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
+    const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;
     const unsub=window.lateEdition.onEvent(applyRealEvent);
     try{ const r=await window.lateEdition.run(brief,{});
-      if(r&&r.ok){ const st=r.edition&&r.edition.stories&&r.edition.stories[0];
+      if(r&&r.ok){ lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
         if(st){ fpHead.textContent=st.headline||'A quiet day on the wire'; fpStand.textContent=st.standfirst||''; frontpage.hidden=false; }
         const ed=roleAgent('editor'); if(ed) charLog(ed,'act',`Page one: ${st?st.headline:'(quiet day)'}`);
-        mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`); }
+        applyUsage(r.usage); mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`);
+        if(openBtn) openBtn.hidden=false; }
       else { charLog(chief,'act',`Run failed: ${(r&&r.error)||'unknown error'}`); mScene.textContent='RUN FAILED'; }
     }catch(err){ charLog(chief,'act',`Run error: ${(err&&err.message)||err}`); mScene.textContent='RUN FAILED'; }
-    finally{ if(unsub)unsub(); realBusy=false; for(const s of staff){ if(s.status==='working') s.status='idle'; } renderRoster(); } }
+    finally{ if(unsub)unsub(); realBusy=false; realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } renderRoster(); } }
+  function buildAppChrome(){
+    const mast=document.querySelector('.masthead'); if(mast) mast.style.display='none';                    // drop "SCREEN TEST" + intro
+    const reelWrap=document.getElementById('reelInput'); if(reelWrap&&reelWrap.closest('label')) reelWrap.closest('label').style.display='none';   // "Load a real edition" is a sim tool
+    const scenes=document.getElementById('scenes'); if(scenes) for(const b of [...scenes.children]){ const keep=b.id==='panBtn'; if(!keep) b.style.display='none'; }   // keep only Free pan
+    const mq=document.querySelector('.marquee'); if(mq&&mq.lastElementChild){ mq.lastElementChild.innerHTML='<span id="appUsage" class="usage"></span>'; }   // usage readout replaces "REC · PARALLAX · 12 FPS"
+    const cab=document.querySelector('.cabinet');
+    const bar=document.createElement('div'); bar.className='appbar';
+    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><span class="grow"></span><button class="chip" id="appSettings">⚙ Settings</button>`;
+    if(cab) cab.parentNode.insertBefore(bar, cab.nextSibling);
+    const $=id=>document.getElementById(id);
+    $('appStop').addEventListener('click', async()=>{ await window.lateEdition.halt(); $('appStop').hidden=true; $('appResume').hidden=false; mScene.textContent='HALTED — agents idled. Resume to continue.'; });
+    $('appResume').addEventListener('click', async()=>{ await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
+    $('appOpen').addEventListener('click', ()=>{ if(lastEditionId) window.lateEdition.openPaper(lastEditionId); });
+    $('appSettings').addEventListener('click', ()=>{ const s=document.querySelector('.setup'); if(s){ s.hidden=!s.hidden; if(!s.hidden) s.scrollIntoView({behavior:'smooth',block:'start'}); } });
+  }
 
   const SETUP_ROLES=[['researcher','Researcher'],['reporter','Reporter'],['writer','Copywriter'],['editor','Editor / Chief'],['copydesk','Copy desk']];
   const SETUP_KEY={ researcher:'researchers', reporter:'reporters', writer:'writers', editor:'managing_editor', copydesk:'copy_desk' };
+  // Recommended model per role (cheap where it's grunt work, strong where judgement matters).
+  // Claude aliases shown; leave the box blank to use each provider's default, or type any model to override.
+  const SETUP_REC={ researcher:'haiku', reporter:'sonnet', writer:'sonnet', editor:'sonnet', copydesk:'haiku' };
   function buildSetup(){ const LE=window.lateEdition, anchor=document.querySelector('.cabinet'); if(!anchor) return;
     const box=document.createElement('div'); box.className='setup';
     box.innerHTML=`<h3>Setup — wire your agents <span class="real-badge">REAL ENGINE</span></h3>
@@ -860,7 +896,7 @@
         const l=document.createElement('label'); l.textContent=label;
         const sel=document.createElement('select'); sel.dataset.role=rk;
         for(const p of ids){ const o=document.createElement('option'); o.value=p; o.textContent=p; if(p===cur.provider)o.selected=true; sel.appendChild(o); }
-        const mdl=document.createElement('input'); mdl.className='mdl'; mdl.dataset.role=rk; mdl.placeholder='model (optional)'; mdl.value=cur.model||'';
+        const mdl=document.createElement('input'); mdl.className='mdl'; mdl.dataset.role=rk; mdl.placeholder='rec: '+(SETUP_REC[rk]||'default')+' — type to override'; mdl.title='Recommended: '+(SETUP_REC[rk]||'provider default')+'. Blank = provider default.'; mdl.value=cur.model||'';
         rolesEl.append(l,sel,mdl); } }
     refreshProviders(); refreshRoles();
     $('setupRecheck').addEventListener('click', async()=>{ $('setupMsg').textContent='Rechecking…'; await refreshProviders(); await refreshRoles(); $('setupMsg').textContent='Rechecked.'; });
@@ -869,7 +905,7 @@
       try{ await LE.setStaff(out); $('setupMsg').textContent='Saved — the desks use these next run.'; }
       catch(e){ $('setupMsg').textContent='Could not save: '+((e&&e.message)||e); } }); }
 
-  if(window.lateEdition){ document.body.classList.add('real'); buildSetup(); }
+  if(window.lateEdition){ document.body.classList.add('real'); state.banter=false; buildAppChrome(); buildSetup(); }
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);
 })();

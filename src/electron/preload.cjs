@@ -14,8 +14,14 @@ contextBridge.exposeInMainWorld('lateEdition', {
   getRoot: () => ipcRenderer.invoke('le:getRoot'),
   /** Open a folder picker to choose where the newsroom is stored; returns the new path. */
   pickRoot: () => ipcRenderer.invoke('le:pickRoot'),
-  /** Brief the Chief -> run the real pipeline. Resolves with the finished edition. */
+  /** Brief the Chief -> run the real pipeline. Resolves with the finished edition + usage. */
   run: (brief, opts) => ipcRenderer.invoke('le:run', brief, opts || {}),
+  /** Stop switch: halt all agent calls / lift the halt / query it. */
+  halt: () => ipcRenderer.invoke('le:halt'),
+  resume: () => ipcRenderer.invoke('le:resume'),
+  isHalted: () => ipcRenderer.invoke('le:isHalted'),
+  /** Open the finished paper in the user's real browser. */
+  openPaper: (editionId) => ipcRenderer.invoke('le:openPaper', editionId),
   /** The rendered HTML of a finished edition (for the front-page view). */
   editionHtml: (editionId) => ipcRenderer.invoke('le:editionHtml', editionId),
   /** Subscribe to live pipeline events. Returns an unsubscribe function. */

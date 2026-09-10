@@ -1,12 +1,14 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BrowserWindow, app, dialog, ipcMain } from 'electron';
+import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron';
 // The engine — the same library the CLI uses, called in-process.
 import { loadNewsroom } from '../main/config/newsroom.js';
 import { scaffoldNewsroom } from '../main/config/scaffold.js';
+import type { Edition } from '../main/core/edition.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { detectAll } from '../main/providers/registry.js';
+import { clearHalt, isHalted, setHalt } from '../main/store/halt.js';
 import type { LogEvent } from '../main/store/log.js';
 import { paths } from '../main/store/paths.js';
 
@@ -184,6 +186,7 @@ ipcMain.handle(
         editionId: res.editionId,
         edition: res.edition,
         warnings: res.warnings,
+        usage: await summarizeUsage(res.edition),
       };
     } catch (err) {
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
@@ -191,7 +194,46 @@ ipcMain.handle(
   },
 );
 
-/** Read a finished edition's rendered HTML (for the front-page view). */
+/** Per-role token totals + how it's paid for — the app's honest usage readout. */
+async function summarizeUsage(edition: Edition) {
+  const byRole: Record<string, number> = {};
+  let total = 0;
+  for (const u of edition.tokenUsage) {
+    const t = (u.inputTokens ?? 0) + (u.outputTokens ?? 0);
+    byRole[u.role] = (byRole[u.role] ?? 0) + t;
+    total += t;
+  }
+  const usedCost = edition.tokenUsage.reduce((n, u) => n + (u.costUsd ?? 0), 0);
+  const used = [...new Set(edition.tokenUsage.map((u) => u.provider))];
+  const det = await detectAll();
+  const modes = used.map((id) => det.get(id)?.billing ?? 'unknown');
+  const billing = modes.includes('api')
+    ? 'api'
+    : modes.includes('subscription')
+      ? 'subscription'
+      : 'free';
+  return { total, byRole, billing, costUsd: usedCost };
+}
+
+/** The stop switch: halt every agent call (idles the newsroom) / lift it. */
+ipcMain.handle('le:halt', () => {
+  setHalt(newsroomRoot(), 'stopped from the app');
+  return true;
+});
+ipcMain.handle('le:resume', () => {
+  clearHalt(newsroomRoot());
+  return true;
+});
+ipcMain.handle('le:isHalted', () => isHalted(newsroomRoot()));
+
+/** Open the finished paper in the user's real browser (a full-size, shareable view). */
+ipcMain.handle('le:openPaper', (_e, editionId: string) => {
+  const file = join(paths(newsroomRoot()).editionDir(editionId), 'edition.html');
+  if (existsSync(file)) shell.openPath(file);
+  return existsSync(file);
+});
+
+/** Read a finished edition's rendered HTML (for the in-window front-page view). */
 ipcMain.handle('le:editionHtml', async (_e, editionId: string) => {
   const root = newsroomRoot();
   try {
