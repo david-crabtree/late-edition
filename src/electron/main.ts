@@ -15,6 +15,7 @@ import {
 import type { Edition } from '../main/core/edition.js';
 import { type CopyShape, FORMATS, LENGTHS, TONES } from '../main/core/formats.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
+import { sumUsage } from '../main/pipeline/draft.js';
 import { rewriteStory } from '../main/pipeline/rewrite.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { VerificationNeededError } from '../main/pipeline/verify.js';
@@ -88,9 +89,13 @@ function newsroomRoot(): string {
 let win: BrowserWindow | null = null;
 function createWindow(): void {
   win = new BrowserWindow({
-    width: 1240,
-    height: 940,
-    minWidth: 760,
+    // Sized to the content, not the frame, so the newsroom stage lands at the proportions
+    // David tuned the art to. The window chrome is added on top by the OS.
+    useContentSize: true,
+    width: 1010,
+    height: 775,
+    minWidth: 820,
+    minHeight: 600,
     backgroundColor: '#0a0d12',
     title: 'Late Edition',
     webPreferences: {
@@ -160,13 +165,95 @@ function createWindow(): void {
       const rate = (prev.tick - first.tick) / seconds;
       console.log(`LE_DEBUG floor: ${rate.toFixed(1)} ticks/sec (expect ~12)`);
       console.log(
-        `LE_DEBUG pace: fastest ${fastest.toFixed(1)} px/sec (roam ~10, work ~26 at 12/sec)`,
+        `LE_DEBUG pace: fastest ${fastest.toFixed(1)} px/sec (roam ~24, work ~48 at 12/sec)`,
       );
       console.log(`LE_DEBUG camera: ${first.cam} at rest (the Chief's office centres at 288)`);
       console.log(
         `LE_DEBUG banter: on=${first.banter}, spoke in ${seconds}s: ${[...spoke].join(', ') || 'nobody'}`,
       );
       console.log(`LE_DEBUG staff: ${prev.people.map((p) => `${p.id}:${p.st}`).join(' ')}`);
+      // The coffee beat, sampled frame by frame. The old one drew a mug at the mouth while
+      // both arms hung at the sides, so the check is that the arm actually moves with it.
+      console.log(
+        'LE_DEBUG coffee:',
+        await js(`(async () => {
+          const cv = document.getElementById('screen');
+          const ctx = cv.getContext('2d', { willReadFrequently: true });
+          const x = window.__leProbe.forceBeat(1, 'coffee');
+          const frames = [];
+          // Sample across one full sip cycle: lift, hold, tip, lower, rest.
+          for (let i = 0; i < 6; i++) {
+            await new Promise(r => setTimeout(r, 420));
+            const sx = Math.max(0, Math.round(x - window.__leProbe.camera()) - 16);
+            const d = ctx.getImageData(sx, 100, 32, 40).data;
+            // Count mug-coloured pixels (#c9c2b0) and how high the topmost one sits.
+            let n = 0, top = 99;
+            for (let px = 0; px < d.length; px += 4) {
+              if (Math.abs(d[px] - 0xc9) < 8 && Math.abs(d[px + 1] - 0xc2) < 8 && Math.abs(d[px + 2] - 0xb0) < 8) {
+                n++; top = Math.min(top, Math.floor(px / 4 / 32));
+              }
+            }
+            frames.push({ mugPixels: n, mugTop: top });
+          }
+          const tops = frames.map(f => f.mugTop).filter(v => v < 99);
+          return JSON.stringify({
+            mugDrawn: frames.some(f => f.mugPixels > 0),
+            mugMoves: new Set(tops).size > 1,
+            heights: frames.map(f => (f.mugTop === 99 ? '-' : f.mugTop)).join(','),
+            poseAtLift: window.__leProbe.sipPose(5),
+            poseAtSip: window.__leProbe.sipPose(40),
+            poseAtRest: window.__leProbe.sipPose(85),
+          });
+        })()`),
+      );
+      // Clicking a staff card should take the camera to that person and keep it there.
+      console.log(
+        'LE_DEBUG follow:',
+        await js(`(async () => {
+          const before = window.__leProbe.camera();
+          const cards = [...document.querySelectorAll('#staff .sc')];
+          const card = cards[cards.length - 1];
+          card.click();
+          await new Promise(r => setTimeout(r, 900));
+          const after = window.__leProbe.camera();
+          const who = window.__leProbe.watching();
+          card.click();
+          return JSON.stringify({ cards: cards.length, before, after, moved: after !== before, who });
+        })()`),
+      );
+      // Chrome and layout: the tuning strip out of the cast grid, card-click follow, the
+      // quips toggle, and nothing in Setup touching anything else.
+      console.log(
+        'LE_DEBUG layout:',
+        await js(`(() => {
+          const q = (s) => document.querySelector(s);
+          // Setup is hidden until you open it, and a hidden element measures as zero.
+          const setup = q('.setup'); const wasHidden = setup.hidden; setup.hidden = false;
+          const tune = q('.budgetcard'), staff = q('#staff');
+          const gap = (a, b) => Math.round(b.getBoundingClientRect().top - a.getBoundingClientRect().bottom);
+          const recheck = q('#setupRecheck'), agents = q('#setupAgents');
+          const save = q('#setupSave'), help = q('.setup .foot-help');
+          // Every desk row should be the same height — the "suggested:" line used to
+          // make some rows taller and shunt their label and dropdown upward.
+          const rowTops = [...document.querySelectorAll('.setup select[data-role]')]
+            .map(s => Math.round(s.getBoundingClientRect().top));
+          const gaps = rowTops.slice(1).map((v, i) => v - rowTops[i]);
+          const out = {
+            tuningOutsideCast: !!(tune && staff && !staff.contains(tune)),
+            tuningBelowCast: !!(tune && staff && tune.getBoundingClientRect().top >= staff.getBoundingClientRect().bottom - 1),
+            tuningSpansFullWidth: !!(tune && staff && Math.abs(tune.offsetWidth - staff.offsetWidth) < 4),
+            recheckGap: recheck && agents ? gap(recheck, agents) : null,
+            saveGap: save && help ? gap(save, help) : null,
+            deskRowGaps: gaps,
+            hasCloseSettings: !!q('#setupClose'),
+            hasQuipToggle: !!q('#appQuips'),
+            contentWidth: window.innerWidth,
+            contentHeight: window.innerHeight,
+          };
+          setup.hidden = wasHidden;
+          return JSON.stringify(out);
+        })()`),
+      );
       // Setup panel: agent rows, whether the stand-in is hidden, and whether the model
       // recommendation actually follows the provider dropdown (it used to not).
       console.log(
@@ -564,9 +651,14 @@ ipcMain.handle(
 /** Per-role token totals + how it's paid for — the app's honest usage readout. */
 async function summarizeUsage(edition: Edition) {
   const byRole: Record<string, number> = {};
+  const kinds = sumUsage(edition);
   let total = 0;
   for (const u of edition.tokenUsage) {
-    const t = (u.inputTokens ?? 0) + (u.outputTokens ?? 0);
+    const t =
+      (u.inputTokens ?? 0) +
+      (u.outputTokens ?? 0) +
+      (u.cacheReadTokens ?? 0) +
+      (u.cacheWriteTokens ?? 0);
     byRole[u.role] = (byRole[u.role] ?? 0) + t;
     total += t;
   }
@@ -579,7 +671,7 @@ async function summarizeUsage(edition: Edition) {
     : modes.includes('subscription')
       ? 'subscription'
       : 'free';
-  return { total, byRole, billing, costUsd: usedCost };
+  return { total, byRole, billing, costUsd: usedCost, kinds };
 }
 
 /** The stop switch: halt every agent call (idles the newsroom) / lift it. */

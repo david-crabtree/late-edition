@@ -97,7 +97,13 @@ export function recordUsage(
   draft: EditionDraft,
   providerId: string,
   role: string,
-  usage?: { inputTokens?: number; outputTokens?: number; costUsd?: number },
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
+    costUsd?: number;
+  },
   /**
    * When given, the spend is also announced as it happens. Without this the app could
    * only ever learn the token count once, when the whole edition came back — which is
@@ -112,9 +118,15 @@ export function recordUsage(
     role,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
+    cacheReadTokens: usage.cacheReadTokens,
+    cacheWriteTokens: usage.cacheWriteTokens,
     costUsd: usage.costUsd,
   });
-  const spent = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
+  const spent =
+    (usage.inputTokens ?? 0) +
+    (usage.outputTokens ?? 0) +
+    (usage.cacheReadTokens ?? 0) +
+    (usage.cacheWriteTokens ?? 0);
   log?.emit('usage', 'spent', {
     role,
     provider: providerId,
@@ -122,15 +134,37 @@ export function recordUsage(
     tokens: spent,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
+    cacheReadTokens: usage.cacheReadTokens,
+    cacheWriteTokens: usage.cacheWriteTokens,
     costUsd: usage.costUsd,
     total: sumTokens(draft),
+    totals: sumUsage(draft),
     totalCostUsd: sumCostUsd(draft),
   });
 }
 
-/** Total tokens (input + output) recorded so far this edition. */
+/** Every token counted so far this edition, split by what kind it was. */
+export function sumUsage(draft: { tokenUsage: TokenUsage[] }): {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  total: number;
+} {
+  const t = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
+  for (const u of draft.tokenUsage) {
+    t.input += u.inputTokens ?? 0;
+    t.output += u.outputTokens ?? 0;
+    t.cacheRead += u.cacheReadTokens ?? 0;
+    t.cacheWrite += u.cacheWriteTokens ?? 0;
+  }
+  t.total = t.input + t.output + t.cacheRead + t.cacheWrite;
+  return t;
+}
+
+/** Total tokens recorded so far this edition, cache included (that's what providers count). */
 export function sumTokens(draft: EditionDraft): number {
-  return draft.tokenUsage.reduce((n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0), 0);
+  return sumUsage(draft).total;
 }
 
 /** Total provider-reported cost (USD) recorded so far this edition. */

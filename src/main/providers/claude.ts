@@ -10,16 +10,20 @@ function parseUsage(stdout: string): AgentUsage | undefined {
   try {
     const obj = JSON.parse(stdout) as { usage?: Record<string, unknown>; total_cost_usd?: unknown };
     const u = obj.usage ?? {};
-    const inputTokens =
-      (Number(u.input_tokens) || 0) +
-      (Number(u.cache_read_input_tokens) || 0) +
-      (Number(u.cache_creation_input_tokens) || 0);
+    // Kept apart on purpose. Cache reads are most of a multi-agent run's headline number
+    // and are the cheap part; folding them into "input" makes a routine edition look wild.
+    const inputTokens = Number(u.input_tokens) || 0;
+    const cacheReadTokens = Number(u.cache_read_input_tokens) || 0;
+    const cacheWriteTokens = Number(u.cache_creation_input_tokens) || 0;
     const outputTokens = Number(u.output_tokens) || 0;
     const costUsd = Number(obj.total_cost_usd) || undefined;
-    if (!inputTokens && !outputTokens && costUsd === undefined) return undefined;
+    const any = inputTokens || outputTokens || cacheReadTokens || cacheWriteTokens;
+    if (!any && costUsd === undefined) return undefined;
     return {
       inputTokens: inputTokens || undefined,
       outputTokens: outputTokens || undefined,
+      cacheReadTokens: cacheReadTokens || undefined,
+      cacheWriteTokens: cacheWriteTokens || undefined,
       costUsd,
     };
   } catch {

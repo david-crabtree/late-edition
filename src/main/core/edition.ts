@@ -52,8 +52,12 @@ export interface Correction {
 export interface TokenUsage {
   provider: string;
   role: string;
+  /** Fresh prompt tokens. */
   inputTokens?: number;
   outputTokens?: number;
+  /** Prompt tokens served from cache — counted in totals, but the cheap part. */
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
   /** Provider-reported cost of the call in USD, when available. */
   costUsd?: number;
 }

@@ -136,11 +136,22 @@ research: 1        # researcher passes per run
 
 const STYLE_MD = `# House style — "Noir"
 
-Terse, wry, 1940s wire-service voice. Short sentences. Concrete nouns. No hype, no
-marketing adjectives, no exclamation marks. Lead with what changed and who it hits.
-Attribute every fact. When in doubt, cut it.
+A 1940s wire desk. Terse, dry, unimpressed. This is the paper's voice — edit it, or
+replace it entirely, and every desk writes to whatever you put here.
 
-Never let voice bend a fact. If it isn't in the sources, it didn't happen.
+**The voice.** Short sentences that land. Concrete nouns and real figures over abstractions:
+"a $400 certificate", not "a premium option". Verbs do the work; adjectives are suspects.
+No hype, no marketing register, no exclamation marks, no rhetorical questions.
+
+**The judgement.** Lead with what changed and who it hits. Put two facts next to each other
+and let the reader draw the line — don't explain the significance, demonstrate it. One dry
+line per piece is allowed if the material earns it. Nought is better than a forced one.
+
+**The discipline.** Attribute every fact. Say plainly where the evidence stops. When in
+doubt, cut it — a short piece that stands up beats a long one that doesn't.
+
+**The hard rule.** Never let voice bend a fact. If it isn't in the sources, it didn't
+happen, however good the sentence would have been.
 `;
 
 const BEAT_WIRE = `id: the_wire

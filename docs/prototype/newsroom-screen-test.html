@@ -93,8 +93,11 @@
   .setup .prov{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
   .setup .pv{ font-family:var(--pixel); font-size:.52rem; padding:4px 7px; border-radius:4px; border:1px solid #2c2519; background:#14100b; color:#8a8270; }
   .setup .pv.ready{ border-color:#3f8a60; color:#c9e6b0; } .setup .pv.api{ border-color:#a8703a; color:#e8cf88; }
-  .setup .roles{ display:grid; grid-template-columns:minmax(84px,auto) 1fr minmax(96px,1.1fr); gap:7px 10px; align-items:center; }
-  .setup .roles label{ font-size:.8rem; color:var(--bone-dim); }
+  /* align-items:start, not center — the "suggested:" line under the model box made each
+     row a different height and shunted the label and dropdown up with it. */
+  .setup .roles{ display:grid; grid-template-columns:minmax(84px,auto) 1fr minmax(140px,1.1fr); gap:10px 12px; align-items:start; }
+  .setup .roles label{ font-size:.8rem; color:var(--bone-dim); padding-top:8px; }
+  .setup .roles select[data-role]{ margin:0; }
   .setup select, .setup .mdl{ font-family:var(--type); font-size:.85rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:4px; padding:6px 8px; min-width:0; }
   .setup .folder{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.78rem; color:var(--bone-dim); }
   .setup .folder code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.72rem; color:var(--bone); background:#14100b; border:1px solid #2c2519; border-radius:4px; padding:3px 6px; max-width:100%; overflow-wrap:anywhere; }
@@ -103,6 +106,15 @@
   .setup .authhint{ font-size:.68rem; color:#c2a15a; margin:8px 0 4px; line-height:1.5; }
   .setup .authhint b{ color:var(--amber); }
   .setup .note{ font-size:.68rem; color:#7a7259; margin-top:11px; line-height:1.5; }
+  /* Breathing room where things were touching: Recheck against the agent list, Save staff
+     against the help text below it. */
+  .setup .agentshd{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin:18px 0 9px; }
+  .setup .agentshd h4{ margin:0; }
+  .setup .saverow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:16px 0 0; }
+  .setup .foot-help{ margin-top:16px; padding-top:13px; border-top:1px solid #23201a; }
+  .setup .setuphd{ display:flex; align-items:flex-start; gap:10px; }
+  .setup .setuphd h3{ flex:1; }
+  .setup .closebtn{ flex:none; }
   /* --- Agent list: one row per agent, its status, and the exact commands to fix it.
      Install steps sit next to the agent they belong to instead of inside a paragraph. --- */
   .setup h4{ font-family:var(--pixel); font-size:.56rem; letter-spacing:.06em; color:var(--bone-dim);
@@ -126,8 +138,9 @@
                     background:#14100b; border:1px solid #2c2519; border-radius:4px; padding:4px 7px; overflow-wrap:anywhere; }
   /* --- Desks: role, agent, model. The recommendation follows the chosen agent. --- */
   .setup .roles .un{ color:#c98b6a; }
-  .setup .mdlwrap{ display:flex; flex-direction:column; gap:2px; min-width:0; }
-  .setup .mdlwrap .rec{ font-size:.6rem; color:#7a7259; }
+  .setup .mdlwrap{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+  /* Reserve the hint's line whether or not there's a hint, so no row is taller than another. */
+  .setup .mdlwrap .rec{ font-size:.62rem; color:#7a7259; min-height:1em; line-height:1; }
   .setup .dryrun{ display:flex; align-items:center; gap:7px; font-size:.7rem; color:var(--bone-dim); margin:12px 0 0; }
   .setup .dryrun input{ accent-color:#8a5a2a; }
   .setup .drywarn{ font-size:.7rem; color:#e8926a; border-left:2px solid #8a3226; padding-left:9px; margin:8px 0 0; line-height:1.5; }
@@ -218,14 +231,21 @@
   .startgate .opt.accept{ text-align:center; border-color:#5a4620; }
   .startgate .opt.accept b{ margin:0; color:var(--amber); }
   body.real{ align-items:flex-start; }                     /* don't vertically stretch the wrap — let it size to content so its bottom padding actually shows */
-  body.real .wrap{ max-width:1120px; padding:14px 0 48px; }   /* a bit larger in the app window; keep the last card off the bottom edge */
+  body.real .wrap{ max-width:980px; padding:14px 0 48px; }   /* a bit larger in the app window; keep the last card off the bottom edge */
   body.real .masthead{ margin-bottom:14px; }
   body.real .masthead h1{ font-size:clamp(1.7rem,5.5vw,2.6rem); letter-spacing:.05em; }
-  .staff .budgetcard{ display:flex; flex-direction:column; justify-content:center; gap:9px; padding:10px 12px; }
-  .staff .budgetcard .row{ margin:0 !important; }
-  .staff .budgetcard .rdepth{ align-items:center; gap:8px; flex-wrap:wrap; border-top:1px solid #2c2519; padding-top:9px; }
-  .staff .budgetcard select{ background:#12100b; color:var(--bone); border:1px solid #3a2e1b; border-radius:4px; padding:4px 7px; font-family:var(--type); font-size:.84rem; cursor:pointer; }
-  .staff .budgetcard select:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
+  /* The tuning strip. It used to be a card in the staff grid, where it took one column and
+     left three empty — it is one wide row under the cast now, laid out in columns of its own. */
+  .budgetcard{ margin-top:8px; background:#0c0f14; border:1px solid #2c2519; border-radius:6px; padding:11px 14px;
+               display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px 22px; align-items:start; }
+  .budgetcard .row{ margin:0 !important; display:flex; flex-direction:column; align-items:flex-start; gap:5px; }
+  .budgetcard .row > label, .budgetcard .row > .hint:first-child{ font-size:.72rem; color:var(--bone-dim); }
+  .budgetcard .rdepth, .budgetcard .shaperow, .budgetcard .photorow{ align-items:flex-start; }
+  .budgetcard .shaperow select{ width:100%; }
+  .budgetcard select{ background:#12100b; color:var(--bone); border:1px solid #3a2e1b; border-radius:4px; padding:4px 7px; font-family:var(--type); font-size:.84rem; cursor:pointer; }
+  .budgetcard select:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
+  .budgetcard input[type=range]{ width:100%; }
+  .budgetcard .photorow label{ display:flex; align-items:center; gap:6px; cursor:pointer; }
   .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; z-index:5; overflow:auto; padding:4% 6%; }
   .frontpage[hidden]{ display:none; }
   .frontpage .fp-paper{ max-width:680px; margin:0 auto; display:flex; flex-direction:column; align-items:center; text-align:center; gap:9px; line-height:1.35; }
@@ -365,25 +385,25 @@
   const CAST = [
     { id:'ruth', name:'Ruth Okafor', role:'Researcher',
       pal:{skin:'#8a5a34',skinSh:'#6a4426',hair:'#160e08',hat:'#3a5a4a',band:'#243a30',suit:'#3a5a4a',suitDk:'#284034',shirt:'#e6dccb',tie:'#8a7a30'},
-      hat:'none', prop:'coffee', acc:{glasses:1,longhair:1}, desk:'research', lines:['Give me an hour and a phone book.','Every fact leaves a paper trail.','I don’t guess — I look it up.','Primary source, or it stays out.'] },
+      hat:'none', prop:'coffee', acc:{glasses:1,longhair:1}, desk:'research', lines:['Give me an hour and a phone book.','Every fact leaves a paper trail.','I don’t guess - I look it up.','Primary source, or it stays out.','Someone filed this. Someone always files something.','A press release isn’t a source. It’s a wish.','Three tabs open and none of them agree.','I found the footnote. The footnote found nothing.','If it’s only on their own website, it isn’t true yet.','The date on this page is older than the claim.','Wikipedia is a map. I want the territory.','Two sources, and neither one is the other one.','Everybody cites the same blog post. Nobody read it.','Good. A number. Numbers can be checked.','Archive it before they quietly change it.','That’s a secondary source wearing a primary’s coat.'] },
     { id:'sam', name:'Sam Vance', role:'Hardboiled reporter',
       pal:{skin:'#d3a06f',skinSh:'#a97b4e',hair:'#241812',hat:'#4a3826',band:'#2a1f14',suit:'#3d4954',suitDk:'#2b333c',shirt:'#dcd6c6',tie:'#7a2d1d'},
-      hat:'fedora', prop:'cig', acc:{stubble:1,loosetie:1}, desk:'reporter', lines:['Ink’s cheap. The truth runs extra.','Get me rewrite — and a match.','Every quiet night’s a headline that ain’t broke yet.','Facts don’t care what time it is, kid.'] },
+      hat:'fedora', prop:'cig', acc:{stubble:1,loosetie:1}, desk:'reporter', lines:['Ink’s cheap. The truth runs extra.','Get me rewrite - and a match.','Every quiet night’s a headline that ain’t broke yet.','Facts don’t care what time it is, kid.','Nobody ever called me back at a reasonable hour.','The story’s fine. It’s the third paragraph that’s lying.','I’ve been hung up on by better people than this.','They said no comment. That’s a comment.','Buried on page nine. That’s where the good ones live.','I don’t need the whole truth. I need the bit that checks out.','Two hours on the phone for one sentence. Worth it.','The lede’s in here somewhere. It’s hiding.','Somebody’s lying and I’ve narrowed it down to everybody.','Ashtray’s full. Notebook isn’t. Wrong way round.','You can smell a rewrite job from the door.','Deadline’s a suggestion. The presses aren’t.'] },
     { id:'dot', name:'Dot Kowalski', role:'News editor',
       pal:{skin:'#e0b184',skinSh:'#c79a72',hair:'#3a1d12',hat:'#6a2740',band:'#4a1a2c',suit:'#5a2338',suitDk:'#401828',shirt:'#e6dccb',tie:'#c9a24b'},
-      hat:'none', prop:'coffee', acc:{pencil:1,earrings:1}, desk:'editor', lines:['Cut it to the bone, then cut the bone.','Two sources or it’s a rumor with a byline.','I’ve spiked better copy before breakfast.','Hold page one. I feel one coming.'] },
+      hat:'none', prop:'coffee', acc:{pencil:1,earrings:1}, desk:'editor', lines:['Cut it to the bone, then cut the bone.','Two sources or it’s a rumour with a byline.','I’ve spiked better copy before breakfast.','Hold page one. I feel one coming.','Four hundred words. Not four hundred and one.','You buried it. Dig it up and put it first.','If the headline needs the standfirst, the headline’s broken.','I don’t want your opinion. I want their quote.','Nice sentence. It’s out.','Who does it hit? Lead with them.','That’s a feature pretending to be news.','Below the fold, and lucky to be there.','Take the adverb out and read it again.','We ran this in March. Find me what’s new.','It stands up or it doesn’t. There’s no third thing.','Front page is a promise. Don’t make me break it.'] },
     { id:'hal', name:'Hal Brody', role:'Rewrite / copywriter',
       pal:{skin:'#cf9c66',skinSh:'#a67848',hair:'#1c130c',hat:'#3a4048',band:'#242a30',suit:'#4a4038',suitDk:'#342c26',shirt:'#dcd6c6',tie:'#3a6a7a'},
-      hat:'none', prop:'coffee', acc:{loosetie:1,glasses:1}, desk:'copywriter', lines:['Give me the facts, I’ll give you the music.','Ledes are made, not born.','Kill the adjectives, keep the verbs.','Three tight grafs by deadline.'] },
+      hat:'none', prop:'coffee', acc:{loosetie:1,glasses:1}, desk:'copywriter', lines:['Give me the facts, I’ll give you the music.','Ledes are made, not born.','Kill the adjectives, keep the verbs.','Three tight grafs by deadline.','Short sentence. Then a longer one to breathe. Then short.','I’ve rewritten this lede four times. It’s getting worse.','Every ’very’ I delete adds a year to my life.','The facts are dull. The order they arrive in isn’t.','Don’t explain the joke. Don’t explain the fact either.','A comma there changes who’s to blame.','Read it aloud. If you run out of air, cut it.','The last line does the work. Save something for it.','’In conclusion’ is where good copy goes to die.','Passive voice. Someone did this. Say who.','Two facts side by side beat a paragraph of opinion.','It isn’t the words. It’s the gaps between them.'] },
     { id:'mac', name:'Mac McHale', role:'Copy desk',
       pal:{skin:'#c9a07a',skinSh:'#a07a56',hair:'#3a3a3a',hat:'#3a4a3a',band:'#2a3226',suit:'#3a4636',suitDk:'#2a3428',shirt:'#dcd6c6',tie:'#5a6b4a'},
-      hat:'none', prop:'coffee', acc:{eyeshade:1,glasses:1}, desk:'copydesk', lines:['Two sources, then we talk.','Spelled wrong? I spike it.','I read galleys in my sleep.','The record says otherwise, pal.'] },
+      hat:'none', prop:'coffee', acc:{eyeshade:1,glasses:1}, desk:'copydesk', lines:['Two sources, then we talk.','Spelled wrong? I spike it.','I read galleys in my sleep.','The record says otherwise, pal.','This claim has no source. It has a vibe.','You wrote ’reportedly’. Reported by whom?','The number in graf two fights the one in graf five.','Lovely quote. It isn’t in the transcript.','Citation says 2024. The source page says 2019.','I’ve cut worse. I’ve never cut faster.','’Sources say’ is two words too many.','Nobody sues you for the sentence you didn’t print.','Green pencil’s earned its keep tonight.','That’s an inference. Label it or lose it.','The link goes to a 404. So does the claim.','Corrections column has room. Let’s not fill it.'] },
     { id:'gus', name:'Gus Moreno', role:'Copy boy',
       pal:{skin:'#c88a56',skinSh:'#9c6a3e',hair:'#1c130c',hat:'#3a5060',band:'#233542',suit:'#495a3a',suitDk:'#33422a',shirt:'#d8cbb0',tie:'#8a6a2a'},
-      hat:'cap', prop:'none', acc:{bowtie:1,freckles:1,young:1}, desk:'copyboy', lines:['Presses are hungry tonight, boss.','I run faster’n the deadline, watch me.','Coffee’s fresh — the coffee’s a lie.','Extra! Extra! …once you write it.'] },
+      hat:'cap', prop:'none', acc:{bowtie:1,freckles:1,young:1}, desk:'copyboy', lines:['Presses are hungry tonight, boss.','I run faster than the deadline, watch me.','Coffee’s fresh - the coffee’s a lie.','Extra! Extra! ...once you write it.','Copy for the desk! Anyone? No? Right.','One day my name goes on one of these.','I know every shortcut in this building.','Mr Vance says I ask too many questions. Is that one?','Pressroom’s warm. Best seat in the house.','Carried a page one once. Didn’t read it. Still regret it.','There’s a man downstairs who’s been here since 1931.','Ink under the fingernails never comes out. Suits me.','Everyone’s shouting. Must be going well.','I’ll get it there before you’ve finished writing it.','Boss says wait. Waiting’s the hard part.','Somebody left a sandwich on the linotype again.'] },
     { id:'iris', name:'Iris Vale', role:'Photo desk',
       pal:{skin:'#e0b184',skinSh:'#c79a72',hair:'#2a1810',hat:'#6a2740',band:'#4a1a2c',suit:'#3a4657',suitDk:'#2a3442',shirt:'#e6dccb',tie:'#c98a3a'},
-      hat:'beret', prop:'none', acc:{camera:1,longhair:1}, desk:'photo', lines:['One frame tells the whole story.','Hold the front page for my shot.','Light’s bad; the truth isn’t.','Say cheese, city hall.'] },
+      hat:'beret', prop:'none', acc:{camera:1,longhair:1}, desk:'photo', lines:['One frame tells the whole story.','Hold the front page for my shot.','Light’s bad; the truth isn’t.','Say cheese, city hall.','Nobody makes the picture for me. I write the brief.','Give me the caption and I’ll tell you if it’s honest.','A photograph nobody took isn’t a photograph.','Alt text isn’t decoration. Someone’s reading it.','Wrong picture, right story - still a lie.','The archive’s got it. The archive always has it.','Crop it and you’ve written an opinion.','I want the hands. Hands say more than faces.','Available light and a steady elbow.','That caption claims more than the story does.','The document scan is the shot. Unglamorous. True.','Two frames: one for the record, one for the poster.'] },
   ];
 
   const state = { mode:'roam', scene:'roam', castIdx:0, banter:true, facing:1, goto:null, phase:'none', timer:0, goneTotal:24, meeting:false, camFrozen:false, camVal:0, panMode:false, panX:0 };
@@ -508,7 +528,7 @@
     }
     if(appMode) drawPeople();                                              // everyone up and about, on the floor
     else if(state.mode==='roam') drawRoamer(CAST[state.castIdx]);          // the active character up and walking (sim)
-    updateParticles(smoke); }
+    updateParticles(smoke); updateParticles(steam); }
   function deskPool(x){ const pool=g.createRadialGradient(x,DTOP-46,4,x,DTOP-46,150); pool.addColorStop(0,'rgba(232,176,75,.15)'); pool.addColorStop(.6,'rgba(232,176,75,.04)'); pool.addColorStop(1,'rgba(232,176,75,0)'); g.fillStyle=pool; g.fillRect(x-170,0,340,DTOP+40); }
   function nameplate(c,cx,y){ const name=(c.name||'').toUpperCase().slice(0,15); g.fillStyle='#c9b06a'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(name,cx,y); g.textAlign='left'; g.textBaseline='alphabetic'; }
   // A colleague sitting idle at their own desk (no visible hands — they tuck behind the desk).
@@ -639,6 +659,12 @@
     const on=ringing&&tick%6<3; R(bx+12,DTOP-8,2,2,on?'#ff3b30':'#6a1f18'); if(on) P(bx+12,DTOP-9,'#ffb0a8');   // bright red light
     if(on){ const c='#ffd36a'; P(bx-3,DTOP-8,c);P(bx-4,DTOP-9,c);P(bx-4,DTOP-7,c); P(bx+18,DTOP-8,c);P(bx+19,DTOP-9,c);P(bx+19,DTOP-7,c); } }   // buzz lines
   function drawMug(x,y){ R(x,y,8,6,'#c9c2b0'); R(x,y,8,1,'#e6dfce'); R(x+8,y+1,2,3,'#9a917c'); R(x+1,y+1,6,2,'#3a2b1e'); }
+  /** A smaller mug, held in a hand rather than sitting on a desk. `tilt` tips it to the lips. */
+  function drawHeldMug(x,y,d,tilt){ const t=tilt?1:0;
+    R(x,y-t,5,5,'#c9c2b0'); R(x,y-t,5,1,'#e6dfce');                       // body + rim highlight
+    R(d>0?x-2:x+5,y+1-t,2,2,'#9a917c');                                    // handle, away from the face
+    if(!t) R(x+1,y+1,3,1,'#3a2b1e');                                       // coffee, visible until it's tipped
+    if(!reduce&&!t&&tick%22===0) steam.push({x:x+2,y:y-1,life:26,rise:0.14,c:'#8f9aa8'}); }
 
   // ---- Character rig ------------------------------------------------------
   function headFront(c,cx,topY,blink,shock){ const p=c.pal,y=topY;
@@ -667,11 +693,30 @@
     if(a<=0) return; g.globalAlpha=a;
     if(walking) drawWalk(c,player.x,FLOOR,state.facing); else drawStand(c,player.x,FLOOR); g.globalAlpha=1;
     if(state.mode==='roam'&&state.goto==null&&Math.abs(player.x-AC())<30){ g.fillStyle='#e8b04b'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.fillText('SPACE',AC(),FLOOR-42); g.textAlign='left'; } }
-  function drawStand(c,fx,fy){ const p=c.pal,bob=reduce?0:(Math.sin(tick*0.2)<0?0:1); const hipY=fy-9,shY=fy-22-bob,headTop=fy-33-bob;
+  /**
+   * A standing body. `raise` bends one arm up to the face instead of letting it hang —
+   * that arm and its hand are drawn AFTER the head, or the head paints over them. The
+   * returned handX/handY is where something held to the lips goes.
+   *   raise: 0 none · 1 the right arm (facing right) · -1 the left arm (facing left)
+   *   lift:  0..1, how far up — lets a sip be an actual movement rather than a jump cut.
+   */
+  function drawStand(c,fx,fy,raise,lift){ const p=c.pal,bob=reduce?0:(Math.sin(tick*0.2)<0?0:1); const hipY=fy-9,shY=fy-22-bob,headTop=fy-33-bob;
+    const up=raise?Math.max(0,Math.min(1,lift==null?1:lift)):0;
     R(fx-4,hipY,4,9,p.suitDk); R(fx+1,hipY,4,9,p.suit); R(fx-4,fy-2,5,2,'#1a120a'); R(fx+1,fy-2,5,2,'#1a120a');
     R(fx-8,shY,16,hipY-shY+2,p.suit); R(fx-8,shY,16,2,p.suitDk); R(fx-2,shY,4,8,p.shirt); R(fx-1,shY+1,2,7,p.tie);
-    R(fx-9,shY+2,3,8,p.suitDk); R(fx+6,shY+2,3,8,p.suit); R(fx-9,shY+9,3,2,p.skin); R(fx+6,shY+9,3,2,p.skin);
-    const h=headFront(c,fx,headTop,(tick%70)<3,false); puff(c,h.mouthX,h.mouthY); return h; }
+    // Whichever arm isn't raised just hangs, as before.
+    if(raise!==-1){ R(fx-9,shY+2,3,8,p.suitDk); R(fx-9,shY+9,3,2,p.skin); }
+    if(raise!==1){ R(fx+6,shY+2,3,8,p.suit); R(fx+6,shY+9,3,2,p.skin); }
+    const h=headFront(c,fx,headTop,(tick%70)<3,false);
+    if(raise){ const d=raise, sx=d>0?fx+6:fx-9, sleeve=d>0?p.suit:p.suitDk;
+      // Elbow drops as the hand comes up: shoulder → forearm → hand, drawn over the head edge.
+      const hy=Math.round(shY+9-up*13);            // hand height: hip-ish at rest, lips at full lift
+      const hx=Math.round(sx-d*up*3);              // and it tucks in toward the mouth as it rises
+      R(sx,shY+2,3,Math.max(2,7-Math.round(up*3)),sleeve);          // upper arm, shortening as the elbow bends
+      R(hx,Math.min(shY+7,hy+2),3,Math.max(2,(shY+9)-hy),sleeve);   // forearm reaching up
+      R(hx,hy,3,2,p.skin);                                          // the hand
+      h.handX=hx; h.handY=hy; h.handDir=d; }
+    puff(c,h.mouthX,h.mouthY); return h; }
   function drawWalk(c,fx,fy,d){ const p=c.pal,f=tick%4,stride=[3,0,-3,0][f],sw=[3,0,-3,0][f],up=(f===1||f===3)?1:0; const hipY=fy-9,shY=fy-21-up,headTop=fy-32-up;
     R(fx-1+d*stride,hipY,4,9,p.suitDk); R(fx-1-d*stride,hipY,4,9,p.suit); R(fx-2+d*stride+(d>0?2:-2),fy-2,5,2,'#1a120a'); R(fx-2-d*stride+(d>0?-2:2),fy-2,5,2,'#1a120a');
     R(fx-4,shY,10,hipY-shY+2,p.suit); R(fx-4,shY,10,2,p.suitDk); R(fx-1+d*sw,shY+3,3,7,p.suitDk); R(fx-1+d*sw,shY+9,3,2,p.skin); headSide(c,fx,headTop,d); }
@@ -754,6 +799,7 @@
       if(window.lateEdition && state.panMode){ if(input.left)state.panX-=14; if(input.right)state.panX+=14; state.panX=Math.max(0,Math.min(WORLD-VW,state.panX)); }
       { let tgt; if(state.camFrozen) tgt=state.camVal; else if(state.panMode) tgt=state.panX;
         else if(window.lateEdition && !director.t && realActive && realActive.ci>=0 && people && people[realActive.ci]) tgt=people[realActive.ci].px-VW/2;   // app: drift with whoever's on the story (watch them walk in + settle)
+        else if(window.lateEdition && watching) tgt=watchTarget();   // app: you clicked a card — stay with them
         else if(director.t>0&&director.at) tgt=(director.at.ci>=0?deskX(director.at.ci):WINDOW_XB)-VW/2;
         else if(window.lateEdition) tgt=(WINDOW_XB-VW/2)/BP;   // app at rest: hold on the Chief's office (back-wall parallax)
         else tgt=(state.mode==='desk'?AC():player.x)-VW/2; tgt=Math.max(0,Math.min(WORLD-VW,tgt)); cam+=(tgt-cam)*0.14; if(Math.abs(tgt-cam)<0.6)cam=tgt; }
@@ -988,8 +1034,8 @@
     card.append(pc,mid,end); staffEl.append(card);
     if(s.ci>=0) portrait(pc,CAST[s.ci]); else chiefPortrait(pc);
     s.el={ card, st, bi, tk };
-    card.addEventListener('click',e=>{ if(e.target.closest('[data-boost]')) return; if(s.ci>=0) selectCast(s.ci); else { clearGoto(); state.panMode=false; focusOn(chief); selectLog(s); } });
-    card.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&!e.target.closest('[data-boost]')){ e.preventDefault(); if(s.ci>=0) selectCast(s.ci); else { focusOn(chief); selectLog(s); } } });
+    card.addEventListener('click',e=>{ if(e.target.closest('[data-boost]')) return; watchStaffer(s); });
+    card.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&!e.target.closest('[data-boost]')){ e.preventDefault(); watchStaffer(s); } });
     bst.addEventListener('click',e=>{ e.stopPropagation(); boost(s.id,100000); });
   } renderRoster(); }
   function renderRoster(){ for(const s of staff){ if(!s.el) continue; const pct=Math.min(100,s.spent/s.budget*100);
@@ -1023,8 +1069,24 @@
     if(s==='editor'&&e==='call') return ['act',`Made the call — ${d.placement||''}${d.competingTakes?' (competing takes)':''}`];
     return null; }
   const STAGE2DO={ RESEARCH:['research','Researching the topic'], REPORT:['reporter','Reporting'], WRITE:['copywriter','Rewriting the copy'], CHECK:['copydesk','Checking the copy'], CALL:['editor','Making the call'], TRIAGE:['chief','Sizing up the brief'], ASSIGN:['chief','Assigning the desk'] };
-  let realActive=null, lastEditionId=null, haltViz=false, followBtn=null;
+  let realActive=null, lastEditionId=null, haltViz=false, followBtn=null, quipBtn=null;
+  let watching=null;   // app: the staffer whose card you clicked — the camera stays on them
   // App camera: follow ON = auto-focus drifts with the working desk; OFF = free look (◀ ▶ pan, camera stays put).
+  // Click a card and the camera goes to that person and stays with them as they move.
+  // In the sim this was selectCast(); in app mode nobody is "the player", so it needs a
+  // watch target of its own. Cleared by a new run, by free look, or by clicking again.
+  function watchStaffer(s){
+    if(!s) return;
+    selectLog(s);
+    if(!window.lateEdition){ if(s.ci>=0) selectCast(s.ci); else { clearGoto(); state.panMode=false; focusOn(chief); } renderRoster(); return; }
+    watching = (watching===s) ? null : s;
+    if(watching){ setFollow(true); if(s.ci<0) officeBlipT=Math.max(officeBlipT,90); }
+    if(mScene && !realBusy) mScene.textContent = watching ? `Following ${s.label}` : 'Ready — brief the Chief.';
+    renderRoster(); }
+  const watchTarget=()=>{
+    if(!watching) return null;
+    if(watching.ci<0) return (WINDOW_XB-VW/2)/BP;            // the Chief is in the office, on the back wall
+    return people&&people[watching.ci] ? people[watching.ci].px-VW/2 : deskX(watching.ci)-VW/2; };
   function setFollow(on){ if(on){ state.panMode=false; } else { if(!state.panMode) state.panX=cam; state.panMode=true; }
     if(followBtn){ followBtn.setAttribute('aria-pressed', String(on)); followBtn.textContent = on?'⦿ Auto-focus':'○ Free look'; }
     if(mScene && window.lateEdition && !realBusy) mScene.textContent = on?'Ready — brief the Chief.':'Free look · ◀ ▶ to pan'; }
@@ -1033,14 +1095,14 @@
   const AMIN=90, AMAX=WORLD-90;
   // Pace, in world pixels per 12ths-of-a-second tick. Roaming is deliberately well under half
   // the working pace: drifting round the floor should never read the same as being sent somewhere.
-  const PACE={ roam:0.8, sit:1.5, chief:1.9, work:2.2, handoff:2.4 };
+  const PACE={ roam:2.0, sit:3.0, chief:3.4, work:4.0, handoff:4.4 };
   const ROAM_RANGE=230;   // how far from their own desk anyone drifts — keeps people in their part of the room
   const QUIP_EVERY=170, QUIP_SPREAD=150;   // ticks between quips (~14–27s at 12/sec) — dialled back, not off
   const people = window.lateEdition ? CAST.map((c,i)=>({ ci:i, px:DESKX[i]+(i%2?46:-46), tx:DESKX[i], face:1, st:'idle', beat:'none', t:30+((i*53)%150), seated:false, carry:false, walking:false })) : null;
   function approach(p,tx,sp){ const d=tx-p.px; if(Math.abs(d)>2.2){ p.px+=Math.max(-sp,Math.min(sp,d)); p.face=d<0?-1:1; return false; } p.px=tx; return true; }
   const wander=p=>{ p.st='walk'; const home=DESKX[p.ci];
     p.tx=Math.max(AMIN,Math.min(AMAX, home+(Math.random()*2-1)*ROAM_RANGE)); };
-  const idleBeat=p=>{ const r=Math.random(); p.beat=r<0.34?'smoke':r<0.66?'coffee':'none'; p.st='idle'; p.t=90+((Math.random()*110)|0); };
+  const idleBeat=p=>{ const r=Math.random(); p.beat=r<0.34?'smoke':r<0.66?'coffee':'none'; p.st='idle'; p.t=90+((Math.random()*110)|0); p.coffeeT=0; };
   // A staffer with a question walks over to the Chief's office door, puts it to them, then heads back.
   const visitChief=p=>{ p.st='chief'; p.tx=OFFICE_XB+18; p.query=true; p.beat='none'; p.t=64+((Math.random()*50)|0); };
   function updatePeople(){ if(!people||reduce) return;
@@ -1053,6 +1115,7 @@
       else if(p.st==='sit'){ if(approach(p,dx,PACE.sit)){ p.seated=true; if(--p.t<=0){ p.seated=false; wander(p); } } else p.seated=false; }
       else if(p.st==='walk'){ p.seated=false; if(approach(p,p.tx,PACE.roam)) idleBeat(p); }
       else { p.seated=false;
+        p.coffeeT=(p.coffeeT||0)+1;
         if(--p.t<=0){ const r=Math.random(); if(r<0.55) wander(p); else if(r<0.72){ p.st='sit'; p.t=120+((Math.random()*120)|0); } else if(r<0.82) visitChief(p); else idleBeat(p); } }
       p.walking = Math.abs(p.px-bx)>0.25;
     } }
@@ -1069,20 +1132,51 @@
     if(!free.length) return;
     const p=free[(Math.random()*free.length)|0], c=CAST[p.ci], s=staff.find(x=>x.ci===p.ci);
     if(!s||!c.lines||!c.lines.length) return;
-    agentSay(s, c.lines[(Math.random()*c.lines.length)|0], 46); }
+    agentSay(s, nextQuip(s, c.lines), 46); }
+  // A shuffle bag per person: every line gets used once before any repeats. Pure random
+  // meant the same four lines kept coming round even with plenty written.
+  function nextQuip(s, lines){
+    if(!s.bag || !s.bag.length){ s.bag = lines.slice();
+      for(let i=s.bag.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [s.bag[i],s.bag[j]]=[s.bag[j],s.bag[i]]; }
+      if(s.bag.length>1 && s.bag[s.bag.length-1]===s.lastQuip) s.bag.unshift(s.bag.pop());
+    }
+    const line=s.bag.pop(); s.lastQuip=line; return line; }
+  /**
+   * The coffee beat, as a movement rather than a prop that teleports to someone's face.
+   * One cycle: lift the mug, hold it there, tip it for a sip, lower it, rest. `coffeeT`
+   * counts up through the cycle so the arm is somewhere sensible at every frame.
+   */
+  const SIP = { lift: 10, hold: 26, sip: 8, lower: 10, rest: 40 };
+  const SIP_TOTAL = SIP.lift + SIP.hold + SIP.sip + SIP.lower + SIP.rest;
+  function sipPose(t){
+    const n = t % SIP_TOTAL;
+    if (n < SIP.lift) return { lift: n / SIP.lift, tilt: false };
+    let m = n - SIP.lift;
+    if (m < SIP.hold) return { lift: 1, tilt: false };
+    m -= SIP.hold;
+    if (m < SIP.sip) return { lift: 1, tilt: true };
+    m -= SIP.sip;
+    if (m < SIP.lower) return { lift: 1 - m / SIP.lower, tilt: false };
+    return { lift: 0, tilt: false };
+  }
   function drawPeople(){ if(!people) return;
     for(const p of people){ if(p.seated) continue; const c=CAST[p.ci], px=p.px|0; let h=null;
-      if(p.walking) drawWalk(c,px,FLOOR,p.face); else h=drawStand(c,px,FLOOR);
+      const sipping = !p.walking && p.st==='idle' && p.beat==='coffee';
+      const pose = sipping ? sipPose(p.coffeeT||0) : null;
+      if(p.walking) drawWalk(c,px,FLOOR,p.face);
+      else h=drawStand(c,px,FLOOR, sipping?(p.face>0?1:-1):0, pose?pose.lift:0);
       if(!p.walking && p.st==='idle'){
         if(p.beat==='smoke' && h){ const dir=p.face>0?1:-1, mx=h.mouthX, my=h.mouthY;   // a real cigarette at the lips, ember lit, smoke off the tip
           R(dir>0?mx+1:mx-5, my, 5, 1, '#e8e2d0'); const tip=dir>0?mx+6:mx-6; P(tip, my, '#ff7a2a');
           if(tick%16===0) smoke.push({x:tip, y:my-1, life:46, rise:0.15, c:'#9aa3a8'}); }
-        else if(p.beat==='coffee'){ const dir=p.face>0?1:-1, mx=px+(dir>0?1:-9), my=FLOOR-29;   // arm raised to hold the cup (no more floating mug)
-          R(mx+2, my+4, 3, 7, c.pal.skin); drawMug(mx, my); } }
+        // The mug rides in the hand the arm is actually holding up.
+        else if(p.beat==='coffee' && h && h.handX!=null){
+          drawHeldMug(h.handDir>0 ? h.handX+2 : h.handX-4, h.handY-3, h.handDir, pose.tilt); }
+      }
+      if(p.carry||p.st==='handoff'){ const hx=px+(p.face>0?4:-10); R(hx,FLOOR-24,7,5,'#e8e2d0'); R(hx,FLOOR-24,7,1,'#fbf6e6'); R(hx+1,FLOOR-22,5,1,'#b9b39c'); }
       if(p.st==='chief' && p.query && Math.abs(p.px-p.tx)<3){ const bx=px, by=FLOOR-46;   // "?" while putting a query to the Chief
         R(bx-5,by,11,9,'#12161c'); R(bx-5,by,11,1,'#2a323c'); R(bx-2,by+9,3,2,'#12161c');
         g.fillStyle='#e8b04b'; g.font='7px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('?',bx,by+5); g.textAlign='left'; g.textBaseline='alphabetic'; }
-      if(p.carry||p.st==='handoff'){ const hx=px+(p.face>0?4:-10); R(hx,FLOOR-24,7,5,'#e8e2d0'); R(hx,FLOOR-24,7,1,'#fbf6e6'); R(hx+1,FLOOR-22,5,1,'#b9b39c'); }
     } }
   function bubbleOnly(s,text){ if(!s) return; s.say=text; s.sayT=78; }        // a bubble of what they're DOING (no quip in the log)
   function setWorking(s,doing){ if(!s) return; const from=realActive;
@@ -1100,12 +1194,23 @@
   // the end. `live` is what we've heard so far; a finished run replaces it with the
   // authoritative total from the edition itself.
   const ROLE2STAFF=()=>({ triage:chief, researcher:roleAgent('research'), reporter:roleAgent('reporter'), writer:roleAgent('copywriter'), editor:roleAgent('editor'), copydesk:roleAgent('copydesk') });
-  const live={ total:0, costUsd:0, byRole:{}, models:{}, providers:{} };
+  const live={ total:0, costUsd:0, byRole:{}, models:{}, providers:{},
+    kinds:{ input:0, output:0, cacheRead:0, cacheWrite:0 } };
   let billingBy={};
   async function learnBilling(){ try{ const det=await window.lateEdition.detect();
     billingBy={}; for(const d of det) billingBy[d.id]=d.billing||'unknown'; }catch(_){ } }
   function resetLiveUsage(){ live.total=0; live.costUsd=0; live.byRole={}; live.models={}; live.providers={};
+    live.kinds={ input:0, output:0, cacheRead:0, cacheWrite:0 }; live.billing=null;
     for(const s of staff) s.spent=0; renderRoster(); paintUsage(); }
+  // What the headline number is actually made of. A multi-agent run is mostly cache reads —
+  // without the split, a routine edition reads as if it cost a fortune.
+  function usageBreakdown(){ const k=live.kinds||{};
+    const parts=[];
+    if(k.output) parts.push(`${fmtK(k.output)} written`);
+    if(k.input) parts.push(`${fmtK(k.input)} read`);
+    const cache=(k.cacheRead||0)+(k.cacheWrite||0);
+    if(cache) parts.push(`${fmtK(cache)} from cache`);
+    return parts.join(' · '); }
   // Which agent is doing the spending — named, because "382k tokens" alone tells you
   // nothing about what it was spent on or whose allowance it came out of.
   function whoIsSpending(){
@@ -1119,11 +1224,14 @@
     const el=document.getElementById('appUsage'); if(!el) return;
     const b=billing||live.billing||'unknown';
     const tok=fmtK(total!=null?total:live.total), who=whoIsSpending(), on=who?` · ${who}`:'';
+    const split=usageBreakdown();
+    el.title = split ? `${split} — cache reads are counted in the total but are the cheap part` : '';
+    const tail = split ? ` (${split})` : '';
     el.textContent =
-      b==='api'      ? `⚠ ${tok} tokens${on} · billed to your API key · $${(costUsd!=null?costUsd:live.costUsd||0).toFixed(2)}`
-    : b==='subscription' ? `${tok} tokens${on} · on your plan’s allowance, not billed per use`
+      b==='api'      ? `⚠ ${tok} tokens${on}${tail} · billed to your API key · $${(costUsd!=null?costUsd:live.costUsd||0).toFixed(2)}`
+    : b==='subscription' ? `${tok} tokens${on}${tail} · on your plan’s allowance, not billed per use`
     : b==='free'     ? `${tok} tokens${on} · offline stand-in — invented copy`
-    :                  `${tok} tokens${on}`;
+    :                  `${tok} tokens${on}${tail}`;
     el.className='usage '+(b==='api'?'api':b==='subscription'?'plan':'free');
   }
   // One desk just spent something. Update its card, the running total and the readout.
@@ -1132,12 +1240,17 @@
     live.total = (typeof ev.total==='number') ? ev.total : live.total+tok;
     if(typeof ev.totalCostUsd==='number') live.costUsd=ev.totalCostUsd;
     live.byRole[ev.role]=(live.byRole[ev.role]||0)+tok;
+    const k=live.kinds; k.input+=ev.inputTokens||0; k.output+=ev.outputTokens||0;
+    k.cacheRead+=ev.cacheReadTokens||0; k.cacheWrite+=ev.cacheWriteTokens||0;
     if(ev.model) live.models[ev.model]=1;
     if(ev.provider) live.providers[ev.provider]=1;
     // Frame the spend from what this provider actually is, never a guess.
     const b=billingBy[ev.provider]; if(b&&b!=='unknown') live.billing = live.billing==='api'?'api':(b==='api'?'api':b);
     if(s){ s.spent=live.byRole[ev.role]; if(s.spent>s.budget) s.budget=Math.ceil(s.spent*1.05);
-      charLog(s,'cost',`${fmtK(tok)} tokens${ev.model?' · '+ev.model:''} (${fmtK(live.byRole[ev.role])} on this desk)`); }
+      const bits=[]; if(ev.outputTokens) bits.push(`${fmtK(ev.outputTokens)} written`);
+      if(ev.inputTokens) bits.push(`${fmtK(ev.inputTokens)} read`);
+      const cch=(ev.cacheReadTokens||0)+(ev.cacheWriteTokens||0); if(cch) bits.push(`${fmtK(cch)} cached`);
+      charLog(s,'cost',`${fmtK(tok)} tokens${ev.model?' · '+ev.model:''}${bits.length?' — '+bits.join(', '):''}`); }
     renderRoster(); paintUsage();
   }
   function applyRealEvent(ev){ if(!ev||!ev.stage) return;
@@ -1159,6 +1272,7 @@
   function applyUsage(usage){ if(!usage) return; const map=ROLE2STAFF();
     for(const role in (usage.byRole||{})){ const s=map[role], tok=usage.byRole[role]||0; if(s){ s.spent=tok; if(tok>s.budget) s.budget=Math.ceil(tok*1.05); } }
     live.total=usage.total||live.total; live.costUsd=usage.costUsd||live.costUsd; live.billing=usage.billing||live.billing;
+    if(usage.kinds) live.kinds=usage.kinds;
     renderRoster(); paintUsage(usage.billing, usage.total, usage.costUsd); }
   let realBusy=false, pendingClarify=null;
   // Research depth — how many sources the desk digs up before writing. Standard is the baseline;
@@ -1364,7 +1478,7 @@
     selectLog(chief); focusOn(chief); mScene.textContent='The Chief needs a steer — answer below ▸';
     briefInput.placeholder=(questions[0]||'Answer the Chief…'); const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Answer the Chief ▸'; renderRoster(); }
   function clearClarifyUi(){ const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Send to the Chief ▸'; briefInput.placeholder="What's the front page? Enter to send · Shift+Enter for a new line"; }
-  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; pendingClarify=null; pendingDecision=null; clearDecisionUi(); setFollow(true);
+  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; watching=null; pendingClarify=null; pendingDecision=null; clearDecisionUi(); setFollow(true);
     for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } resetLiveUsage(); await learnBilling(); chief.status='working'; chief.doing='BRIEFING';
     charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
     const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;
@@ -1389,7 +1503,7 @@
     if(mScene) mScene.textContent='Ready — brief the Chief.';
     const cab=document.querySelector('.cabinet');
     const bar=document.createElement('div'); bar.className='appbar';
-    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><button class="chip" id="appBack">Back issues</button><span class="grow"></span><button class="chip pan" id="appLeft" aria-label="Look left" title="Look left">◀</button><button class="chip pan" id="appRight" aria-label="Look right" title="Look right">▶</button><button class="chip" id="appFollow" aria-pressed="true" title="Auto-focus follows the working desk — turn off to look around freely">⦿ Auto-focus</button><button class="chip" id="appSettings">⚙ Settings</button>`;
+    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><button class="chip" id="appBack">Back issues</button><span class="grow"></span><button class="chip pan" id="appLeft" aria-label="Look left" title="Look left">◀</button><button class="chip pan" id="appRight" aria-label="Look right" title="Look right">▶</button><button class="chip" id="appFollow" aria-pressed="true" title="Auto-focus follows the working desk — turn off to look around freely">⦿ Auto-focus</button><button class="chip" id="appQuips" aria-pressed="true" title="The staff's one-liners">💬 Quips</button><button class="chip" id="appSettings">⚙ Settings</button>`;
     if(cab) cab.parentNode.insertBefore(bar, cab.nextSibling);
     const ex=document.getElementById('examples'); if(ex) ex.style.display='none';   // demo brief chips are a sim aid, not app chrome
     // Reorder for the app: brief right under the stage, budget becomes a staff card, controls hidden.
@@ -1397,12 +1511,12 @@
     if(deck && deck.children.length>=2){ const briefCol=deck.children[1], controlsCol=deck.children[2];
       if(briefCol){ bar.after(briefCol); briefCol.style.margin='16px 0 6px'; }   // don't let the brief box crowd the appbar or the log below
       const budgetRow=document.getElementById('budgetRange') && document.getElementById('budgetRange').closest('.row');
-      if(budgetRow){ const card=document.createElement('div'); card.className='sc budgetcard'; card.appendChild(budgetRow);
+      if(budgetRow){ const card=document.createElement('div'); card.className='budgetcard'; card.appendChild(budgetRow);
         // Research-depth control, baseline "Standard", up to "Deep" or down to "Light".
         const rr=document.createElement('div'); rr.className='row rdepth';
         rr.innerHTML='<label class="hint" for="researchLevel">Research depth</label><select id="researchLevel">'+Object.keys(RESEARCH_LEVELS).map(k=>`<option value="${k}"${k===researchKey?' selected':''}>${RESEARCH_LEVELS[k].label}</option>`).join('')+'</select><span class="hint" id="researchHint"></span>';
         card.appendChild(rr);
-        const st=document.getElementById('staff'); if(st) st.appendChild(card);
+        const st=document.getElementById('staff'); if(st&&st.parentNode) st.parentNode.insertBefore(card, st.nextSibling);   // its own row under the cast, full width
         const sel=rr.querySelector('#researchLevel'), hint=rr.querySelector('#researchHint');
         const setHint=()=>{ const l=RESEARCH_LEVELS[researchKey]; if(hint) hint.textContent=`~${l.maxFindings} sources${l.research>1?' · 2 passes':''}`; };
         setHint(); sel.addEventListener('change',()=>{ researchKey=sel.value; setHint(); });
@@ -1435,7 +1549,7 @@
     const $=id=>document.getElementById(id);
     // Look-around: ◀ ▶ pan the newsroom (hold to keep panning); ⦿ toggles auto-focus on the working desk.
     followBtn=$('appFollow');
-    const holdPan=(b,dir)=>{ const on=e=>{ if(e&&e.preventDefault)e.preventDefault(); setFollow(false); state.panX=Math.max(0,Math.min(WORLD-VW,state.panX+dir*40)); input[dir<0?'left':'right']=true; };
+    const holdPan=(b,dir)=>{ const on=e=>{ if(e&&e.preventDefault)e.preventDefault(); watching=null; setFollow(false); state.panX=Math.max(0,Math.min(WORLD-VW,state.panX+dir*40)); input[dir<0?'left':'right']=true; };
       const off=()=>{ input.left=false; input.right=false; };
       b.addEventListener('pointerdown',on); b.addEventListener('pointerup',off); b.addEventListener('pointerleave',off); b.addEventListener('pointercancel',off); };
     holdPan($('appLeft'),-1); holdPan($('appRight'),1);
@@ -1444,6 +1558,13 @@
     $('appResume').addEventListener('click', async()=>{ haltViz=false; await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
     $('appOpen').addEventListener('click', ()=>{ if(lastEditionId) window.lateEdition.openPaper(lastEditionId); });
     $('appBack').addEventListener('click', openBackIssues);
+    quipBtn=$('appQuips');
+    const paintQuips=()=>{ quipBtn.setAttribute('aria-pressed',String(state.banter));
+      quipBtn.textContent = state.banter ? '💬 Quips' : '💬 Quips off'; };
+    paintQuips();
+    quipBtn.addEventListener('click', ()=>{ state.banter=!state.banter;
+      if(!state.banter) for(const s of staff) s.sayT=0;   // shut anyone up mid-sentence
+      paintQuips(); });
     $('appSettings').addEventListener('click', ()=>{ const s=document.querySelector('.setup'); if(s){ s.hidden=!s.hidden; if(!s.hidden) s.scrollIntoView({behavior:'smooth',block:'start'}); } });
   }
 
@@ -1468,16 +1589,16 @@
     } }
   function buildSetup(){ const LE=window.lateEdition, anchor=document.querySelector('.cabinet'); if(!anchor) return;
     const box=document.createElement('div'); box.className='setup';
-    box.innerHTML=`<h3>Setup — wire your agents <span class="real-badge">REAL ENGINE</span></h3>
+    box.innerHTML=`<div class="setuphd"><h3>Setup — wire your agents <span class="real-badge">REAL ENGINE</span></h3><button class="chip closebtn" id="setupClose">Close ✕</button></div>
       <p class="sub">Late Edition doesn't run any AI itself. Each desk is handed to an agent you have already installed and signed into on this machine.</p>
       <div class="folder"><span>Newsroom folder</span> <code id="setupRoot">…</code> <button class="chip" id="setupPick">Change…</button> <span class="hint">config, staff &amp; every edition's history live here</span></div>
-      <div class="row" style="justify-content:space-between; align-items:center; margin:16px 0 0"><h4 style="margin:0">Your agents</h4><button class="chip" id="setupRecheck">Recheck</button></div>
+      <div class="agentshd"><h4>Your agents</h4><button class="chip" id="setupRecheck">Recheck</button></div>
       <div class="agents" id="setupAgents">looking for agents…</div>
       <h4>The desks</h4>
       <div class="roles" id="setupRoles"></div>
       <label class="dryrun"><input type="checkbox" id="setupDry"> Offer the offline stand-in as a dry run</label>
       <p class="drywarn" id="setupDryWarn" hidden>The stand-in writes a complete newspaper without contacting any model. Every word of it is invented. Use it to watch the floor work, never for anything you intend to read or publish.</p>
-      <div class="row" style="margin-top:12px; gap:8px"><button class="chip primary" id="setupSave">Save staff</button><span class="hint" id="setupMsg"></span></div>
+      <div class="saverow"><button class="chip primary" id="setupSave">Save staff</button><span class="hint" id="setupMsg"></span></div>
       <div class="foot-help">
         <p>You sign in inside each agent's own tool. Late Edition never sees or stores your login.</p>
         <p>If you are on a paid plan, the work counts against that plan's allowance in the normal way. If you are using an API key instead, you are paying per use.</p>
@@ -1487,6 +1608,7 @@
     box.hidden=true;                               // hidden on launch — the start gate + ⚙ Settings reveal it
     const $=id=>box.querySelector('#'+id);
     if(LE.getRoot) LE.getRoot().then(r=>{ $('setupRoot').textContent=r; });
+    $('setupClose').addEventListener('click', ()=>{ box.hidden=true; });
     $('setupPick').addEventListener('click', async()=>{ if(!LE.pickRoot) return; const r=await LE.pickRoot(); if(r){ $('setupRoot').textContent=r; refreshRoles(); $('setupMsg').textContent='Newsroom folder set.'; } });
 
     // --- Agents: status, what it costs you, and the commands that make it ready ---
@@ -1614,6 +1736,13 @@
     window.__leProbe = {
       applyEvent: applyRealEvent,
       applyResult: applyRunResult,
+      // Put one staffer into a named idle beat and hold them there, so an animation can be
+      // sampled frame by frame instead of waited for.
+      forceBeat: (i, beat) => { const p=people[i]; p.st='idle'; p.beat=beat; p.t=99999; p.coffeeT=0;
+        p.walking=false; p.seated=false; p.px=Math.round(cam+VW/2); return p.px; },
+      sipPose: (t) => sipPose(t),
+      camera: () => Math.round(cam),
+      watching: () => (watching ? watching.label : null),
       resetUsage: resetLiveUsage,
       usageText: () => (document.getElementById('appUsage')||{}).textContent||'',
       desks: () => staff.map(s=>({ role:s.role, label:s.label, spent:s.spent,

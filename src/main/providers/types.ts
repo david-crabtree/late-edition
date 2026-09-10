@@ -76,7 +76,14 @@ export interface AgentJob {
 export type AgentEvent =
   | { type: 'start'; provider: string; model?: string }
   | { type: 'text'; text: string }
-  | { type: 'usage'; inputTokens?: number; outputTokens?: number; costUsd?: number }
+  | {
+      type: 'usage';
+      inputTokens?: number;
+      outputTokens?: number;
+      cacheReadTokens?: number;
+      cacheWriteTokens?: number;
+      costUsd?: number;
+    }
   | { type: 'done'; output: string }
   | { type: 'error'; error: string };
 
@@ -104,8 +111,17 @@ export interface AgentProvider {
 
 /** Convenience: drain a provider run to its final text output. */
 export interface AgentUsage {
+  /** Fresh prompt tokens the model actually had to read. */
   inputTokens?: number;
   outputTokens?: number;
+  /**
+   * Prompt tokens served from cache. Counted in the headline total because providers count
+   * them, but they are the cheap part and they dominate a multi-agent run — a total that
+   * doesn't separate them makes a normal edition look extravagant.
+   */
+  cacheReadTokens?: number;
+  /** Prompt tokens written into the cache on this call. */
+  cacheWriteTokens?: number;
   /** Provider-reported cost of the call in USD, when the CLI surfaces it. */
   costUsd?: number;
 }
@@ -119,7 +135,13 @@ export async function runToText(
   for await (const ev of provider.run(job)) {
     if (ev.type === 'done') output = ev.output;
     else if (ev.type === 'usage')
-      usage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens, costUsd: ev.costUsd };
+      usage = {
+        inputTokens: ev.inputTokens,
+        outputTokens: ev.outputTokens,
+        cacheReadTokens: ev.cacheReadTokens,
+        cacheWriteTokens: ev.cacheWriteTokens,
+        costUsd: ev.costUsd,
+      };
     else if (ev.type === 'error') throw new Error(`[${provider.id}] ${ev.error}`);
   }
   return { output, usage };

@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadNewsroom } from '../config/newsroom.js';
 import type { Edition, SourceRef, Story } from '../core/edition.js';
-import { type CopyShape, getFormat, shapeDirective } from '../core/formats.js';
+import { type CopyShape, citationStyle, getFormat, shapeDirective } from '../core/formats.js';
 import { EditionLog, type LogEvent } from '../store/log.js';
 import { paths } from '../store/paths.js';
 import { resolveWriter } from './agents.js';
@@ -45,6 +45,7 @@ const STRAY_CITE = /\[#[^\]\n]{0,60}\]|\[(?:ref|citation needed|source)\]/gi;
 function resolveCitations(
   body: string,
   refs: SourceRef[],
+  style: 'numbered' | 'plain' = 'numbered',
 ): { text: string; sources: { n: number; title: string; url?: string }[] } {
   const numberOf = new Map<string, number>();
   const ordered: SourceRef[] = [];
@@ -63,6 +64,9 @@ function resolveCitations(
         const n = numberOf.get(id);
         if (n) ns.push(n);
       }
+      // 'plain' still walks the ids so the sources come out in citation order — it just
+      // doesn't leave a footnote marker in prose that will be pasted into a feed.
+      if (style === 'plain') return '';
       return ns.length ? `[${ns.join(',')}]` : '';
     })
     .replace(STRAY_CITE, '')
@@ -136,7 +140,11 @@ export async function rewriteStory(opts: RewriteOptions): Promise<RewriteResult>
   });
 
   const tokens = (outcome.usage?.inputTokens ?? 0) + (outcome.usage?.outputTokens ?? 0);
-  const { text, sources } = resolveCitations(outcome.text.trim(), story.sources);
+  const { text, sources } = resolveCitations(
+    outcome.text.trim(),
+    story.sources,
+    citationStyle(opts.shape),
+  );
   log.emit('usage', 'spent', {
     role: 'writer',
     provider: outcome.providerId,

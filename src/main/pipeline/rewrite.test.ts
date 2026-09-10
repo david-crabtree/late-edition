@@ -103,3 +103,40 @@ describe('appending sources to a rewrite', () => {
     expect(withSources('Body.', [])).toBe('Body.');
   });
 });
+
+describe('citation style follows the format', () => {
+  let root: string;
+  let editionId: string;
+  beforeEach(async () => {
+    root = mkdtempSync(join(tmpdir(), 'le-cite-'));
+    scaffoldNewsroom(root);
+    const res = await runEdition({ root, forceProvider: 'fake', brief: 'the price of tea' });
+    editionId = res.editionId;
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  // A bracketed footnote number in a LinkedIn post is a tell that a machine wrote it.
+  // Social formats get their sources listed at the end instead, with clean prose.
+  it('leaves no bracketed markers in a social post', async () => {
+    for (const format of ['linkedin', 'reddit', 'newsletter'] as const) {
+      const out = await rewriteStory({ root, editionId, forceProvider: 'fake', shape: { format } });
+      expect(out.text).not.toMatch(/\[\d+(,\d+)*\]/);
+    }
+  });
+
+  it('keeps numbered markers where the piece reads as a document', () => {
+    for (const id of ['newspaper', 'blog', 'brief'] as const) {
+      expect(FORMATS.find((f) => f.id === id)?.citations).toBe('numbered');
+    }
+    for (const id of ['linkedin', 'reddit', 'newsletter'] as const) {
+      expect(FORMATS.find((f) => f.id === id)?.citations).toBe('plain');
+    }
+  });
+
+  it('offers a blog post, and warns every format off the AI tells', () => {
+    expect(FORMATS.map((f) => f.id)).toContain('blog');
+    for (const f of FORMATS) {
+      expect(shapeDirective({ format: f.id })).toMatch(/read as machine-made/);
+    }
+  });
+});
