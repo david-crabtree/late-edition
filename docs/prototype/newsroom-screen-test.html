@@ -35,7 +35,9 @@
   .foot{ margin-top:20px; padding-top:14px; border-top:1px solid var(--line); color:var(--bone-dim); font-size:.8rem; } .foot b{ color:var(--bone); font-weight:400 } .foot .k{ color:var(--amber) }
   @media (prefers-reduced-motion: reduce){ .chip,.card{ transition:none } }
   .brief{ display:flex; gap:8px; flex-wrap:wrap; align-items:stretch; }
-  .brief input{ flex:1 1 100%; font-family:var(--type); font-size:1.1rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:5px; padding:13px 15px; } .brief input:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; } .brief input::placeholder{ color:#7a7259; }
+  .brief input, .brief textarea{ flex:1 1 100%; font-family:var(--type); font-size:1.1rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:5px; padding:13px 15px; }
+  .brief textarea{ resize:vertical; min-height:48px; line-height:1.4; overflow-y:auto; }
+  .brief input:focus-visible, .brief textarea:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; } .brief input::placeholder, .brief textarea::placeholder{ color:#7a7259; }
   .brief .chip.primary{ padding:11px 16px; }
   .chip.primary{ background:var(--amber); color:#231a08; border-color:var(--amber); font-weight:700; } .chip.primary:hover{ background:#f2c15c; }
   .staff{ display:grid; grid-template-columns:repeat(auto-fill,minmax(228px,1fr)); gap:8px; }
@@ -102,6 +104,9 @@
   .usage{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.03em; }
   .usage.plan{ color:#7bb661; } .usage.api{ color:#e8a85a; } .usage.free{ color:var(--amber-dim); }
   .chip.danger2{ border-color:#7a2d1d; color:#e8a17a; } .chip.danger2:hover{ background:#2a140d; }
+  body.real .wrap{ max-width:1120px; }                 /* a bit larger in the app window */
+  .staff .budgetcard{ display:flex; flex-direction:column; justify-content:center; gap:8px; padding:10px 12px; }
+  .staff .budgetcard .row{ margin:0 !important; }
   .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:5% 8%; gap:10px; z-index:5; line-height:1.35; overflow:auto; }
   .frontpage[hidden]{ display:none; }
   .frontpage .fp-mast{ font-family:var(--display); font-weight:700; text-transform:uppercase; letter-spacing:.08em; line-height:1.1; font-size:clamp(1.1rem,4vw,2rem); color:#20180c; border-bottom:3px double #20180c; padding-bottom:5px; width:100%; }
@@ -161,7 +166,7 @@
     <div>
       <p class="label">Brief the Chief — what's the front page?</p>
       <div class="brief">
-        <input id="briefInput" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. rumours of a leaked GTA 6 build — then Send (or press Enter)">
+        <textarea id="briefInput" rows="1" autocomplete="off" spellcheck="false" placeholder="What's the front page? Enter to send · Shift+Enter for a new line"></textarea>
         <button class="chip primary" id="briefBtn">Send to the Chief ▸</button>
       </div>
       <div class="row" id="examples" style="margin-top:8px">
@@ -720,7 +725,11 @@
   function reporterLine(st){ const L=['Chasing the paper trail…',`Who leaked ${st.short}?`,'Two sources, then it runs.','This one has legs.']; return L[(tick+st.id)%L.length]; }
   function researcherLine(st){ const L=['Pulling the filings…',`Primary source on ${st.short}?`,'Cross-checking the record.','Found the paper trail.']; return L[(tick+st.id)%L.length]; }
   function writerLine(st){ const L=['Finding the lede…','Tightening the copy.',`Three grafs on ${st.short}.`,'Killing the adjectives.']; return L[(tick+st.id)%L.length]; }
-  function aliveBeat(){ if(window.lateEdition) return;   // app mode: no idle quips — bubbles show real actions only
+  function aliveBeat(){
+    if(window.lateEdition){ if(realBusy) return;   // app mode: occasional quips as bubbles (not logged), rare courier — keeps it alive without noise
+      if(Math.random()<0.09){ const q=staff.filter(s=>s.ci>=0 && s.status==='idle' && s.sayT<=0); if(q.length){ const s=q[(Math.random()*q.length)|0]; bubbleOnly(s, CAST[s.ci].lines[(Math.random()*CAST[s.ci].lines.length)|0]); } }
+      if(Math.random()<0.05 && !courier.active) startCourier();
+      return; }
     const idle=staff.filter(s=>s.ci>=0 && s.status==='idle' && s.sayT<=0);
     if(idle.length>=2 && Math.random()<0.35){ const a=idle.splice((Math.random()*idle.length)|0,1)[0], b=idle[(Math.random()*idle.length)|0];   // a two-way exchange across the room
       agentSay(a, CAST[a.ci].lines[(Math.random()*CAST[a.ci].lines.length)|0],42); pendingReply={ s:b, text:CAST[b.ci].lines[(Math.random()*CAST[b.ci].lines.length)|0], t:24 }; }
@@ -803,7 +812,9 @@
 
   budgetRange.addEventListener('input',()=>{ budgetLabel.textContent=fmtK(+budgetRange.value); staff.forEach(s=>s.budget=+budgetRange.value); renderRoster(); });
   document.getElementById('briefBtn').addEventListener('click',()=>briefChief(briefInput.value));
-  briefInput.addEventListener('keydown',e=>{ if(e.key==='Enter') briefChief(briefInput.value); });
+  const growBrief=()=>{ briefInput.style.height='auto'; briefInput.style.height=Math.min(150, briefInput.scrollHeight)+'px'; };
+  briefInput.addEventListener('input', growBrief);
+  briefInput.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); briefChief(briefInput.value); briefInput.value=''; growBrief(); } });
   document.getElementById('examples').addEventListener('click',e=>{ const b=e.target.closest('.ex'); if(b){ briefInput.value=b.textContent; briefChief(b.textContent); } });
   document.getElementById('fpClose').addEventListener('click',()=>{ frontpage.hidden=true; });
   document.getElementById('reelInput').addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ loadReel(JSON.parse(String(fr.result))); }catch(_){ logEvent('could not read that reel.json'); } }; fr.readAsText(f); e.target.value=''; });
@@ -858,6 +869,15 @@
     const bar=document.createElement('div'); bar.className='appbar';
     bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><span class="grow"></span><button class="chip" id="appSettings">⚙ Settings</button>`;
     if(cab) cab.parentNode.insertBefore(bar, cab.nextSibling);
+    // Reorder for the app: brief right under the stage, budget becomes a staff card, controls hidden.
+    const deck=document.querySelector('.deck');
+    if(deck && deck.children.length>=2){ const briefCol=deck.children[1], controlsCol=deck.children[2];
+      if(briefCol) bar.after(briefCol);
+      const ex=document.getElementById('examples'); if(ex) ex.style.display='none';
+      const budgetRow=document.getElementById('budgetRange') && document.getElementById('budgetRange').closest('.row');
+      if(budgetRow){ const card=document.createElement('div'); card.className='sc budgetcard'; card.appendChild(budgetRow); const st=document.getElementById('staff'); if(st) st.appendChild(card); }
+      if(controlsCol){ const pan=document.getElementById('panBtn'); if(pan){ pan.textContent='⤢ Look around'; bar.insertBefore(pan, bar.querySelector('.grow')); } controlsCol.style.display='none'; }
+    }
     const $=id=>document.getElementById(id);
     $('appStop').addEventListener('click', async()=>{ await window.lateEdition.halt(); $('appStop').hidden=true; $('appResume').hidden=false; mScene.textContent='HALTED — agents idled. Resume to continue.'; });
     $('appResume').addEventListener('click', async()=>{ await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
