@@ -26,7 +26,7 @@ work through all of them, and tell him plainly when one of his premises is wrong
 
 ## 2. Where it stands
 
-- `npm run check` is green: **113 tests**, typecheck and lint clean.
+- `npm run check` is green: **120 tests**, typecheck and lint clean.
 - `npm run dist:win` produces a **working installer and portable .exe**. The packaged app has
   been booted and confirmed to load, detect the real Claude CLI and run.
 - The app has filed **real editions** on David's Claude plan. It works end to end.
@@ -53,8 +53,8 @@ David set these and they are not negotiable.
 ## 4. How to run and verify
 
 ```bash
-npm run check       # typecheck + biome + vitest — run before every commit
-npm run app         # build and launch
+npm run check       # typecheck + biome + check:ui + vitest — run before every commit
+npm run app         # build and launch  ← use this, not `npm run electron`, after any src/ change
 npm run dist:win    # a real installer in release/
 npm run cli -- --help
 ```
@@ -63,12 +63,14 @@ The interface is one big HTML file that is **not compiled or linted**, so it has
 safety. Two things stand in for that, and you should use both:
 
 ```bash
-# 1. Syntax-check the interface (it is a single inline <script>)
+# 1. Parse it, and catch debug scaffolding left behind. Part of `npm run check`.
 node scripts/check-ui.mjs
 
 # 2. Drive the real renderer headlessly and assert on what it produced
-LE_DEBUG=1 npm run electron                     # bridge, floor, camera, layout, Setup panel
-LE_DEBUG=1 LE_DEBUG_RUN=1 npm run electron      # + a full OFFLINE edition, end to end
+LE_DEBUG=1 npm run electron                     # bridge, floor, camera, layout, Setup, handshake
+LE_DEBUG=1 LE_DEBUG_RUN=1 npm run electron      # + full OFFLINE edition, clarification, the
+                                                #   empty-desk path, halt recovery, back issues,
+                                                #   rewrite, the field desk and Ida's offer
 LE_DEBUG=1 LE_DEBUG_SECONDS=16 npm run electron # long enough to catch a quip
 ```
 
@@ -105,6 +107,14 @@ Break any of these and the output stops being worth anything. All three have tes
   the builder's `files` list or the packaged app opens an empty window.
 - **A forced provider must survive a resume.** It didn't once, and a run asked for as a dry
   run quietly spent a real plan allowance the moment the user answered the Chief.
+- **The stop switch is a file, so it outlives the window.** The app tracked it per-session
+  once, which meant a halt set before a restart left both buttons hidden and no way out.
+  Anything that persists on disk has to be read back at launch, not remembered.
+- **`runStreaming` in `agents.ts` is a near-copy of `runToText` in `providers/types.ts`.**
+  Fields added to one silently vanish in the other — the cache split did exactly that. If
+  you touch `AgentUsage`, touch both.
+- **Destructive actions go to the recycle bin, never `rm -rf`.** Deleting an edition uses
+  `shell.trashItem`. It's the user's own writing and their own token spend.
 - **Agent CLIs install as `.cmd` on Windows**, so `execFile('claude')` ENOENTs. The provider
   layer wraps `cmd.exe /c`.
 - **The interface loads from source, the engine from `dist/`.** `npm run electron` skips the
@@ -159,21 +169,47 @@ full checklist and the commands:
 - No landing page. David wants one with a donate / buy-me-a-coffee link and no other payment.
 - Only the Claude provider has been driven end to end. The other five are written, detected,
   and labelled "untested here" in Setup. Each needs a real run to promote.
-- The picture desk writes a brief; nothing consumes the image slot yet.
+- The picture desk writes a brief and now has its own agent slot (`photo_desk`, haiku
+  suggested). Nothing consumes the image slot yet — there is no way to attach a picture.
 - macOS is unbuilt and unsigned by choice.
 
 ## 9. The field desk
 
-Ida Stringer watches the sources a filed story came from. The design turns on two facts:
+Ida Stringer watches the pages a filed story came from. Each story she follows is a **case**.
+The design turns on two measured facts:
 
 - **Polling is free.** No source adapter touches a model, so checking every watched page
   costs nothing. `checkWatched()` returns `tokens: 0` and a test asserts it.
-- **A follow-up is cheap.** Watched beats are written with `research: 0`, because the
-  digging happened when the original story ran.
+- **A follow-up skips the two most expensive desks.** Measured on a real offline run:
 
-The check runs when you open the app and puts whatever moved on a spike. Nothing runs until
-you pick something off it. There is deliberately **no background daemon** — the CLI covers
-anyone who wants a real schedule, and a desktop app that runs a service is a support burden.
+  | | Desks billed |
+  | --- | --- |
+  | First edition | copydesk, editor, reporter, researcher, triage, writer |
+  | Follow-up | copydesk, editor, reporter, writer |
+
+  Cases are written with `research: 0`, and `runWatch` passes `clarify: false`, so the
+  researcher and triage never run. Three tests pin this, including that a follow-up costs
+  less than the edition it follows.
+
+**There is no field-desk model.** Ida is the byline; a follow-up runs on the ordinary
+reporter, writer, editor and copy desks. Setup says so in a tooltip, because "where's her
+desk?" is the obvious question.
+
+**The flow.** A paper lands → Ida asks, in the panel under the app bar, whether to stay on
+it → yes writes a beat from the story's source URLs → on every app launch she polls them
+(free) and anything that changed lands on that case's **spike** → the strip under the app
+bar tells you, and the **Case file** drawer shows every case with its sources.
+
+You can run a case, spike its changes, pull one source off it, or drop the case. Removing
+the last source drops the case. There is a master switch in the case file; off means no
+polling at all, not a hidden panel.
+
+**Cost guards.** Nothing ever runs by itself. A follow-up reports on the `MAX_PER_RUN`
+newest changes only (12) — a case ignored for a month would otherwise hand dozens of diffs
+to the reporter and become the week's most expensive run.
+
+There is deliberately **no background daemon**. The CLI covers anyone who wants a real
+schedule, and a desktop app that runs a service is a support burden.
 
 `watchBeat` in `RunOptions` seeds a draft from the spike and starts at ASSIGN. It must not
 re-poll: the adapters' seen-state is consumed by the check, so a second fetch returns nothing.
@@ -182,7 +218,7 @@ re-poll: the adapters' seen-state is consumed by the check, so a second fetch re
 
 ```bash
 git log --oneline -15          # the recent work, newest first
-npm run check                  # confirm 113 green
+npm run check                  # confirm 120 green
 LE_DEBUG=1 npm run electron    # confirm the app boots and the probe passes
 npm run app                    # look at it
 ```

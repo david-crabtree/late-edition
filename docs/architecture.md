@@ -13,6 +13,10 @@ Two halves that don't know much about each other:
 - **The app** (`src/electron/`) is an Electron shell that calls the same engine in-process
   and animates it. Its entire interface is one self-contained HTML file.
 
+The app files editions two ways: from a topic you type, and as a follow-up on a **case** the
+field desk is watching. Standing assignments on a cadence, tripwires, distribution and
+searching the archive exist and are tested, but only in the CLI.
+
 Nothing runs on a server. There is no service to sign up for. Agents run on the user's own
 machine under their own accounts.
 
@@ -56,7 +60,8 @@ Invented markers like `[#1]` or `[ref]` are scrubbed from the prose by the rende
 why a story can't cite a source the researcher never found.
 
 **Format changes the voice, never the facts.** `src/main/core/formats.ts` holds the shapes
-(newspaper story, LinkedIn post, Reddit post, newsletter blurb, plain brief), tones and
+(newspaper story, LinkedIn post, Reddit post, blog post, newsletter blurb, plain brief),
+tones and
 lengths. Every one of them carries the citation rules through unchanged.
 
 **A desk with no agent stops the run.** Desks scaffold `unset`. An empty one throws
@@ -77,6 +82,11 @@ run a job, which models it has, and which of them suits each desk.
 Auth is never stored here. It lives in each agent's own CLI. Setup writes `staff.yaml`,
 which says which provider and model runs each desk, and nothing else.
 
+Six desks make their own agent call: triage (on the editor's desk), researcher, reporter,
+writer, editor and copy desk, plus the picture desk when it's switched on. The picture desk
+falls back to the writers when `photo_desk` is unset. **The field desk is not one of them** —
+Ida is the byline on a follow-up, which runs on the ordinary desks.
+
 **On Windows**, agent CLIs install as `.cmd` shims, so `execFile('claude')` fails with
 ENOENT. `providers/cli.ts` wraps calls through `cmd.exe /c`. Don't undo that.
 
@@ -94,7 +104,7 @@ drawn procedurally in canvas, no framework, no build step. It runs as a demo in 
 browser and as the real app when `window.lateEdition` exists. **Its path looks like
 documentation and is not** — see [`releasing.md`](releasing.md) before packaging.
 
-Inside it: a 470×180 canvas over a 1760px-wide world, desks at fixed positions, the Chief's
+Inside it: a 470×180 canvas over a 1950px-wide world, eight desks at fixed positions, the Chief's
 office on the back wall at 0.85 parallax. **Invariant: no desk may cover the office
 frontage.** The floor advances on a fixed twelve-per-second clock, never per animation
 frame — do that and the staff move at the display's refresh rate.
@@ -112,8 +122,8 @@ The interface file is not compiled or linted, so it has no type safety. Two thin
 for that:
 
 ```bash
-# Syntax-check the interface before committing
-node -e "const fs=require('fs');const h=fs.readFileSync('docs/prototype/newsroom-screen-test.html','utf8');fs.writeFileSync('/tmp/blk.js',h.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1])" && node --check /tmp/blk.js
+# Parse it, and catch debug scaffolding left behind. Part of `npm run check`.
+node scripts/check-ui.mjs
 
 # Drive the real renderer headlessly and assert on what it produced
 LE_DEBUG=1 npm run electron                    # bridge, floor, camera, Setup panel
@@ -128,6 +138,18 @@ allowance is a bug.
 The interface exposes `window.__leFloor()` and `window.__leProbe` in app mode for exactly
 this. They are read-only snapshots plus the two result handlers, and they exist so changes
 can be proven without a person watching the window.
+
+## The field desk
+
+`watch/field.ts`. A finished story's source URLs become a **case** — a beat file written with
+`research: 0` and a marker comment, so hand-written beats are never touched. Checking those
+pages costs nothing (adapters, no model), so it runs on app launch and whatever changed lands
+on that case's spike. Nothing runs until the user picks it off.
+
+A follow-up seeds the draft from the spike via `RunOptions.watchBeat` and starts at ASSIGN.
+It must not re-poll: the check consumes the adapters' seen-state, so a second fetch returns
+nothing. It reports on the newest `MAX_PER_RUN` changes only, so a long-ignored case can't
+become the most expensive run of the week.
 
 ## Gotchas that have already cost time
 

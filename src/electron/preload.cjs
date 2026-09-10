@@ -36,7 +36,8 @@ contextBridge.exposeInMainWorld('lateEdition', {
   /** The formats, tones and lengths the copy desk can write in. */
   formats: () => ipcRenderer.invoke('le:formats'),
   /** Write a finished story again in another shape (one writer call, no new reporting). */
-  rewrite: (editionId, shape, slug) => ipcRenderer.invoke('le:rewrite', editionId, shape, slug),
+  rewrite: (editionId, shape, slug, opts) =>
+    ipcRenderer.invoke('le:rewrite', editionId, shape, slug, opts || {}),
   /** The field desk: watch a story's sources, see what moved, run a follow-up. */
   watchEdition: (editionId, slug) => ipcRenderer.invoke('le:watchEdition', editionId, slug),
   watches: () => ipcRenderer.invoke('le:watches'),

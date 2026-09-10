@@ -484,12 +484,13 @@ function createWindow(): void {
             if (read) read.click();
             await new Promise(r2 => setTimeout(r2, 400));
             const r = await window.lateEdition.rewrite(target,
-              { format: 'linkedin', tone: 'conversational', length: 'standard' });
+              { format: 'linkedin', tone: 'conversational', length: 'standard' },
+              undefined, { provider: 'fake' });
             const panel = document.getElementById('fpRewrite');
             const buttons = [...panel.querySelectorAll('[data-fmt]')].map(b => b.dataset.fmt);
             return JSON.stringify({
               formats: opts.formats.map(f => f.id),
-              ok: r.ok, label: r.formatLabel, chars: (r.text || '').length,
+              ok: r.ok, error: r.error || null, label: r.formatLabel, chars: (r.text || '').length,
               rawIdsLeft: /\\[[a-z0-9_]+:[0-9a-f]{6,}\\]/i.test(r.text || ''),
               sources: (r.sources || []).length,
               panelBuilt: !!(panel && panel.dataset.built), panelOffers: buttons,
@@ -1053,19 +1054,37 @@ handle('le:formats', () => ({
  * Write a finished story again in another shape. One writer call against reporting that is
  * already done and already checked — not a new edition, and it cannot add a source.
  */
-handle('le:rewrite', async (e, editionId: string, shape: CopyShape, slug?: string) => {
-  const send = (ev: LogEvent) => {
-    if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
-  };
-  try {
-    return {
-      ok: true as const,
-      ...(await rewriteStory({ root: newsroomRoot(), editionId, slug, shape, onEvent: send })),
+handle(
+  'le:rewrite',
+  async (
+    e,
+    editionId: string,
+    shape: CopyShape,
+    slug?: string,
+    opts: { provider?: string } = {},
+  ) => {
+    const send = (ev: LogEvent) => {
+      if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
     };
-  } catch (err) {
-    return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
-  }
-});
+    try {
+      return {
+        ok: true as const,
+        ...(await rewriteStory({
+          root: newsroomRoot(),
+          editionId,
+          slug,
+          shape,
+          // Rewrite was the one path with no provider override, so in a dry-run newsroom
+          // (every desk unset) it failed where everything else fell back to the stand-in.
+          forceProvider: opts?.provider || undefined,
+          onEvent: send,
+        })),
+      };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  },
+);
 
 /**
  * The field desk.
