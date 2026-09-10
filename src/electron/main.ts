@@ -225,10 +225,15 @@ function createWindow(): void {
       // quips toggle, and nothing in Setup touching anything else.
       console.log(
         'LE_DEBUG layout:',
-        await js(`(() => {
+        await js(`(async () => {
+          // Setup fills itself from two async calls; give them a beat before measuring.
+          await new Promise(r => setTimeout(r, 400));
           const q = (s) => document.querySelector(s);
           // Setup is hidden until you open it, and a hidden element measures as zero.
-          const setup = q('.setup'); const wasHidden = setup.hidden; setup.hidden = false;
+          const setup = q('.setup'); const wasHidden = setup.hidden;
+          const restingOrder = ['#briefInput', '.cabinet', '#clog', '#staff']
+            .map(s => Math.round((q(s) || {getBoundingClientRect:()=>({top:0})}).getBoundingClientRect().top + window.scrollY));
+          setup.hidden = false;
           const tune = q('.budgetcard'), staff = q('#staff');
           const gap = (a, b) => Math.round(b.getBoundingClientRect().top - a.getBoundingClientRect().bottom);
           const recheck = q('#setupRecheck'), agents = q('#setupAgents');
@@ -248,12 +253,16 @@ function createWindow(): void {
             hasCloseSettings: !!q('#setupClose'),
             suggestFills: (() => {
               // The recommendation is only worth having if it can actually be applied.
-              const before = [...document.querySelectorAll('.setup input.mdl')].map(i => i.value);
+              const boxes = [...document.querySelectorAll('.setup input.mdl')];
+              for (const b of boxes) b.value = '';
               q('#setupSuggest').click();
-              const after = [...document.querySelectorAll('.setup input.mdl')].map(i => i.value);
-              return after.filter((v, i) => v && v !== before[i]).join(',');
+              return boxes.map(b => b.value || '-').join(',') + ' | msg=' + q('#setupMsg').textContent;
             })(),
             hasQuipToggle: !!q('#appQuips'),
+            // Reading order down the page: brief, then the floor, then the log and cast.
+            restingOrder: restingOrder.join(' < '),
+            restingOrderCorrect: restingOrder.every((v, i) => i === 0 || v > restingOrder[i - 1]),
+            setupAboveBrief: q('.setup').getBoundingClientRect().top < q('#briefInput').getBoundingClientRect().top,
             contentWidth: window.innerWidth,
             contentHeight: window.innerHeight,
           };

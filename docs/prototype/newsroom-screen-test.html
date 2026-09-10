@@ -1509,7 +1509,11 @@
     // Reorder for the app: brief right under the stage, budget becomes a staff card, controls hidden.
     const deck=document.querySelector('.deck');
     if(deck && deck.children.length>=2){ const briefCol=deck.children[1], controlsCol=deck.children[2];
-      if(briefCol){ bar.after(briefCol); briefCol.style.margin='16px 0 6px'; }   // don't let the brief box crowd the appbar or the log below
+      // The brief goes ABOVE the newsroom: it's the first thing you do, and putting it
+      // there pulls the desk log and the cast cards up the page behind the stage.
+      if(briefCol){ const cab=document.querySelector('.cabinet');
+        if(cab&&cab.parentNode) cab.parentNode.insertBefore(briefCol, cab);
+        briefCol.style.margin='0 0 14px'; }
       const budgetRow=document.getElementById('budgetRange') && document.getElementById('budgetRange').closest('.row');
       if(budgetRow){ const card=document.createElement('div'); card.className='budgetcard'; card.appendChild(budgetRow);
         // Research-depth control, baseline "Standard", up to "Deep" or down to "Light".
@@ -1604,7 +1608,12 @@
         <p>If you are on a paid plan, the work counts against that plan's allowance in the normal way. If you are using an API key instead, you are paying per use.</p>
         <p>A desk with no agent will stop and tell you, rather than make something up. Leave the model box blank to take whatever the agent uses by default.</p>
       </div>`;
-    anchor.parentNode.insertBefore(box, anchor);   // put Setup at the TOP, above the newsroom
+    // buildAppChrome has already lifted the brief column out of the deck to sit above the
+    // newsroom, so walk up from the textarea to whichever child of .wrap now holds it.
+    let top=document.getElementById('briefInput');
+    while(top && top.parentElement && !top.parentElement.classList.contains('wrap')) top=top.parentElement;
+    if(!top || !top.parentElement) top=anchor;
+    top.parentNode.insertBefore(box, top);   // Setup at the very TOP — above the brief and the newsroom
     box.hidden=true;                               // hidden on launch — the start gate + ⚙ Settings reveal it
     const $=id=>box.querySelector('#'+id);
     if(LE.getRoot) LE.getRoot().then(r=>{ $('setupRoot').textContent=r; });
