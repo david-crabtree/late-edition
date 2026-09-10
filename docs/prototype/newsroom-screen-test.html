@@ -161,25 +161,34 @@
 <script>
 (() => {
   const cv = document.getElementById('screen'); const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
-  const VW = cv.width, VH = cv.height, WORLD = 1400, FLOOR = 150, DTOP = FLOOR-16, BP = 0.85;  // BP = back-wall parallax (near 1 so desks can't slide over the office window)
-  const DESKX = [120, 320, 780, 1020, 1260];                           // 2 desks left of the office, 3 to its right — a genuine no-desk strip in the middle
+  const VW = cv.width, VH = cv.height, WORLD = 1760, FLOOR = 150, DTOP = FLOOR-16, BP = 0.85;  // BP = back-wall parallax (near 1 so desks can't slide over the office window)
+  const DESKX = [110, 300, 800, 1010, 1220, 1430, 1640];               // 2 desks left of the office, 5 to its right — the middle strip stays clear in front of the Chief's office
   const deskX = i => DESKX[i] ?? 320, AC = () => DESKX[state.castIdx];  // active character's desk centre
-  const OFFICE_XB = 454, WINDOW_XB = 480, DOOR_LB = 250, DOOR_RB = 1160;   // Chief's office: door + window, well left of Gus in the no-desk strip
+  const OFFICE_XB = 454, WINDOW_XB = 480, DOOR_LB = 250, DOOR_RB = 1710;   // Chief's office door+window in the clear middle strip; plain doors at the far ends
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Ordered left→right as the story flows: research & report to the left of the Chief's
+  // office, then the desk tiers (edit, rewrite, copy desk) and support to the right. Each
+  // desk index maps to DESKX[i]; the clear middle strip is the office frontage.
   const CAST = [
+    { id:'ruth', name:'Ruth Okafor', role:'Researcher',
+      pal:{skin:'#8a5a34',skinSh:'#6a4426',hair:'#160e08',hat:'#3a5a4a',band:'#243a30',suit:'#3a5a4a',suitDk:'#284034',shirt:'#e6dccb',tie:'#8a7a30'},
+      hat:'none', prop:'coffee', acc:{glasses:1,longhair:1}, desk:'research', lines:['Give me an hour and a phone book.','Every fact leaves a paper trail.','I don’t guess — I look it up.','Primary source, or it stays out.'] },
     { id:'sam', name:'Sam Vance', role:'Hardboiled reporter',
       pal:{skin:'#d3a06f',skinSh:'#a97b4e',hair:'#241812',hat:'#4a3826',band:'#2a1f14',suit:'#3d4954',suitDk:'#2b333c',shirt:'#dcd6c6',tie:'#7a2d1d'},
       hat:'fedora', prop:'cig', acc:{stubble:1,loosetie:1}, desk:'reporter', lines:['Ink’s cheap. The truth runs extra.','Get me rewrite — and a match.','Every quiet night’s a headline that ain’t broke yet.','Facts don’t care what time it is, kid.'] },
-    { id:'dot', name:'Dot Kowalski', role:'Managing editor',
+    { id:'dot', name:'Dot Kowalski', role:'News editor',
       pal:{skin:'#e0b184',skinSh:'#c79a72',hair:'#3a1d12',hat:'#6a2740',band:'#4a1a2c',suit:'#5a2338',suitDk:'#401828',shirt:'#e6dccb',tie:'#c9a24b'},
       hat:'none', prop:'coffee', acc:{pencil:1,earrings:1}, desk:'editor', lines:['Cut it to the bone, then cut the bone.','Two sources or it’s a rumor with a byline.','I’ve spiked better copy before breakfast.','Hold page one. I feel one coming.'] },
-    { id:'gus', name:'Gus Moreno', role:'Copy boy',
-      pal:{skin:'#c88a56',skinSh:'#9c6a3e',hair:'#1c130c',hat:'#3a5060',band:'#233542',suit:'#495a3a',suitDk:'#33422a',shirt:'#d8cbb0',tie:'#8a6a2a'},
-      hat:'cap', prop:'none', acc:{bowtie:1,freckles:1,young:1}, desk:'copyboy', lines:['Presses are hungry tonight, boss.','I run faster’n the deadline, watch me.','Coffee’s fresh — the coffee’s a lie.','Extra! Extra! …once you write it.'] },
+    { id:'hal', name:'Hal Brody', role:'Rewrite / copywriter',
+      pal:{skin:'#cf9c66',skinSh:'#a67848',hair:'#1c130c',hat:'#3a4048',band:'#242a30',suit:'#4a4038',suitDk:'#342c26',shirt:'#dcd6c6',tie:'#3a6a7a'},
+      hat:'none', prop:'coffee', acc:{loosetie:1,glasses:1}, desk:'copywriter', lines:['Give me the facts, I’ll give you the music.','Ledes are made, not born.','Kill the adjectives, keep the verbs.','Three tight grafs by deadline.'] },
     { id:'mac', name:'Mac McHale', role:'Copy desk',
       pal:{skin:'#c9a07a',skinSh:'#a07a56',hair:'#3a3a3a',hat:'#3a4a3a',band:'#2a3226',suit:'#3a4636',suitDk:'#2a3428',shirt:'#dcd6c6',tie:'#5a6b4a'},
       hat:'none', prop:'coffee', acc:{eyeshade:1,glasses:1}, desk:'copydesk', lines:['Two sources, then we talk.','Spelled wrong? I spike it.','I read galleys in my sleep.','The record says otherwise, pal.'] },
+    { id:'gus', name:'Gus Moreno', role:'Copy boy',
+      pal:{skin:'#c88a56',skinSh:'#9c6a3e',hair:'#1c130c',hat:'#3a5060',band:'#233542',suit:'#495a3a',suitDk:'#33422a',shirt:'#d8cbb0',tie:'#8a6a2a'},
+      hat:'cap', prop:'none', acc:{bowtie:1,freckles:1,young:1}, desk:'copyboy', lines:['Presses are hungry tonight, boss.','I run faster’n the deadline, watch me.','Coffee’s fresh — the coffee’s a lie.','Extra! Extra! …once you write it.'] },
     { id:'iris', name:'Iris Vale', role:'Photo desk',
       pal:{skin:'#e0b184',skinSh:'#c79a72',hair:'#2a1810',hat:'#6a2740',band:'#4a1a2c',suit:'#3a4657',suitDk:'#2a3442',shirt:'#e6dccb',tie:'#c98a3a'},
       hat:'beret', prop:'none', acc:{camera:1,longhair:1}, desk:'photo', lines:['One frame tells the whole story.','Hold the front page for my shot.','Light’s bad; the truth isn’t.','Say cheese, city hall.'] },
@@ -207,16 +216,16 @@
     for(const wx of [30,1360]) windowBlinds(wx,44);
     for(const fx of [210,940,1300]) framedPage(fx,58); corkboard(120,24); corkboard(1080,24);
     wallClock(760,58); ceilingFan(200,16); ceilingFan(900,16); ceilingFan(1220,16); ceilingTube(off);
-    backDeskReporter(630); backDeskReporter(1330);             // background typers, on clear floor
+    backDeskReporter(700); backDeskReporter(1480);             // background typers, well clear of the office frontage
     plainDoor(DOOR_LB); officeDoor(OFFICE_XB); officeWindow(WINDOW_XB, (state.meeting && state.phase==='gone')||officeBlipT>0); plainDoor(DOOR_RB);
     if(runner.active) backRunner(runner.x);
     g.restore(); }
   function layerMain(off){ g.save(); g.translate(-off,0);
     R(0,FLOOR,WORLD,VH-FLOOR+20,'#241a10'); R(0,FLOOR,WORLD,1,'#3a2a1a');
     for(let x=0;x<WORLD;x+=34) R(x,FLOOR+7,1,VH-FLOOR,'#1a120a');
-    plant(40); filingCabinet(180); cat(184); coatRack(400); wasteBin(880); waterCooler(940); newsStack(1100);
+    plant(40); filingCabinet(180); cat(184); coatRack(720); wasteBin(905); waterCooler(1115); newsStack(1325);
     drawNewsroom(); if(courier.active) drawCourier(); drawPages(); g.restore(); }
-  function layerFore(off){ g.save(); g.translate(-off,0); for(const bx of [60,220,400,560,720]) hangingBulb(bx); R(0,FLOOR+14,WORLD,VH,'#170f08'); g.restore(); tickerStrip(); }
+  function layerFore(off){ g.save(); g.translate(-off,0); for(const bx of [60,220,400,560,720,900,1080,1260,1440,1620]) hangingBulb(bx); R(0,FLOOR+14,WORLD,VH,'#170f08'); g.restore(); tickerStrip(); }
 
   // ---- Back set pieces ----------------------------------------------------
   function wallSign(x,y){ g.fillStyle='rgba(232,176,75,.34)'; g.font='700 26px "Oswald",sans-serif'; g.textAlign='center'; g.textBaseline='top'; g.fillText('THE DAILY BIT',x,y); g.textAlign='left'; g.textBaseline='alphabetic'; }
@@ -306,7 +315,14 @@
     else if(c.desk==='copyboy'){ bigStack(x); deskBell(x+36); bundles(x-48); }
     else if(c.desk==='copydesk'){ drawTypewriter(x); loupe(x-42); galleys(x+16); gluePot(x+36); if(idleMug) drawMug(x-30,DTOP-6); }
     else if(c.desk==='photo'){ plateCamera(x); photoLine(x); redSafelight(x+40); trays(x-44); }
+    else if(c.desk==='research'){ drawPhone(x-47); bookStack(x-34); rolodex(x+28); clippings(x+12); loupe(x-12); if(idleMug) drawMug(x+42,DTOP-6); }
+    else if(c.desk==='copywriter'){ drawTypewriter(x); gluePot(x-44); bookStack(x+30); crumples(x+38); pencilCup(x-30); if(idleMug) drawMug(x+16,DTOP-6); }
     else { drawTypewriter(x); } }
+  // Researcher & copywriter desk kit: reference books, a card file, pinned clippings, paper wads.
+  function bookStack(x){ const col=['#7a2d1d','#2f5a4a','#3a4a6a','#8a6a2a']; for(let i=0;i<4;i++){ const w=14-(i%2?2:0); R(x,DTOP-3-i*3,w,3,col[i%4]); R(x,DTOP-3-i*3,w,1,'#ffffff22'); } P(x+3,DTOP-15,'#e8cf88'); }
+  function rolodex(x){ R(x,DTOP-7,12,7,'#3a2f16'); R(x,DTOP-7,12,1,'#4a3d1e'); for(let i=0;i<5;i++) R(x+1+i*2,DTOP-9,1,2,i%2?'#dcd6c6':'#cfc9b4'); P(x+6,DTOP-10,'#8f959c'); }
+  function clippings(x){ R(x,DTOP-13,10,7,'#dcd6c6'); R(x,DTOP-13,10,1,'#efe9d8'); R(x+2,DTOP-11,6,1,'#9a917c'); R(x+2,DTOP-9,6,1,'#9a917c'); P(x+8,DTOP-14,'#c2412d'); }
+  function crumples(x){ for(const d of [[0,0],[6,0],[3,-3]]){ R(x+d[0],DTOP-2-d[1],4,3,'#e8e2d0'); P(x+d[0]+1,DTOP-3-d[1],'#cfc9b4'); } }
   function bigStack(x){ for(let i=0;i<8;i++){ const o=(i%2)?1:0, w=22-((i>5)?4:0); R(x-11+o,DTOP-2-i*2,w,2,(i%2)?'#cfc9b4':'#dcd6c6'); R(x-11+o,DTOP-2-i*2,w,1,'#efe9d8'); } R(x-9,DTOP-3,18,1,'#3a2e1b'); P(x-2,DTOP-15,'#7a2d1d'); P(x+4,DTOP-11,'#7a2d1d'); }
   function plateCamera(x){ R(x-10,DTOP-16,20,14,'#17191d'); R(x-10,DTOP-16,20,1,'#3a4048'); R(x-10,DTOP-3,20,3,'#0e1116'); R(x-4,DTOP-13,11,10,'#0e1116'); R(x-2,DTOP-11,7,6,'#6a86a0'); R(x-2,DTOP-11,7,1,'#a9c6da'); R(x-7,DTOP-19,7,3,'#20242a'); if(!reduce&&tick%80<3) R(x-12,DTOP-20,4,3,'#fff2c4'); R(x-3,DTOP-2,6,2,'#20242a'); }
   // desk prop kit
