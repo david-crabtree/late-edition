@@ -8,7 +8,7 @@ import { type Signal, makeSignalId, shortHash } from '../core/signal.js';
 import { renderHtml, renderMarkdown } from '../paper/render.js';
 import { nextEditionId, writeEdition } from '../store/edition-store.js';
 import { PipelineHaltError, isHalted } from '../store/halt.js';
-import { EditionLog } from '../store/log.js';
+import { EditionLog, type LogEvent } from '../store/log.js';
 import { paths } from '../store/paths.js';
 import { ClarificationNeededError } from './clarify.js';
 import type { PipelineContext } from './context.js';
@@ -57,6 +57,8 @@ export interface RunOptions {
   clarify?: boolean;
   /** The user's answer to a prior clarification request (used when resuming). */
   clarificationAnswer?: string;
+  /** Live event subscriber — every pipeline event as it happens (for a desktop UI to animate). */
+  onEvent?: (ev: LogEvent) => void;
   researcherTimeoutMs?: number;
   reporterTimeoutMs?: number;
   editorTimeoutMs?: number;
@@ -115,7 +117,7 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     concurrency: opts.concurrency ?? 3,
     urgencyThreshold: newsroom.config.edition?.urgencyThreshold ?? 0.85,
     tokenCap: opts.tokenCap ?? newsroom.config.edition?.tokenCap,
-    log: new EditionLog(logFile),
+    log: new EditionLog(logFile, opts.onEvent),
     now,
   };
   if (opts.brief) ctx.log.emit('ASSIGN', 'brief', { topic: opts.brief });

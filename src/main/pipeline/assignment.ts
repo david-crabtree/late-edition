@@ -7,6 +7,8 @@ import { type RunResult, runEdition } from './run.js';
 export interface AssignmentRunOptions {
   forceProvider?: string;
   now?: Date;
+  /** Live event subscriber forwarded to the pipeline (for a desktop UI to animate). */
+  onEvent?: (ev: import('../store/log.js').LogEvent) => void;
 }
 
 /** Render an assignment's recent editions into the compact context a new run builds on. */
@@ -43,6 +45,7 @@ export async function runAssignment(
     maxFindings: assignment.maxFindings,
     forceProvider: opts.forceProvider ?? assignment.provider,
     clarify: false, // a standing assignment is pre-defined; autonomous runs don't pause to ask
+    onEvent: opts.onEvent,
     now,
   });
   recordAssignmentRun(root, id, result.editionId, now);

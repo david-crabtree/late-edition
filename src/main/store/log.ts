@@ -15,13 +15,28 @@ export interface LogEvent {
   [key: string]: unknown;
 }
 
-/** Append-only JSONL event log for one edition. */
+/** Append-only JSONL event log for one edition, with an optional live subscriber. */
 export class EditionLog {
-  constructor(private readonly file: string) {}
+  /**
+   * @param file    where the JSONL is written
+   * @param onEvent optional live sink called for every event as it happens — the UI (the
+   *                Electron/desktop newsroom) subscribes here to animate the real pipeline.
+   */
+  constructor(
+    private readonly file: string,
+    private readonly onEvent?: (ev: LogEvent) => void,
+  ) {}
 
   emit(stage: string, event: string, detail: Record<string, unknown> = {}): void {
     const line: LogEvent = { ts: new Date().toISOString(), stage, event, ...detail };
     mkdirSync(dirname(this.file), { recursive: true });
     appendFileSync(this.file, `${JSON.stringify(line)}\n`, 'utf8');
+    if (this.onEvent) {
+      try {
+        this.onEvent(line);
+      } catch {
+        // A misbehaving subscriber must never break the pipeline.
+      }
+    }
   }
 }
