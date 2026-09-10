@@ -334,6 +334,17 @@ It has grown from a single-desk bust into a **whole newsroom floor**:
 
 ### 6.6 Progress log (newest first)
 Each line is one commit; see `git log` for the exact SHAs.
+- **Cadence + standing assignments** (commit `3b4f071`): the autonomy unit — an assignment is an
+  ongoing topic (`newsroom/assignments/<id>.yaml`) the newsroom works repeatedly on a cadence,
+  building on its own past coverage each run (prior editions folded into the brief). `assignment
+  list` / `run <id>` (run-the-story) / `tick` (run all due, for cron; honors halt). Autonomous runs
+  set `clarify:false`. 70 tests green. **Open:** a real scheduler (cron/tray) to call `tick`, and the
+  prototype's sim story-flow still doesn't route through the researcher/copywriter tiers.
+- **Kill switch, cost framing, clarification, roster, researcher-desk-prop** (commits `e8dfaa4`,
+  `fb5a0a3`, `d9c4e1d`, `618680a`): the four backlog items — a HALT stop switch; auth-aware cost
+  framing (plan usage vs metered API); a TRIAGE stage that pauses a vague brief to ask; two new
+  prototype characters (Ruth researcher, Hal copywriter) with personalised, body-covering animated
+  desk props, office frontage kept clear.
 - **Efficiency pass + citation-artifact fix** (this session, commit `d4da78c`): a `--brief` now uses
   a synthetic `brief` beat, so it stops inheriting an arbitrary beat's extra angles (the first real
   run silently ran two reporters + Competing Takes) and no longer mislabels the beat in prompts.
@@ -415,9 +426,12 @@ Each line is one commit; see `git log` for the exact SHAs.
 - ✅ **Clarification requests** (this session) — a **TRIAGE** stage: the Chief pauses a vague
   `--brief` and asks 1-3 questions (`ClarificationNeededError`, run idles & resumable); answer
   with `run --resume <id> --answer "…"`, or skip with `--no-clarify`. See the pipeline diagram.
-- **Cadence control + per-newsroom history** — a "run the story" trigger with history/context saved
-  to a local folder per newsroom (context the agents carry across runs). The autonomy unit:
-  reporters holding multiple standing assignments on a cadence (extends `watch`).
+- ✅ **Cadence control + per-newsroom history** (commit `3b4f071`) — standing **assignments**
+  (`newsroom/assignments/<id>.yaml`: title, brief, `cadence` manual|6h|1d|1w|hourly…). Each run is
+  tagged with its assignment and seeded with that assignment's **prior coverage** (from the morgue)
+  so the desk advances the story instead of repeating. CLI: `assignment list` / `assignment run <id>`
+  (the run-the-story trigger) / `assignment tick` (run all due — for cron; honors halt). Run state
+  (last run, count) in `wire/.assignments/`.
 - ✅ **Roster characters** (commit `d9c4e1d`) — added Ruth Okafor (Researcher) and Hal Brody
   (Rewrite/copywriter) with personalised desks; room widened to 7 desks (2 left / 5 right of the
   office) with the office frontage kept clear. Relabeled Dot to News editor. **Still to do:** wire

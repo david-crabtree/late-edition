@@ -262,3 +262,23 @@ can't cost the earth" (David's words). Levers already in place: `--research <n>`
 keep only the managing editor strong), and the `--cap` token budget. Not yet done: measuring
 per-role cost and defaulting the scaffold to a cheap research model. Revisit before the OSS
 launch / landing page.
+
+## Cadence & standing assignments
+
+### DR.8 — Assignments are saved briefs with a cadence + their own history
+The autonomy unit is a **standing assignment** (`newsroom/assignments/<id>.yaml`): a title, a
+standing `brief`, and a `cadence` (`manual` | `30m`/`6h`/`1d`/`1w` | `hourly`/`daily`/`weekly`).
+Rather than a parallel store, an assignment reuses the whole edition pipeline via `--brief`: it
+tags the edition with `assignmentId`, and before each run it gathers that assignment's **prior
+editions from the morgue** and folds them into the brief ("report what's NEW/changed, don't
+repeat"). So the "history/context folder per newsroom" David asked for *is* the editions archive,
+filtered by assignment — one source of truth, and the morgue/search/render all keep working. Run
+state (last run, count) lives in `wire/.assignments/<id>.json`, out of the editable config.
+
+### DR.9 — Three verbs: run (manual), tick (due), list
+`assignment run <id>` is the "run the story" trigger. `assignment tick` runs every assignment
+whose cadence is due — the cadence engine a cron/tray calls at whatever frequency; each assignment
+carries its own interval so `tick` only fires the ones actually due (no per-assignment scheduler).
+`assignment list` shows cadence/last-run/due. Autonomous runs set `clarify:false` (a standing
+assignment is pre-defined; a cron run can't wait for a human) and `tick` refuses to start while the
+halt switch is set. A real scheduler (node-cron/tray) to call `tick` is deferred to the app.
