@@ -135,20 +135,22 @@ MATERIALS.
 House style:
 {{style}}
 
-Write the finished story as Markdown prose. Lead with the angle the editor chose
+Write the finished piece as Markdown prose. Lead with the angle the editor chose
 ("{{chosenAngle}}").
 
+{{shape}}
+
 Length follows substance, not a quota. You have {{sourceCount}} sourced facts to work with:
-give the story the room it earns — a well-sourced piece usually runs four to six tight
-paragraphs, a thin one should stay short rather than pad. Never waffle: cut any sentence that
-doesn't add a fact or move the story forward. Every factual claim must trace to a source.
+give it the room it earns, and stay short rather than pad when the sourcing is thin. Never
+waffle: cut any sentence that doesn't add a fact or move it forward. Every factual claim
+must trace to a source.
 
 CITATIONS — follow exactly: cite by writing the source's id verbatim in square brackets,
 copied character-for-character from the MATERIALS, e.g. [research:1a2b3c4d5e6f]. Group
 several as [research:aaa..., research:bbb...]. Do NOT renumber them, and do NOT invent
 markers like [#1], [1], [ref], footnotes or superscripts — only the literal ids from the
 MATERIALS resolve, anything else is dropped as unverified. Do not invent facts. Do not add a
-headline (the desk sets that). Personas and voice must never change the facts.
+headline (the desk sets that). Personas, tone and format must never change the facts.
 
 ${INJECTION_GUARD}
 

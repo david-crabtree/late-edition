@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('lateEdition', {
   halt: () => ipcRenderer.invoke('le:halt'),
   resume: () => ipcRenderer.invoke('le:resume'),
   isHalted: () => ipcRenderer.invoke('le:isHalted'),
+  /** The formats, tones and lengths the copy desk can write in. */
+  formats: () => ipcRenderer.invoke('le:formats'),
+  /** Write a finished story again in another shape (one writer call, no new reporting). */
+  rewrite: (editionId, shape, slug) => ipcRenderer.invoke('le:rewrite', editionId, shape, slug),
   /** Every edition this newsroom has filed, newest first. */
   editions: () => ipcRenderer.invoke('le:editions'),
   /** One past edition in full, to show it again without rerunning it. */

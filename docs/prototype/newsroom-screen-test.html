@@ -142,6 +142,25 @@
   .chip.danger2{ border-color:#7a2d1d; color:#e8a17a; } .chip.danger2:hover{ background:#2a140d; }
   /* First-run gate: resume the last newsroom or start a fresh one */
   /* Back issues: the archive that was always on disk but had no door. */
+  /* "Write this as" — sits on the finished paper, because that's where you decide you
+     want it as a LinkedIn post. Newsprint palette, not the app chrome's. */
+  .frontpage .fp-rewrite{ text-align:left; max-width:62ch; width:100%; border-top:1px solid #cdbfa0; padding-top:9px; margin-top:2px; }
+  .frontpage .rw-hd{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:7px; }
+  .frontpage .rw-hd b{ font-family:var(--display); text-transform:uppercase; letter-spacing:.04em; font-size:.78rem; color:#20180c; }
+  .frontpage .rw-note{ font-size:.66rem; color:#6a6250; }
+  .frontpage .rw-picks{ display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+  .frontpage .rw-picks .chip{ background:#efe6d2; border-color:#bda87f; color:#2a2115; font-size:.7rem; }
+  .frontpage .rw-picks .chip:hover:not([disabled]){ background:#e3d6ba; border-color:#8a7550; }
+  .frontpage .rw-picks .chip[disabled]{ opacity:.45; cursor:default; }
+  .frontpage .rw-picks select{ font-family:var(--type); font-size:.72rem; color:#2a2115; background:#efe6d2; border:1px solid #bda87f; border-radius:4px; padding:4px 6px; }
+  .frontpage .rw-out{ margin-top:9px; }
+  .frontpage .rw-out[hidden]{ display:none; }
+  .frontpage .rw-out-hd{ display:flex; align-items:center; gap:7px; font-size:.7rem; color:#574f3f; margin-bottom:5px; }
+  .frontpage .rw-out-hd span{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.06em; text-transform:uppercase; }
+  .frontpage .rw-out-hd .chip{ background:#efe6d2; border-color:#bda87f; color:#2a2115; font-size:.66rem; padding:3px 7px; }
+  .frontpage .rw-out-hd .chip:first-of-type{ margin-left:auto; }
+  .frontpage .rw-out textarea{ width:100%; box-sizing:border-box; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.76rem; line-height:1.55; color:#241c10; background:#f7f1e2; border:1px solid #cdbfa0; border-radius:4px; padding:9px 11px; resize:vertical; }
+  .frontpage .rw-disclaim{ font-size:.64rem; color:#7a2d1d; margin:6px 0 0; }
   .backissues{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .backissues[hidden]{ display:none; }
   .backissues .bi-card{ width:min(680px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
@@ -244,6 +263,7 @@
           <div class="fp-body" id="fpBody"></div>
           <div class="fp-sources" id="fpSources"></div>
           <div class="fp-also" id="fpAlso"></div>
+          <div class="fp-rewrite" id="fpRewrite"></div>
           <div class="fp-actions">
             <button class="chip" id="fpOpen">Open the full paper ↗</button>
             <button class="chip" id="fpClose">◂ Back to the floor</button>
@@ -1127,13 +1147,78 @@
   // Deep runs a second pass and keeps more; Light keeps it cheap. Passed to the engine per run.
   const RESEARCH_LEVELS={ light:{research:1, maxFindings:3, label:'Light'}, standard:{research:1, maxFindings:6, label:'Standard'}, deep:{research:2, maxFindings:10, label:'Deep'} };
   let researchKey='standard';
-  const researchOpts=()=>{ const l=RESEARCH_LEVELS[researchKey]||RESEARCH_LEVELS.standard; return { research:l.research, maxFindings:l.maxFindings }; };
+  const researchOpts=()=>{ const l=RESEARCH_LEVELS[researchKey]||RESEARCH_LEVELS.standard; return { research:l.research, maxFindings:l.maxFindings, shape:copyShape() }; };
+  // What shape the copy comes out in. The options come from the engine (le:formats) so the
+  // app can never offer a format the writer doesn't know about.
+  let shapeOpts={ formats:[{id:'newspaper',label:'Newspaper story',hint:''}], tones:[{id:'house',label:'House style'}], lengths:[{id:'standard',label:'Standard'}] };
+  const chosen={ format:'newspaper', tone:'house', length:'standard' };
+  const copyShape=()=>({ format:chosen.format, tone:chosen.tone, length:chosen.length });
+  async function loadFormats(){ try{ if(window.lateEdition.formats) shapeOpts=await window.lateEdition.formats(); }catch(_){ } }
+  // ---- Rewrite this, as something else --------------------------------------------------
+  // The reporting, the sources and the copy desk's verdict are already on disk, so asking
+  // for a LinkedIn post is one writer call against checked material — not a new edition.
+  // That's what makes trying four formats off one piece of research reasonable.
+  let rewriteBusy=false;
+  function buildRewritePanel(){
+    const host=document.getElementById('fpRewrite'); if(!host||host.dataset.built) return;
+    host.dataset.built='1';
+    host.innerHTML=`<div class="rw-hd"><b>Write this as</b><span class="rw-note">one writer call · same sources, no new reporting</span></div>
+      <div class="rw-picks" id="rwPicks"></div>
+      <div class="rw-out" id="rwOut" hidden>
+        <div class="rw-out-hd"><span id="rwOutLabel"></span><button class="chip" id="rwCopy">Copy</button><button class="chip" id="rwHide">Close</button></div>
+        <textarea id="rwText" readonly rows="10"></textarea>
+        <p class="rw-disclaim" id="rwDisclaim"></p>
+      </div>`;
+    const picks=host.querySelector('#rwPicks');
+    loadFormats().then(()=>{
+      picks.innerHTML=shapeOpts.formats.filter(f=>f.id!=='newspaper')
+        .map(f=>`<button class="chip" data-fmt="${f.id}" title="${escH(f.hint||'')}">${escH(f.label)}</button>`).join('')
+        +`<select id="rwTone" aria-label="Tone">${shapeOpts.tones.map(o=>`<option value="${o.id}">${escH(o.label)}</option>`).join('')}</select>`
+        +`<select id="rwLen" aria-label="Length">${shapeOpts.lengths.map(o=>`<option value="${o.id}"${o.id==='standard'?' selected':''}>${escH(o.label)}</option>`).join('')}</select>`;
+      picks.querySelectorAll('[data-fmt]').forEach(b=>b.addEventListener('click',()=>doRewrite(b)));
+    });
+    host.querySelector('#rwHide').addEventListener('click',()=>{ host.querySelector('#rwOut').hidden=true; });
+    host.querySelector('#rwCopy').addEventListener('click',()=>{
+      const ta=host.querySelector('#rwText'), btn=host.querySelector('#rwCopy');
+      ta.select(); ta.setSelectionRange(0, ta.value.length);
+      const done=()=>{ btn.textContent='Copied'; setTimeout(()=>{ btn.textContent='Copy'; },1400); };
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done,()=>{ document.execCommand('copy'); done(); });
+      else { document.execCommand('copy'); done(); }
+    });
+  }
+  async function doRewrite(btn){
+    if(rewriteBusy||!lastEditionId) return;
+    const host=document.getElementById('fpRewrite');
+    const tone=host.querySelector('#rwTone'), len=host.querySelector('#rwLen');
+    const was=btn.textContent; rewriteBusy=true; btn.textContent='Writing…';
+    host.querySelectorAll('[data-fmt]').forEach(b=>{ b.disabled=true; });
+    try{
+      const r=await window.lateEdition.rewrite(lastEditionId,
+        { format:btn.dataset.fmt, tone:tone?tone.value:'house', length:len?len.value:'standard' });
+      if(!r||!r.ok) throw new Error((r&&r.error)||'the desk could not write it');
+      const out=host.querySelector('#rwOut');
+      host.querySelector('#rwOutLabel').textContent=r.formatLabel+(r.tokens?` · ${fmtK(r.tokens)} tokens`:'');
+      host.querySelector('#rwText').value=rwWithSources(r.text, r.sources);
+      // The notice travels with anything a person is about to paste elsewhere.
+      host.querySelector('#rwDisclaim').textContent=(noticeText&&noticeText.outputShort)||'';
+      out.hidden=false;
+      const w=realAgent('writer'); if(w) charLog(w,'act',`Rewrote the lead as a ${r.formatLabel.toLowerCase()}`);
+    }catch(err){
+      const out=host.querySelector('#rwOut');
+      host.querySelector('#rwOutLabel').textContent='Could not rewrite it';
+      host.querySelector('#rwText').value=String((err&&err.message)||err);
+      host.querySelector('#rwDisclaim').textContent='';
+      out.hidden=false;
+    }finally{ rewriteBusy=false; btn.textContent=was; host.querySelectorAll('[data-fmt]').forEach(b=>{ b.disabled=false; }); }
+  }
+  const rwWithSources=(text,sources)=>!sources||!sources.length ? text
+    : text+'\n\nSources\n'+sources.map(s=>`[${s.n}] ${s.title}${s.url?' — '+s.url:''}`).join('\n');
   // Render a filed edition into the in-window front page: the lead story in full (byline, body,
   // numbered sources) plus the other headlines — not just the headline + standfirst teaser.
   const FP_CITE=/\[((?:[a-z0-9_]+:[0-9a-f]{6,})(?:\s*,\s*[a-z0-9_]+:[0-9a-f]{6,})*)\]/gi, FP_STRAY=/\[#[^\]\n]{0,60}\]|\[(?:ref|citation needed|source)\]/gi;
   const fpEsc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   function fpRenderEdition(edition){ const stories=(edition&&edition.stories)||[]; const st=stories[0];
-    if(!st){ fpHead.textContent='A quiet day on the wire'; fpStand.textContent='Nothing stood up for page one.'; fpByline.textContent=''; fpBody.innerHTML=''; fpSources.innerHTML=''; fpAlso.innerHTML=''; frontpage.hidden=false; return; }
+    if(!st){ fpHead.textContent='A quiet day on the wire'; fpStand.textContent='Nothing stood up for page one.'; fpByline.textContent=''; fpBody.innerHTML=''; fpSources.innerHTML=''; fpAlso.innerHTML=''; buildRewritePanel(); frontpage.hidden=false; return; }
     fpHead.textContent=st.headline||'A quiet day on the wire'; fpStand.textContent=st.standfirst||'';
     fpByline.textContent=st.byline?('By '+st.byline):'';
     const srcs=st.sources||[], numOf=new Map(); srcs.forEach((r,i)=>{ if(r&&r.signalId) numOf.set(r.signalId,i+1); });
@@ -1142,6 +1227,7 @@
         .replace(FP_STRAY,'').replace(/\n/g,'<br>'); return h?('<p>'+h+'</p>'):''; }).join('');
     fpSources.innerHTML=srcs.length?('<b>Sources</b><ol>'+srcs.map(r=>'<li>'+fpEsc(r.title||r.url||'source')+'</li>').join('')+'</ol>'):'';
     const others=stories.slice(1); fpAlso.innerHTML=others.length?('<b>Also inside</b><ul>'+others.map(s=>'<li>'+fpEsc(s.headline||'')+'</li>').join('')+'</ul>'):'';
+    buildRewritePanel();
     frontpage.hidden=false; }
   // ---- Back issues ---------------------------------------------------------------------
   // Every edition has always been saved to disk; nothing could list them, so the only way
@@ -1243,7 +1329,24 @@
         const st=document.getElementById('staff'); if(st) st.appendChild(card);
         const sel=rr.querySelector('#researchLevel'), hint=rr.querySelector('#researchHint');
         const setHint=()=>{ const l=RESEARCH_LEVELS[researchKey]; if(hint) hint.textContent=`~${l.maxFindings} sources${l.research>1?' · 2 passes':''}`; };
-        setHint(); sel.addEventListener('change',()=>{ researchKey=sel.value; setHint(); }); }
+        setHint(); sel.addEventListener('change',()=>{ researchKey=sel.value; setHint(); });
+        // Format / tone / length, chosen before the desks are set going. The same three
+        // are offered again on the finished paper, where a rewrite costs one writer call.
+        const fr=document.createElement('div'); fr.className='row shaperow';
+        fr.innerHTML='<label class="hint" for="fmtSel">Write it as</label><select id="fmtSel"></select>'
+          +'<select id="toneSel" aria-label="Tone"></select><select id="lenSel" aria-label="Length"></select>'
+          +'<span class="hint" id="fmtHint"></span>';
+        card.appendChild(fr);
+        const fill=(el,items,cur)=>{ el.innerHTML=items.map(o=>`<option value="${o.id}"${o.id===cur?' selected':''}>${escH(o.label)}</option>`).join(''); };
+        loadFormats().then(()=>{
+          const f=fr.querySelector('#fmtSel'), tn=fr.querySelector('#toneSel'), ln=fr.querySelector('#lenSel'), fh=fr.querySelector('#fmtHint');
+          fill(f,shapeOpts.formats,chosen.format); fill(tn,shapeOpts.tones,chosen.tone); fill(ln,shapeOpts.lengths,chosen.length);
+          const setFh=()=>{ const o=shapeOpts.formats.find(x=>x.id===chosen.format); fh.textContent=(o&&o.hint)||''; };
+          setFh();
+          f.addEventListener('change',()=>{ chosen.format=f.value; setFh(); });
+          tn.addEventListener('change',()=>{ chosen.tone=tn.value; });
+          ln.addEventListener('change',()=>{ chosen.length=ln.value; });
+        }); }
       if(controlsCol) controlsCol.style.display='none';   // the sim's control column — the appbar has the app's own look-around
     }
     const $=id=>document.getElementById(id);

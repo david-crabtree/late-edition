@@ -1,6 +1,7 @@
 import { runSource } from '../adapters/run.js';
 import type { BeatConfig } from '../config/types.js';
 import type { Correction, Edition, SourceRef, Story } from '../core/edition.js';
+import { shapeDirective } from '../core/formats.js';
 import { type Signal, makeSignalId, shortHash } from '../core/signal.js';
 import { writeStoryFile } from '../store/edition-store.js';
 import { assertNotHalted } from '../store/halt.js';
@@ -688,6 +689,9 @@ export async function stageWrite(draft: EditionDraft, ctx: PipelineContext): Pro
       beatName: story.beatName,
       style: ctx.newsroom.style,
       chosenAngle: story.call?.chosenAngle ?? story.reports[0]?.proposedAngle ?? '',
+      // What shape the copy comes out in — newspaper story, LinkedIn post, plain brief.
+      // Voice and furniture only; the citation contract below is untouched by it.
+      shape: shapeDirective(ctx.shape),
       // Let the writer scale length to how much reporting it actually has (fuller when
       // well-sourced, short when thin — never padded).
       sourceCount: String(story.signals.length),

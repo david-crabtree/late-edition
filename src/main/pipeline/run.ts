@@ -4,6 +4,7 @@ import '../adapters/index.js'; // register built-in source adapters (side-effect
 import { loadNewsroom } from '../config/newsroom.js';
 import type { Newsroom } from '../config/types.js';
 import type { Edition } from '../core/edition.js';
+import type { CopyShape } from '../core/formats.js';
 import { type Signal, makeSignalId, shortHash } from '../core/signal.js';
 import { renderHtml, renderMarkdown } from '../paper/render.js';
 import { nextEditionId, writeEdition } from '../store/edition-store.js';
@@ -55,6 +56,12 @@ export interface RunOptions {
   maxFindings?: number;
   /** Let the Chief pause a vague brief to ask for clarification (default true). */
   clarify?: boolean;
+  /**
+   * What shape the copy comes out in — newspaper story, LinkedIn post, plain brief — plus
+   * tone and length. Unset writes a newspaper story in the newsroom's house style, which is
+   * what every edition did before this existed.
+   */
+  shape?: CopyShape;
   /** The user's answer to a prior clarification request (used when resuming). */
   clarificationAnswer?: string;
   /** Live event subscriber — every pipeline event as it happens (for a desktop UI to animate). */
@@ -110,6 +117,7 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     research: opts.research,
     maxFindings: opts.maxFindings,
     clarify: opts.clarify !== false,
+    shape: opts.shape,
     researcherTimeoutMs: opts.researcherTimeoutMs ?? 180_000,
     reporterTimeoutMs: opts.reporterTimeoutMs ?? 120_000,
     editorTimeoutMs: opts.editorTimeoutMs ?? 120_000,

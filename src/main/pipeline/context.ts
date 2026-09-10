@@ -1,4 +1,5 @@
 import type { Newsroom } from '../config/types.js';
+import type { CopyShape } from '../core/formats.js';
 import type { EditionLog } from '../store/log.js';
 
 /** Shared context handed to every pipeline stage. */
@@ -14,6 +15,8 @@ export interface PipelineContext {
   maxFindings?: number;
   /** When true (default), the Chief may pause a vague brief to ask the user for clarification. */
   clarify: boolean;
+  /** Format, tone and length the copy is written in. Unset = a newspaper story in house style. */
+  shape?: CopyShape;
   researcherTimeoutMs: number;
   reporterTimeoutMs: number;
   editorTimeoutMs: number;

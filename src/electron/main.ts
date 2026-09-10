@@ -12,7 +12,9 @@ import {
   PLAN_BILLING_NOTICE,
 } from '../main/core/disclaimer.js';
 import type { Edition } from '../main/core/edition.js';
+import { type CopyShape, FORMATS, LENGTHS, TONES } from '../main/core/formats.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
+import { rewriteStory } from '../main/pipeline/rewrite.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { detectAll, listProviders } from '../main/providers/registry.js';
 import { type EditionSummary, listEditions } from '../main/store/edition-store.js';
@@ -198,6 +200,38 @@ function createWindow(): void {
           })()`),
         );
       }
+      // Formats and the rewrite path: pick a format, ask the writer for it again, and
+      // check what comes back is paste-ready (numbered citations, sources, notice).
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG rewrite:',
+          await js(`(async () => {
+            const eds = await window.lateEdition.editions();
+            const target = (eds.find(e => e.finished) || {}).id;
+            if (!target) return JSON.stringify({ skipped: 'nothing filed' });
+            const opts = await window.lateEdition.formats();
+            // Open that edition on the front page first — the rewrite panel is built when a
+            // paper is shown, which is the only place you can ask for another format.
+            document.getElementById('appBack').click();
+            await new Promise(r2 => setTimeout(r2, 250));
+            const read = document.querySelector('.backissues [data-read]');
+            if (read) read.click();
+            await new Promise(r2 => setTimeout(r2, 400));
+            const r = await window.lateEdition.rewrite(target,
+              { format: 'linkedin', tone: 'conversational', length: 'short' });
+            const panel = document.getElementById('fpRewrite');
+            const buttons = [...panel.querySelectorAll('[data-fmt]')].map(b => b.dataset.fmt);
+            return JSON.stringify({
+              formats: opts.formats.map(f => f.id),
+              ok: r.ok, label: r.formatLabel, chars: (r.text || '').length,
+              rawIdsLeft: /\\[[a-z0-9_]+:[0-9a-f]{6,}\\]/i.test(r.text || ''),
+              sources: (r.sources || []).length,
+              panelBuilt: !!(panel && panel.dataset.built), panelOffers: buttons,
+              frontPageOpen: !document.getElementById('frontpage').hidden,
+            });
+          })()`),
+        );
+      }
       // Back issues: the list handler, and the drawer that opens onto it.
       console.log(
         'LE_DEBUG editions:',
@@ -340,7 +374,7 @@ ipcMain.handle(
   async (
     e,
     brief: string,
-    opts: { provider?: string; research?: number; maxFindings?: number },
+    opts: { provider?: string; research?: number; maxFindings?: number; shape?: CopyShape },
   ) => {
     const root = newsroomRoot();
     const send = (ev: LogEvent) => {
@@ -353,6 +387,7 @@ ipcMain.handle(
         forceProvider: opts?.provider || undefined,
         research: opts?.research,
         maxFindings: opts?.maxFindings,
+        shape: opts?.shape,
         clarify: true, // let the Chief pause a vague brief and ask the user
         onEvent: send,
       });
@@ -384,7 +419,7 @@ ipcMain.handle(
     e,
     editionId: string,
     answer: string,
-    opts: { research?: number; maxFindings?: number } = {},
+    opts: { research?: number; maxFindings?: number; shape?: CopyShape } = {},
   ) => {
     const root = newsroomRoot();
     const send = (ev: LogEvent) => {
@@ -397,6 +432,7 @@ ipcMain.handle(
         clarificationAnswer: answer,
         research: opts?.research,
         maxFindings: opts?.maxFindings,
+        shape: opts?.shape,
         clarify: true,
         onEvent: send,
       });
@@ -452,6 +488,31 @@ ipcMain.handle('le:resume', () => {
   return true;
 });
 ipcMain.handle('le:isHalted', () => isHalted(newsroomRoot()));
+
+/** The formats, tones and lengths the copy desk can write in — the picker's options. */
+ipcMain.handle('le:formats', () => ({
+  formats: FORMATS.map((f) => ({ id: f.id, label: f.label, hint: f.hint })),
+  tones: Object.entries(TONES).map(([id, t]) => ({ id, label: t.label })),
+  lengths: Object.entries(LENGTHS).map(([id, l]) => ({ id, label: l.label })),
+}));
+
+/**
+ * Write a finished story again in another shape. One writer call against reporting that is
+ * already done and already checked — not a new edition, and it cannot add a source.
+ */
+ipcMain.handle('le:rewrite', async (e, editionId: string, shape: CopyShape, slug?: string) => {
+  const send = (ev: LogEvent) => {
+    if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
+  };
+  try {
+    return {
+      ok: true as const,
+      ...(await rewriteStory({ root: newsroomRoot(), editionId, slug, shape, onEvent: send })),
+    };
+  } catch (err) {
+    return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
+  }
+});
 
 /** Every edition this newsroom has filed, newest first — the back-issues drawer. */
 ipcMain.handle('le:editions', (): EditionSummary[] => listEditions(newsroomRoot()));
