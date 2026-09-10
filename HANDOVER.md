@@ -338,8 +338,11 @@ Each line is one commit; see `git log` for the exact SHAs.
   ongoing topic (`newsroom/assignments/<id>.yaml`) the newsroom works repeatedly on a cadence,
   building on its own past coverage each run (prior editions folded into the brief). `assignment
   list` / `run <id>` (run-the-story) / `tick` (run all due, for cron; honors halt). Autonomous runs
-  set `clarify:false`. 70 tests green. **Open:** a real scheduler (cron/tray) to call `tick`, and the
-  prototype's sim story-flow still doesn't route through the researcher/copywriter tiers.
+  set `clarify:false`. 70 tests green. **Open:** a real scheduler (cron/tray) to call `tick`.
+- **Prototype sim-flow through all tiers** (commit `dc5143f`): the animated story now runs the real
+  four-tier chain — researching (Ruth) → reporting (Sam) → checking (Mac, may bounce back) →
+  writing (Hal, copywriter) → editing (Dot) → page one; `statusText` shows each stage's real worker;
+  reel replay maps researcher/writer spend to the new desks. Verified live incl. bounce-back + escalation.
 - **Kill switch, cost framing, clarification, roster, researcher-desk-prop** (commits `e8dfaa4`,
   `fb5a0a3`, `d9c4e1d`, `618680a`): the four backlog items — a HALT stop switch; auth-aware cost
   framing (plan usage vs metered API); a TRIAGE stage that pauses a vague brief to ask; two new
