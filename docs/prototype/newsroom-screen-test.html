@@ -108,7 +108,7 @@
   /* First-run gate: resume the last newsroom or start a fresh one */
   .startgate{ position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .startgate[hidden]{ display:none; }
-  .startgate .card{ width:min(440px,92vw); background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; padding:22px 22px 18px; box-shadow:0 18px 60px rgba(0,0,0,.6); text-align:center; }
+  .startgate .gatecard{ display:block; width:min(440px,92vw); max-height:92vh; overflow-y:auto; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; padding:22px 22px 18px; box-shadow:0 18px 60px rgba(0,0,0,.6); text-align:center; }
   .startgate .mast{ font-family:var(--pixel); font-size:.72rem; letter-spacing:.06em; color:var(--amber); }
   .startgate .tag{ font-size:.74rem; color:var(--bone-dim); margin:8px 0 16px; }
   .startgate .opt{ display:block; width:100%; text-align:left; background:#12100b; border:1px solid #2c2519; border-radius:6px; padding:11px 13px; margin:8px 0; color:var(--bone); cursor:pointer; }
@@ -653,6 +653,9 @@
   hold(document.getElementById('walkL'),'left'); hold(document.getElementById('walkR'),'right');
   const typingInField=e=>{ const t=e.target; return t && /^(input|textarea|select)$/i.test(t.tagName); };
   addEventListener('keydown',e=>{ if(typingInField(e)) return; const k=e.key.toLowerCase();
+    if(window.lateEdition){   // app mode: the floor runs itself — arrows only pan the newsroom, nothing walks a character
+      if(k==='arrowleft'||k==='arrowright'){ if(!state.panMode) setPan(true); input[k==='arrowleft'?'left':'right']=true; e.preventDefault(); }
+      return; }
     if(k==='arrowleft'||k==='a'){ clearGoto(); if(state.mode!=='roam')setScene('roam'); input.left=true; e.preventDefault(); }
     if(k==='arrowright'||k==='d'){ clearGoto(); if(state.mode!=='roam')setScene('roam'); input.right=true; e.preventDefault(); }
     if(k===' '){ if(state.mode==='roam'&&Math.abs(player.x-AC())<44) setScene('idle'); else if(state.mode==='desk') setScene('roam'); e.preventDefault(); } });
@@ -1042,7 +1045,7 @@
   // First-run gate: pick up the last newsroom or start a fresh one, before the floor is briefed.
   function buildStartupModal(){ const LE=window.lateEdition;
     const gate=document.createElement('div'); gate.className='startgate';
-    gate.innerHTML=`<div class="card">
+    gate.innerHTML=`<div class="gatecard">
       <div class="mast">LATE EDITION</div>
       <div class="tag">Your agents, your paper. Where should this newsroom live?</div>
       <button class="opt primary" id="gateResume"><b>Resume this newsroom →</b><small id="gateRoot">…</small></button>
