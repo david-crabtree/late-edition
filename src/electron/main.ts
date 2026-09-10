@@ -25,8 +25,19 @@ import type { LogEvent } from '../main/store/log.js';
 import { paths } from '../main/store/paths.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-// The newsroom UI is the code-drawn prototype; the preload turns on "real mode".
-const RENDERER = join(here, '../../docs/prototype/newsroom-screen-test.html');
+/**
+ * The newsroom UI is the code-drawn prototype page; the preload turns on "real mode".
+ *
+ * Running from source that page sits two levels up in `docs/`. In a packaged build the app
+ * is inside `app.asar`, so the same relative path only resolves because `docs/prototype/**`
+ * is in the builder's `files` list. Both candidates are checked and a missing page fails
+ * loudly here rather than opening an empty window with no error.
+ */
+const RENDERER_CANDIDATES = [
+  join(here, '../../docs/prototype/newsroom-screen-test.html'),
+  join(process.resourcesPath ?? '', 'app.asar/docs/prototype/newsroom-screen-test.html'),
+];
+const RENDERER = RENDERER_CANDIDATES.find((p) => existsSync(p)) ?? RENDERER_CANDIDATES[0] ?? '';
 // Prefer the built copy (dist/electron/preload.cjs), fall back to source — so a missed
 // postbuild copy can never silently drop the bridge and boot into sim mode.
 const PRELOAD = existsSync(join(here, 'preload.cjs'))
@@ -88,6 +99,15 @@ function createWindow(): void {
       nodeIntegration: false,
     },
   });
+  if (!existsSync(RENDERER)) {
+    // Nothing useful can happen without the page, and a blank window tells the user nothing.
+    dialog.showErrorBox(
+      'Late Edition could not start',
+      `The newsroom page is missing from this build.\n\nLooked in:\n${RENDERER_CANDIDATES.join('\n')}`,
+    );
+    app.quit();
+    return;
+  }
   win.loadFile(RENDERER);
   // Diagnostic: `LE_DEBUG=1 npm run electron` checks the preload bridge + a real IPC round-trip,
   // then quits — a headless way to confirm "real mode" is wired without a visible window.

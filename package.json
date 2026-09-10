@@ -24,7 +24,12 @@
     "format": "biome format --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "dist": "npm run icon && npm run build && electron-builder --publish never",
+    "dist:win": "npm run icon && npm run build && electron-builder --win --publish never",
+    "dist:linux": "npm run icon && npm run build && electron-builder --linux --publish never",
+    "dist:mac": "npm run icon && npm run build && electron-builder --mac --publish never",
+    "icon": "node scripts/make-icon.mjs"
   },
   "dependencies": {
     "cheerio": "^1.0.0",
@@ -37,8 +42,75 @@
     "@types/diff": "^5.2.3",
     "@types/node": "^20.16.5",
     "electron": "^31.7.7",
+    "electron-builder": "^26.15.3",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",
     "vitest": "^2.1.1"
+  },
+  "author": "Late Edition contributors",
+  "build": {
+    "appId": "com.lateedition.app",
+    "productName": "Late Edition",
+    "copyright": "Copyright (c) 2026 Late Edition contributors",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "docs/prototype/newsroom-screen-test.html",
+      "package.json",
+      "!**/*.map",
+      "!**/*.test.*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-Setup-${arch}.${ext}",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.news",
+      "identity": null,
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable-${arch}.${ext}"
+    }
   }
 }

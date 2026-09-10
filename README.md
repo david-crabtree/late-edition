@@ -22,24 +22,19 @@ read the paper before it goes to your team.
 > Status: early construction. See [`docs/build-plan.md`](docs/build-plan.md) for the full
 > vision and [`docs/decisions.md`](docs/decisions.md) for what's actually been decided.
 
-## Quick start (headless)
+## Installing
 
-Requires Node.js 20+.
+Download the build for your platform from the
+[Releases page](../../releases). No Node, no command line, no npm.
 
-```bash
-npm install
-npm run cli -- --help
-```
+**Windows will warn you the first time.** The build is not code-signed yet, so you'll get a
+blue "Windows protected your PC" panel. Click **More info**, then **Run anyway**. Checksums
+are published with every release if you'd like to verify the download first. Mac builds
+aren't available yet — see [`docs/releasing.md`](docs/releasing.md) for why.
 
-Scaffold a newsroom and run an edition with the built-in **fake provider** (no tokens
-spent, no CLIs required):
-
-```bash
-npm run cli -- init ./my-newsroom
-npm run cli -- run --newsroom ./my-newsroom --provider fake
-```
-
-The result lands in `my-newsroom/editions/<date>-NNN/` as `edition.md` and `edition.html`.
+You'll also need at least one AI agent CLI installed and signed in, since Late Edition
+doesn't run any AI itself. The Setup panel inside the app detects what you have and tells
+you exactly what to run for anything you don't.
 
 ## How it works
 
@@ -84,6 +79,25 @@ a claim that the contents are true.** No reporter wrote it and no editor checked
 - **No warranty, no liability.** This is free software provided as-is under the
   [MIT licence](LICENSE). The authors accept no responsibility for what it produces or for
   anything done with it.
+
+## Quick start from source (the engine, headless)
+
+Requires Node.js 20+.
+
+```bash
+npm install
+npm run cli -- --help
+```
+
+Scaffold a newsroom and run an edition with the built-in **fake provider** (no tokens
+spent, no CLIs required):
+
+```bash
+npm run cli -- init ./my-newsroom
+npm run cli -- run --newsroom ./my-newsroom --provider fake
+```
+
+The result lands in `my-newsroom/editions/<date>-NNN/` as `edition.md` and `edition.html`.
 
 ## Contributing
 
