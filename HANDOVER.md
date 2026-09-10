@@ -334,6 +334,19 @@ It has grown from a single-desk bust into a **whole newsroom floor**:
 
 ### 6.6 Progress log (newest first)
 Each line is one commit; see `git log` for the exact SHAs.
+- **M3 — the Electron app (wired to the real engine)**: `src/electron/{main,preload}.ts` — a desktop
+  window running the prototype as its renderer, with `window.lateEdition` (preload) bridging to the
+  engine **in-process**. Briefing the Chief runs the REAL pipeline; every pipeline event streams to
+  the renderer (`EditionLog` onEvent → run.ts `onEvent` option) and drives the per-character logs +
+  animation live; the finished edition shows as the front page. A **Setup panel** lists detected
+  providers (plan vs API billing) and writes `staff.yaml` per role — the "wire your agents"
+  UI (auth still lives in each CLI; we never store creds). The prototype is **dual-mode**: real when
+  `window.lateEdition` exists, the standalone sim otherwise. **Run:** `npm run app` (build + launch)
+  or `npm run electron` after a build. ⚠️ **Built but not launched here** (headless env, no display) —
+  the renderer wiring was verified against a mock bridge with the identical API shape, the engine
+  streaming is unit-tested, and the shell builds/typechecks; **David is the first to actually launch
+  it.** ESM main + ESM preload (sandbox:false). Electron is a devDependency (its binary postinstall
+  is skipped in this sandbox; a normal `npm install` on a dev machine fetches it).
 - **Per-character log + usage on assignment run** (commits `5bc5cd3`, `03d8b52`): `assignment run`
   now prints the same per-role/plan-usage cost line as `run` (shared `printUsage`). In the prototype,
   clicking any staffer (or the Chief) switches a log panel under the stage to *their* stream — a

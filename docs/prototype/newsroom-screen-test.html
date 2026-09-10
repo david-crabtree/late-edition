@@ -80,6 +80,17 @@
   .clog-body .think{ color:#c2b48f; font-style:italic; } .clog-body .think::before{ content:'“'; } .clog-body .think::after{ content:'”'; }
   .clog-body .sys{ color:#6a6250; border-bottom:1px dashed #2c2519; padding-bottom:5px; margin-bottom:5px; font-family:var(--pixel); font-size:.56rem; letter-spacing:.03em; }
   @media (max-width:720px){ .clog-hint{ display:none; } }
+  .setup{ margin-top:10px; background:#0c0f14; border:1px solid #3a2e1b; border-radius:6px; padding:12px 14px; }
+  .setup h3{ font-family:var(--display); text-transform:uppercase; letter-spacing:.03em; font-size:.9rem; margin:0 0 3px; color:var(--amber); }
+  .setup .sub{ font-size:.72rem; color:var(--bone-dim); margin:0 0 10px; }
+  .setup .prov{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .setup .pv{ font-family:var(--pixel); font-size:.52rem; padding:4px 7px; border-radius:4px; border:1px solid #2c2519; background:#14100b; color:#8a8270; }
+  .setup .pv.ready{ border-color:#3f8a60; color:#c9e6b0; } .setup .pv.api{ border-color:#a8703a; color:#e8cf88; }
+  .setup .roles{ display:grid; grid-template-columns:minmax(84px,auto) 1fr minmax(96px,1.1fr); gap:7px 10px; align-items:center; }
+  .setup .roles label{ font-size:.8rem; color:var(--bone-dim); }
+  .setup select, .setup .mdl{ font-family:var(--type); font-size:.85rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:4px; padding:6px 8px; min-width:0; }
+  .setup .note{ font-size:.68rem; color:#7a7259; margin-top:11px; line-height:1.5; }
+  body.real .real-badge{ display:inline-block; font-family:var(--pixel); font-size:.5rem; color:#0b0e13; background:#7bb661; padding:3px 6px; border-radius:3px; margin-left:10px; vertical-align:middle; }
   .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:5% 8%; gap:10px; z-index:5; line-height:1.35; overflow:auto; }
   .frontpage[hidden]{ display:none; }
   .frontpage .fp-mast{ font-family:var(--display); font-weight:700; text-transform:uppercase; letter-spacing:.08em; line-height:1.1; font-size:clamp(1.1rem,4vw,2rem); color:#20180c; border-bottom:3px double #20180c; padding-bottom:5px; width:100%; }
@@ -646,6 +657,7 @@
   function setSceneFor(s,scene){ if(state.castIdx===s.ci){ state.mode='desk'; state.scene=scene; player.x=AC(); } }
 
   function briefChief(topic){ const T=(topic||'').trim(); if(!T) return; frontpage.hidden=true;
+    if(window.lateEdition){ realRun(T); return; }   // in the app, brief the REAL engine (not the sim)
     const st={ id:++storySeq, topic:T, short:shortT(T), stage:'assigned', owner:null, quality:0, checks:0, t:0, headline:'' };
     stories.push(st); chief.status='briefing'; charLog(chief,'do',`Reading the brief: "${st.topic}"`); agentSay(chief,`Front page: ${st.short}. Two sources.`,56);
     logEvent(`Chief takes the brief — ${st.short}`); focusOn(chief); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING'; renderRoster(); }
@@ -784,6 +796,65 @@
   document.getElementById('reelInput').addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ loadReel(JSON.parse(String(fr.result))); }catch(_){ logEvent('could not read that reel.json'); } }; fr.readAsText(f); e.target.value=''; });
   approvalsEl.addEventListener('click',e=>{ const b=e.target.closest('[data-ap]'); if(b) resolveApproval(+b.dataset.ap, b.dataset.ok==='1'); });
   budgetLabel.textContent=fmtK(+budgetRange.value); buildStaffCards();
+
+  // ============ REAL MODE — wire the newsroom to the live engine when running in the app ============
+  const ROLE2DESK={ researcher:'research', reporter:'reporter', writer:'copywriter', editor:'editor', copydesk:'copydesk' };
+  const realAgent=role=>{ const d=ROLE2DESK[role]; return d?roleAgent(d):null; };
+  function friendly(ev){ const s=ev.stage,e=ev.event,d=ev;
+    if(s==='researcher'){ if(e==='leave_desk') return ['do','Digging for sources…']; if(e==='filed') return ['act',`Filed ${d.findings??''} finding(s)`]; if(e==='merged') return ['act',`Kept ${d.added??''} source(s)`]; if(e==='error') return ['act',`Hit a snag: ${d.error||''}`]; }
+    if(s==='reporter'){ if(e==='leave_desk') return ['do','Working the story…']; if(e==='filed') return ['act',`Filed — confidence ${d.confidence??'?'}`]; if(e==='capped') return ['act','Held for the next edition (token cap)']; if(e==='error') return ['act',`Failed: ${d.error||''}`]; }
+    if(s==='writer'&&e==='copy') return ['act',`Wrote the copy (${d.chars??''} chars)`];
+    if(s==='copydesk'&&e==='checked') return ['act', d.pass!==false?'Checked — it stands up':`Flagged ${d.corrections??''} claim(s)`];
+    if(s==='editor'&&e==='call') return ['act',`Made the call — ${d.placement||''}${d.competingTakes?' (competing takes)':''}`];
+    return null; }
+  const STAGE2DO={ RESEARCH:['research','Researching the topic'], REPORT:['reporter','Reporting'], WRITE:['copywriter','Rewriting the copy'], CHECK:['copydesk','Checking the copy'], CALL:['editor','Making the call'], TRIAGE:['chief','Sizing up the brief'], ASSIGN:['chief','Assigning the desk'] };
+  function applyRealEvent(ev){ if(!ev||!ev.stage) return;
+    const m=STAGE2DO[ev.stage];
+    if(m&&ev.event==='stage_start'){ const s=m[0]==='chief'?chief:roleAgent(m[0]); if(s){ charLog(s,'do',m[1]+'…'); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, m[0]==='copydesk'?'idle':'type'); renderRoster(); } }
+    const s=realAgent(ev.stage); if(s){ const f=friendly(ev); if(f){ charLog(s,f[0],f[1]); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, ev.stage==='copydesk'?'idle':'type'); renderRoster(); } } }
+  let realBusy=false;
+  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true;
+    for(const s of staff){ s.status='idle'; } chief.status='briefing';
+    charLog(chief,'do',`Briefing the desk: "${brief}"`); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
+    const unsub=window.lateEdition.onEvent(applyRealEvent);
+    try{ const r=await window.lateEdition.run(brief,{});
+      if(r&&r.ok){ const st=r.edition&&r.edition.stories&&r.edition.stories[0];
+        if(st){ fpHead.textContent=st.headline||'A quiet day on the wire'; fpStand.textContent=st.standfirst||''; frontpage.hidden=false; }
+        const ed=roleAgent('editor'); if(ed) charLog(ed,'act',`Page one: ${st?st.headline:'(quiet day)'}`);
+        mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`); }
+      else { charLog(chief,'act',`Run failed: ${(r&&r.error)||'unknown error'}`); mScene.textContent='RUN FAILED'; }
+    }catch(err){ charLog(chief,'act',`Run error: ${(err&&err.message)||err}`); mScene.textContent='RUN FAILED'; }
+    finally{ if(unsub)unsub(); realBusy=false; for(const s of staff){ if(s.status==='working') s.status='idle'; } renderRoster(); } }
+
+  const SETUP_ROLES=[['researcher','Researcher'],['reporter','Reporter'],['writer','Copywriter'],['editor','Editor / Chief'],['copydesk','Copy desk']];
+  const SETUP_KEY={ researcher:'researchers', reporter:'reporters', writer:'writers', editor:'managing_editor', copydesk:'copy_desk' };
+  function buildSetup(){ const foot=document.querySelector('.foot'); if(!foot) return;
+    const box=document.createElement('div'); box.className='setup';
+    box.innerHTML=`<h3>Setup — wire your agents <span class="real-badge">REAL ENGINE</span></h3>
+      <p class="sub">Pick which agent runs each desk. Auth lives in each agent's own CLI — we never store your subscription. <b>fake</b> runs offline for a dry run.</p>
+      <div class="prov" id="setupProv">detecting agents…</div><div class="roles" id="setupRoles"></div>
+      <div class="row" style="margin-top:11px; gap:8px"><button class="chip primary" id="setupSave">Save staff</button><span class="hint" id="setupMsg"></span></div>
+      <p class="note">Install & sign in to an agent's CLI first (e.g. <b>claude auth login</b>) and it shows up as <b>ready</b>. Usage on a signed-in plan counts toward that plan — not billed as API.</p>`;
+    foot.parentNode.insertBefore(box, foot);
+    Promise.all([window.lateEdition.detect(), window.lateEdition.staff()]).then(([det,cfg])=>{
+      const prov=box.querySelector('#setupProv'); prov.innerHTML='';
+      for(const d of det){ const cls=!d.installed?'':d.billing==='api'?'api':'ready';
+        const tag=!d.installed?'not installed':d.billing==='subscription'?'plan usage':d.billing==='api'?'⚠ API $':d.billing==='free'?'free':'ready';
+        const sp=document.createElement('span'); sp.className='pv '+cls; sp.textContent=`${d.id} · ${tag}`; prov.appendChild(sp); }
+      const ids=det.map(d=>d.id), rolesEl=box.querySelector('#setupRoles');
+      for(const [rk,label] of SETUP_ROLES){ const cur=cfg[SETUP_KEY[rk]]||{provider:'fake',model:''};
+        const l=document.createElement('label'); l.textContent=label;
+        const sel=document.createElement('select'); sel.dataset.role=rk;
+        for(const p of ids){ const o=document.createElement('option'); o.value=p; o.textContent=p; if(p===cur.provider)o.selected=true; sel.appendChild(o); }
+        const mdl=document.createElement('input'); mdl.className='mdl'; mdl.dataset.role=rk; mdl.placeholder='model (optional)'; mdl.value=cur.model||'';
+        rolesEl.append(l,sel,mdl); }
+    });
+    box.querySelector('#setupSave').addEventListener('click',async()=>{ const out={};
+      for(const [rk] of SETUP_ROLES){ const sel=box.querySelector(`select[data-role="${rk}"]`), mdl=box.querySelector(`input[data-role="${rk}"]`); out[SETUP_KEY[rk]]={ provider:sel.value, model:(mdl.value||'').trim() }; }
+      try{ await window.lateEdition.setStaff(out); box.querySelector('#setupMsg').textContent='Saved — the desks use these next run.'; }
+      catch(e){ box.querySelector('#setupMsg').textContent='Could not save: '+((e&&e.message)||e); } }); }
+
+  if(window.lateEdition){ document.body.classList.add('real'); buildSetup(); }
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);
 })();
