@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BrowserWindow, app, ipcMain } from 'electron';
+import { BrowserWindow, app, dialog, ipcMain } from 'electron';
 // The engine — the same library the CLI uses, called in-process.
 import { loadNewsroom } from '../main/config/newsroom.js';
 import { scaffoldNewsroom } from '../main/config/scaffold.js';
@@ -14,14 +14,33 @@ const here = dirname(fileURLToPath(import.meta.url));
 // The newsroom UI is the code-drawn prototype; the preload turns on "real mode".
 const RENDERER = join(here, '../../docs/prototype/newsroom-screen-test.html');
 
-/** The app keeps one newsroom under userData, scaffolded on first launch. */
-function newsroomRoot(): string {
-  const root = join(app.getPath('userData'), 'newsroom');
+// ---- Where the newsroom lives (config, staff, editions + history) ----------
+// The user can point this at any folder from the Setup panel; the choice is persisted.
+function appConfigPath(): string {
+  return join(app.getPath('userData'), 'le-config.json');
+}
+function readAppConfig(): { root?: string } {
+  try {
+    return JSON.parse(readFileSync(appConfigPath(), 'utf8')) as { root?: string };
+  } catch {
+    return {};
+  }
+}
+function writeAppConfig(c: { root?: string }): void {
+  writeFileSync(appConfigPath(), JSON.stringify(c, null, 2), 'utf8');
+}
+/** Ensure a newsroom exists at `root` (scaffold on first use) and return it. */
+function ensureNewsroom(root: string): string {
   if (!existsSync(join(root, 'newsroom', 'config.yaml'))) {
     mkdirSync(root, { recursive: true });
     scaffoldNewsroom(root);
   }
   return root;
+}
+/** The active newsroom folder — the user's chosen one, or a default under userData. */
+function newsroomRoot(): string {
+  const chosen = readAppConfig().root;
+  return ensureNewsroom(chosen || join(app.getPath('userData'), 'newsroom'));
 }
 
 let win: BrowserWindow | null = null;
@@ -33,13 +52,31 @@ function createWindow(): void {
     backgroundColor: '#0a0d12',
     title: 'Late Edition',
     webPreferences: {
-      preload: join(here, 'preload.js'),
+      preload: join(here, 'preload.cjs'), // CommonJS preload — Electron loads it reliably
       contextIsolation: true,
-      sandbox: false, // required so the ESM preload can run
+      sandbox: false,
       nodeIntegration: false,
     },
   });
   win.loadFile(RENDERER);
+  // Diagnostic: `LE_DEBUG=1 npm run electron` checks the preload bridge + a real IPC round-trip,
+  // then quits — a headless way to confirm "real mode" is wired without a visible window.
+  win.webContents.once('did-finish-load', async () => {
+    if (!process.env.LE_DEBUG || !win) return;
+    try {
+      const bridge = await win.webContents.executeJavaScript(
+        "typeof window.lateEdition + ' | realMode=' + document.body.classList.contains('real') + ' | setupPanel=' + !!document.querySelector('.setup')",
+      );
+      const det = await win.webContents.executeJavaScript(
+        "window.lateEdition.detect().then(d=>d.map(x=>x.id+':'+(x.installed&&x.authenticated?('ready/'+(x.billing||'?')):'no')).join(', '))",
+      );
+      console.log('LE_DEBUG bridge:', bridge);
+      console.log('LE_DEBUG detect:', det);
+    } catch (e) {
+      console.log('LE_DEBUG error:', e instanceof Error ? e.message : e);
+    }
+    app.quit();
+  });
 }
 
 app.whenReady().then(() => {
@@ -53,6 +90,22 @@ app.on('window-all-closed', () => {
 });
 
 // ---- IPC: the renderer talks to the engine through these -------------------
+
+/** The folder the newsroom lives in (where context/history is stored). */
+ipcMain.handle('le:getRoot', () => newsroomRoot());
+
+/** Open a folder picker; on choose, move the newsroom there and remember it. */
+ipcMain.handle('le:pickRoot', async () => {
+  const res = await dialog.showOpenDialog(win ?? undefined!, {
+    title: 'Choose a folder to store this newsroom (config, staff, editions & history)',
+    properties: ['openDirectory', 'createDirectory'],
+    defaultPath: newsroomRoot(),
+  });
+  if (res.canceled || !res.filePaths[0]) return newsroomRoot();
+  const root = res.filePaths[0];
+  writeAppConfig({ root });
+  return ensureNewsroom(root);
+});
 
 /** Which providers are installed/authenticated, and how they bill (plan vs API). */
 ipcMain.handle('le:detect', async () => {

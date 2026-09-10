@@ -89,6 +89,12 @@
   .setup .roles{ display:grid; grid-template-columns:minmax(84px,auto) 1fr minmax(96px,1.1fr); gap:7px 10px; align-items:center; }
   .setup .roles label{ font-size:.8rem; color:var(--bone-dim); }
   .setup select, .setup .mdl{ font-family:var(--type); font-size:.85rem; color:var(--bone); background:#0c0f14; border:1px solid #3a2e1b; border-radius:4px; padding:6px 8px; min-width:0; }
+  .setup .folder{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.78rem; color:var(--bone-dim); }
+  .setup .folder code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.72rem; color:var(--bone); background:#14100b; border:1px solid #2c2519; border-radius:4px; padding:3px 6px; max-width:100%; overflow-wrap:anywhere; }
+  .setup .folder .hint{ font-size:.66rem; }
+  .setup .lbl{ font-family:var(--pixel); font-size:.56rem; letter-spacing:.04em; color:var(--bone-dim); }
+  .setup .authhint{ font-size:.68rem; color:#c2a15a; margin:8px 0 4px; line-height:1.5; }
+  .setup .authhint b{ color:var(--amber); }
   .setup .note{ font-size:.68rem; color:#7a7259; margin-top:11px; line-height:1.5; }
   body.real .real-badge{ display:inline-block; font-family:var(--pixel); font-size:.5rem; color:#0b0e13; background:#7bb661; padding:3px 6px; border-radius:3px; margin-left:10px; vertical-align:middle; }
   .frontpage{ position:absolute; inset:0; background:linear-gradient(#efe9d8,#e2dcc7); color:#1a1712; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:5% 8%; gap:10px; z-index:5; line-height:1.35; overflow:auto; }
@@ -828,31 +834,40 @@
 
   const SETUP_ROLES=[['researcher','Researcher'],['reporter','Reporter'],['writer','Copywriter'],['editor','Editor / Chief'],['copydesk','Copy desk']];
   const SETUP_KEY={ researcher:'researchers', reporter:'reporters', writer:'writers', editor:'managing_editor', copydesk:'copy_desk' };
-  function buildSetup(){ const foot=document.querySelector('.foot'); if(!foot) return;
+  function buildSetup(){ const LE=window.lateEdition, foot=document.querySelector('.foot'); if(!foot) return;
     const box=document.createElement('div'); box.className='setup';
     box.innerHTML=`<h3>Setup — wire your agents <span class="real-badge">REAL ENGINE</span></h3>
-      <p class="sub">Pick which agent runs each desk. Auth lives in each agent's own CLI — we never store your subscription. <b>fake</b> runs offline for a dry run.</p>
-      <div class="prov" id="setupProv">detecting agents…</div><div class="roles" id="setupRoles"></div>
-      <div class="row" style="margin-top:11px; gap:8px"><button class="chip primary" id="setupSave">Save staff</button><span class="hint" id="setupMsg"></span></div>
-      <p class="note">Install & sign in to an agent's CLI first (e.g. <b>claude auth login</b>) and it shows up as <b>ready</b>. Usage on a signed-in plan counts toward that plan — not billed as API.</p>`;
+      <p class="sub">Pick which agent runs each desk. Sign in inside each agent's own CLI — we never store your subscription. <b>fake</b> runs offline for a dry run.</p>
+      <div class="folder"><span>Newsroom folder</span> <code id="setupRoot">…</code> <button class="chip" id="setupPick">Change…</button> <span class="hint">config, staff & every edition's history live here</span></div>
+      <div class="row" style="justify-content:space-between; align-items:center; margin:12px 0 4px"><span class="lbl">Detected agents</span><button class="chip" id="setupRecheck">Recheck</button></div>
+      <div class="prov" id="setupProv">detecting agents…</div>
+      <div class="authhint" id="setupAuth"></div>
+      <div class="roles" id="setupRoles"></div>
+      <div class="row" style="margin-top:12px; gap:8px"><button class="chip primary" id="setupSave">Save staff</button><span class="hint" id="setupMsg"></span></div>
+      <p class="note">Not signed in? Run the agent's own login once — e.g. <b>claude auth login</b> in a terminal — then hit <b>Recheck</b> and it turns <b>ready</b>. Usage on a signed-in plan counts toward that plan, not billed as API. Default desks are <b>fake</b> (offline) until you set real ones.</p>`;
     foot.parentNode.insertBefore(box, foot);
-    Promise.all([window.lateEdition.detect(), window.lateEdition.staff()]).then(([det,cfg])=>{
-      const prov=box.querySelector('#setupProv'); prov.innerHTML='';
-      for(const d of det){ const cls=!d.installed?'':d.billing==='api'?'api':'ready';
-        const tag=!d.installed?'not installed':d.billing==='subscription'?'plan usage':d.billing==='api'?'⚠ API $':d.billing==='free'?'free':'ready';
-        const sp=document.createElement('span'); sp.className='pv '+cls; sp.textContent=`${d.id} · ${tag}`; prov.appendChild(sp); }
-      const ids=det.map(d=>d.id), rolesEl=box.querySelector('#setupRoles');
+    const $=id=>box.querySelector('#'+id);
+    if(LE.getRoot) LE.getRoot().then(r=>{ $('setupRoot').textContent=r; });
+    $('setupPick').addEventListener('click', async()=>{ if(!LE.pickRoot) return; const r=await LE.pickRoot(); if(r){ $('setupRoot').textContent=r; refreshRoles(); $('setupMsg').textContent='Newsroom folder set.'; } });
+    async function refreshProviders(){ const det=await LE.detect(); const prov=$('setupProv'); prov.innerHTML=''; const notReady=[];
+      for(const d of det){ const ready=d.installed&&d.authenticated; const cls=!ready?'':d.billing==='api'?'api':'ready';
+        const tag=!d.installed?'not installed':!d.authenticated?'not signed in':d.billing==='subscription'?'plan usage':d.billing==='api'?'⚠ API $':d.billing==='free'?'free':'ready';
+        const sp=document.createElement('span'); sp.className='pv '+cls; sp.textContent=`${d.id} · ${tag}`; if(d.detail) sp.title=d.detail; prov.appendChild(sp);
+        if(!ready&&d.detail) notReady.push(`<b>${d.id}</b> — ${d.detail}`); }
+      $('setupAuth').innerHTML = notReady.length? 'To add one: '+notReady.join(' · ') : ''; return det; }
+    async function refreshRoles(){ const [det,cfg]=await Promise.all([LE.detect(), LE.staff()]); const ids=det.map(d=>d.id), rolesEl=$('setupRoles'); rolesEl.innerHTML='';
       for(const [rk,label] of SETUP_ROLES){ const cur=cfg[SETUP_KEY[rk]]||{provider:'fake',model:''};
         const l=document.createElement('label'); l.textContent=label;
         const sel=document.createElement('select'); sel.dataset.role=rk;
         for(const p of ids){ const o=document.createElement('option'); o.value=p; o.textContent=p; if(p===cur.provider)o.selected=true; sel.appendChild(o); }
         const mdl=document.createElement('input'); mdl.className='mdl'; mdl.dataset.role=rk; mdl.placeholder='model (optional)'; mdl.value=cur.model||'';
-        rolesEl.append(l,sel,mdl); }
-    });
-    box.querySelector('#setupSave').addEventListener('click',async()=>{ const out={};
+        rolesEl.append(l,sel,mdl); } }
+    refreshProviders(); refreshRoles();
+    $('setupRecheck').addEventListener('click', async()=>{ $('setupMsg').textContent='Rechecking…'; await refreshProviders(); await refreshRoles(); $('setupMsg').textContent='Rechecked.'; });
+    $('setupSave').addEventListener('click', async()=>{ const out={};
       for(const [rk] of SETUP_ROLES){ const sel=box.querySelector(`select[data-role="${rk}"]`), mdl=box.querySelector(`input[data-role="${rk}"]`); out[SETUP_KEY[rk]]={ provider:sel.value, model:(mdl.value||'').trim() }; }
-      try{ await window.lateEdition.setStaff(out); box.querySelector('#setupMsg').textContent='Saved — the desks use these next run.'; }
-      catch(e){ box.querySelector('#setupMsg').textContent='Could not save: '+((e&&e.message)||e); } }); }
+      try{ await LE.setStaff(out); $('setupMsg').textContent='Saved — the desks use these next run.'; }
+      catch(e){ $('setupMsg').textContent='Could not save: '+((e&&e.message)||e); } }); }
 
   if(window.lateEdition){ document.body.classList.add('real'); buildSetup(); }
 
