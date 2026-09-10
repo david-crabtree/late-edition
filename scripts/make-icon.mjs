@@ -1,16 +1,15 @@
-/**
- * Generate the app icon from code, the way the whole newsroom is drawn.
- *
- * A 32x32 pixel grid scaled up with hard edges, so it stays crisp at every size an OS asks
- * for. This is a PLACEHOLDER: it exists so a release never ships the default Electron logo.
- * Replace `ICON` below (or drop a real build/icon.png in) when there's proper artwork.
- *
- *   node scripts/make-icon.mjs
- */
-import { deflateSync } from 'node:zlib';
+// Generate the app icon from code, the way the whole newsroom is drawn.
+//
+// A 32x32 pixel grid scaled up with hard edges, so it stays crisp at every size an OS asks
+// for. This is a PLACEHOLDER: it exists so a release never ships the default Electron logo.
+// Replace `ICON` below (or drop a real build/icon.png in) when there's proper artwork.
+//
+//   node scripts/make-icon.mjs
+
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { deflateSync } from 'node:zlib';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'build', 'icon.png');
 const SIZE = 512;
