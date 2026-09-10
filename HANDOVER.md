@@ -1,5 +1,10 @@
 # Late Edition — Handover
 
+> ⚠️ **This doc is older milestone history (predates the app being wired to the real engine).**
+> For the **current state**, read [`HANDOVER-CURRENT.md`](HANDOVER-CURRENT.md) first — it covers the
+> live Electron app, the alive-floor prototype, the clarification/decision flows, research-depth +
+> output work, and the prototype-verification workflow. Use this file only for deeper background.
+
 **Read this first.** It's written for a fresh Claude/session with **no prior context**, and for
 David (the human) continuing on another machine/login. It explains what the project is, what's
 built, how to run it, how the code is organised, and exactly where the pixel-art prototype left
