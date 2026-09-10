@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { paths } from '../store/paths.js';
 
 /**
- * Scaffold a fresh newsroom at `root`. Defaults every role to the `fake` provider so
- * `late-edition run` works out of the box with zero tokens and zero CLIs; comments
- * show how to switch desks to real providers.
+ * Scaffold a fresh newsroom at `root`. Every desk starts unstaffed: a run stops and names
+ * the empty desk rather than filling the paper with invented copy. The written comments show
+ * how to wire each desk to a real provider, and `--provider fake` gives a zero-token dry run.
  */
 export function scaffoldNewsroom(root: string): void {
   const p = paths(root);
@@ -73,9 +73,12 @@ distribution:
     #   base_url: "https://your-host.example/editions"   # optional; omit for local file links
 `;
 
-const STAFF_YAML = `# Which provider (and model) runs each desk. Everything defaults to the offline \`fake\`
-# provider so a fresh newsroom runs with no tokens and no CLIs. Switch desks to a real
-# provider once \`late-edition detect\` shows it as ready.
+const STAFF_YAML = `# Which provider (and model) runs each desk. Desks start \`unset\`: a desk with no agent
+# stops the edition and says so, rather than quietly filling the paper with invented copy.
+# Set each one to a provider that \`late-edition detect\` shows as ready.
+#
+# For a no-tokens dry run of the whole pipeline, pass \`--provider fake\` instead of wiring
+# the offline stand-in into a desk. Its output is invented and labelled as such.
 #
 # COST: research is by far the most expensive tier (it browses the web), and the managing
 # editor sets the whole paper's judgement — so the cheap-but-effective recipe is to tier the
@@ -90,22 +93,22 @@ const STAFF_YAML = `# Which provider (and model) runs each desk. Everything defa
 #   writers:     { default: { provider: claude, model: sonnet } }
 #   copy_desk:   { provider: claude, model: haiku }
 
-managing_editor: { provider: fake }   # your strongest model — this desk makes the call
+managing_editor: { provider: unset }  # your strongest model — this desk makes the call
 
 # The desk that gathers sourced intel before reporters write. Point it at a web-capable agent
 # so it can actually browse; keep it on a CHEAP model — this is the token-hungry tier. Falls
 # back to your reporter if omitted. On per beat with \`research: 1\`; a \`--brief\` topic digs
 # by default. Bound the dig with \`max_findings\` on a beat (default 6).
 researchers:
-  default: { provider: fake }         # e.g. { provider: claude, model: haiku }
+  default: { provider: unset }        # e.g. { provider: claude, model: haiku }
 
 reporters:
-  default: { provider: fake }         # mid model; e.g. { provider: claude, model: sonnet }
+  default: { provider: unset }        # mid model; e.g. { provider: claude, model: sonnet }
 
 writers:
-  default: { provider: fake }         # mid model; e.g. { provider: claude, model: sonnet }
+  default: { provider: unset }        # mid model; e.g. { provider: claude, model: sonnet }
 
-copy_desk: { provider: fake }         # cheap + strict; e.g. { provider: claude, model: haiku }
+copy_desk: { provider: unset }        # cheap + strict; e.g. { provider: claude, model: haiku }
 `;
 
 const ASSIGNMENT_SAMPLE = `# A standing assignment: an ongoing topic the newsroom works on a cadence, building on its

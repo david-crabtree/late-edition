@@ -10,6 +10,8 @@ angles on the same story, and a managing editor makes the call. You, the editor 
 read the paper before it goes to your team.
 
 - **Local first.** Everything runs on your machine. There is no server we operate.
+- **Unstaffed by default.** A fresh newsroom has no agents wired to any desk. A desk with
+  nobody on it stops the run and says so, rather than filling the paper with invented copy.
 - **Bring your own agent.** We shell out to CLIs you've already authenticated. We store no
   API keys of yours beyond ones you explicitly choose to add.
 - **Every artefact is a plain file.** Editions, reports, and config are Markdown, JSON and
@@ -62,6 +64,26 @@ WIRE → ASSIGN → REPORT → ANGLES → CALL → WRITE → CHECK → PROOF →
   an RSS feed — so teammates get the paper without the app.
 - **The morgue**: `late-edition search <query>` searches past editions; each story links to
   related past coverage.
+
+## What this is not
+
+Read this before you use anything it writes.
+
+Late Edition lays AI output out as a newspaper. **The newspaper is a presentation style, not
+a claim that the contents are true.** No reporter wrote it and no editor checked it.
+
+- **It can be wrong, and it can invent things**, including sources that look real. Every
+  edition is an unchecked draft. Verify it against the listed sources before you rely on it,
+  republish it, or present it as fact. Every rendered edition carries this notice in the file
+  itself, so it travels with the copy.
+- **It is not journalism, and it is not advice** — not legal, medical, financial or
+  professional advice of any kind.
+- **The usage is yours.** Agents run under your own accounts. Work counts against your own
+  plan allowance, or is billed to your own API key, and we can neither see nor cap it. You are
+  responsible for that spend and for complying with your AI provider's terms.
+- **No warranty, no liability.** This is free software provided as-is under the
+  [MIT licence](LICENSE). The authors accept no responsibility for what it produces or for
+  anything done with it.
 
 ## Contributing
 

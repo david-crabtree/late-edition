@@ -7,6 +7,7 @@ import { getProvider } from '../providers/registry.js';
 import type { AgentJob, AgentProvider, AgentRole } from '../providers/types.js';
 import { runToText } from '../providers/types.js';
 import { extractJson } from './json.js';
+import { StaffNotConfiguredError, isUnstaffed } from './staffing.js';
 
 export interface ResolvedRole {
   providerId: string;
@@ -14,8 +15,12 @@ export interface ResolvedRole {
   provider: AgentProvider;
 }
 
-function resolve(assignment: RoleAssignment, force?: string): ResolvedRole {
+function resolve(assignment: RoleAssignment, force?: string, deskLabel?: string): ResolvedRole {
   const providerId = force ?? assignment.provider;
+  // An empty desk stops the edition rather than quietly falling back to invented copy.
+  if (isUnstaffed(providerId)) {
+    throw new StaffNotConfiguredError(deskLabel ?? 'desk', deskLabel ?? 'desk');
+  }
   const provider = getProvider(providerId);
   if (!provider) {
     throw new Error(
@@ -32,7 +37,7 @@ function resolve(assignment: RoleAssignment, force?: string): ResolvedRole {
 }
 
 export function resolveEditor(newsroom: Newsroom, force?: string): ResolvedRole {
-  return resolve(newsroom.staff.managingEditor, force);
+  return resolve(newsroom.staff.managingEditor, force, 'the editor’s desk');
 }
 
 export function resolveResearcher(
@@ -40,19 +45,31 @@ export function resolveResearcher(
   beatId: string,
   force?: string,
 ): ResolvedRole {
-  return resolve(newsroom.staff.researchers[beatId] ?? newsroom.staff.researchers.default, force);
+  return resolve(
+    newsroom.staff.researchers[beatId] ?? newsroom.staff.researchers.default,
+    force,
+    'research desk',
+  );
 }
 
 export function resolveReporter(newsroom: Newsroom, beatId: string, force?: string): ResolvedRole {
-  return resolve(newsroom.staff.reporters[beatId] ?? newsroom.staff.reporters.default, force);
+  return resolve(
+    newsroom.staff.reporters[beatId] ?? newsroom.staff.reporters.default,
+    force,
+    'reporters’ desk',
+  );
 }
 
 export function resolveWriter(newsroom: Newsroom, beatId: string, force?: string): ResolvedRole {
-  return resolve(newsroom.staff.writers[beatId] ?? newsroom.staff.writers.default, force);
+  return resolve(
+    newsroom.staff.writers[beatId] ?? newsroom.staff.writers.default,
+    force,
+    'copywriters’ desk',
+  );
 }
 
 export function resolveCopyDesk(newsroom: Newsroom, force?: string): ResolvedRole {
-  return resolve(newsroom.staff.copyDesk, force);
+  return resolve(newsroom.staff.copyDesk, force, 'copy desk');
 }
 
 /** Distinct provider ids configured across all desks, a given id first. */
@@ -64,7 +81,9 @@ function staffProviderIds(newsroom: Newsroom, first: string): string[] {
     ...Object.values(s.writers).map((r) => r.provider),
     s.copyDesk.provider,
   ];
-  return [first, ...all.filter((id) => id !== first)].filter((id, i, arr) => arr.indexOf(id) === i);
+  return [first, ...all.filter((id) => id !== first && !isUnstaffed(id))].filter(
+    (id, i, arr) => arr.indexOf(id) === i,
+  );
 }
 
 export interface ReporterPoolOptions {
@@ -95,7 +114,7 @@ export function resolveReporterPool(
   const ids = staffProviderIds(newsroom, base.providerId);
   return Array.from({ length: count }, (_, i) => {
     const id = ids[i % ids.length] as string;
-    return id === base.providerId ? base : resolve({ provider: id }, undefined);
+    return id === base.providerId ? base : resolve({ provider: id }, undefined, 'reporters’ desk');
   });
 }
 

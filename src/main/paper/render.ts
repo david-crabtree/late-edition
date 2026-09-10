@@ -1,3 +1,4 @@
+import { OUTPUT_DISCLAIMER } from '../core/disclaimer.js';
 import type { Edition, SourceRef, Story } from '../core/edition.js';
 
 /** Matches an inline citation token — `[sourceId:hash]` or a comma-separated group. */
@@ -104,6 +105,7 @@ export function renderMarkdown(ed: Edition): string {
   }
 
   out.push('\n---');
+  out.push(`\n**About this edition.** ${OUTPUT_DISCLAIMER}`);
   out.push(`\n*${tokenLine(ed)}*`);
   return `${out.join('\n')}\n`;
 }
@@ -220,7 +222,10 @@ export function renderHtml(ed: Edition): string {
     <p class="dateline">${ed.lateExtra ? 'Extra' : `No. ${ed.number}`} · ${esc(date)}${ed.weatherLine ? ` · ${esc(ed.weatherLine)}` : ''}</p>
   </header>
   ${sections.join('\n  ')}
-  <footer class="colophon">${esc(tokenLine(ed))}</footer>
+  <footer class="colophon">
+    <p class="disclaimer"><strong>About this edition.</strong> ${esc(OUTPUT_DISCLAIMER)}</p>
+    <p>${esc(tokenLine(ed))}</p>
+  </footer>
 </main>
 </body>
 </html>
@@ -316,6 +321,11 @@ sup.cite a::after { content: "]"; }
 .extra-banner { display: inline-block; background: #7a2d1d; color: #f4efe2; font-weight: 800; text-transform: uppercase; letter-spacing: .2em; font-size: .8rem; padding: .25rem .8rem; margin: 0 0 .5rem; }
 .competing li, .briefs li, .corrections li, .editors-log li { margin: .3rem 0; line-height: 1.4; }
 .colophon { border-top: 3px double #1a1712; margin-top: 2rem; padding-top: .8rem; font-size: .72rem; color: #6a6250; text-align: center; }
+.colophon p { margin: 0 0 .5rem; }
+/* The notice has to be readable, not hidden in the small print — it is the one thing on
+   the page that is definitely true. */
+.colophon .disclaimer { font-size: .8rem; line-height: 1.5; color: #4a4438; max-width: 46rem; margin: 0 auto .7rem; text-align: left; border-left: 3px solid #8a2f22; padding-left: .8rem; }
+.colophon .disclaimer strong { color: #8a2f22; }
 a { color: #7a2d1d; }
 @media (min-width: 700px) { .page-one .body { columns: 2; column-gap: 1.6rem; } }
 `;

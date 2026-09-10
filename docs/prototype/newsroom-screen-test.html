@@ -99,6 +99,37 @@
   .setup .authhint{ font-size:.68rem; color:#c2a15a; margin:8px 0 4px; line-height:1.5; }
   .setup .authhint b{ color:var(--amber); }
   .setup .note{ font-size:.68rem; color:#7a7259; margin-top:11px; line-height:1.5; }
+  /* --- Agent list: one row per agent, its status, and the exact commands to fix it.
+     Install steps sit next to the agent they belong to instead of inside a paragraph. --- */
+  .setup h4{ font-family:var(--pixel); font-size:.56rem; letter-spacing:.06em; color:var(--bone-dim);
+             text-transform:uppercase; margin:16px 0 8px; font-weight:400; }
+  .setup .agents{ display:flex; flex-direction:column; gap:6px; }
+  .setup .ag{ border:1px solid #2c2519; border-radius:5px; background:#0e1116; padding:8px 10px; }
+  .setup .ag.ready{ border-color:#31603f; }
+  .setup .ag.warn{ border-color:#8a5a2a; }
+  .setup .ag-hd{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .setup .ag-nm{ font-size:.82rem; color:var(--bone); }
+  .setup .pill{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.04em; padding:3px 6px;
+                border-radius:3px; border:1px solid #2c2519; color:#8a8270; white-space:nowrap; }
+  .setup .pill.ok{ border-color:#3f8a60; color:#a8dc92; }
+  .setup .pill.no{ border-color:#5a4a34; color:#a89678; }
+  .setup .pill.api{ border-color:#a8703a; color:#e8cf88; }
+  .setup .pill.beta{ border-color:#4a5a7a; color:#9fb6d8; }
+  .setup .ag-say{ font-size:.7rem; color:var(--bone-dim); margin:6px 0 0; line-height:1.5; }
+  .setup .ag-say.money{ color:#e8b04b; }
+  .setup .steps{ list-style:none; margin:7px 0 0; padding:0; display:flex; flex-direction:column; gap:4px; }
+  .setup .steps li{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.7rem; color:var(--bone);
+                    background:#14100b; border:1px solid #2c2519; border-radius:4px; padding:4px 7px; overflow-wrap:anywhere; }
+  /* --- Desks: role, agent, model. The recommendation follows the chosen agent. --- */
+  .setup .roles .un{ color:#c98b6a; }
+  .setup .mdlwrap{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .setup .mdlwrap .rec{ font-size:.6rem; color:#7a7259; }
+  .setup .dryrun{ display:flex; align-items:center; gap:7px; font-size:.7rem; color:var(--bone-dim); margin:12px 0 0; }
+  .setup .dryrun input{ accent-color:#8a5a2a; }
+  .setup .drywarn{ font-size:.7rem; color:#e8926a; border-left:2px solid #8a3226; padding-left:9px; margin:8px 0 0; line-height:1.5; }
+  .setup .foot-help p{ font-size:.7rem; color:#8a8270; line-height:1.55; margin:0 0 7px; }
+  .setup .foot-help code{ font-family:ui-monospace,Menlo,Consolas,monospace; color:var(--bone); background:#14100b;
+                          border:1px solid #2c2519; border-radius:3px; padding:1px 5px; }
   body.real .real-badge{ display:inline-block; font-family:var(--pixel); font-size:.5rem; color:#0b0e13; background:#7bb661; padding:3px 6px; border-radius:3px; margin-left:10px; vertical-align:middle; }
   .appbar{ display:flex; align-items:center; gap:8px; margin-top:9px; flex-wrap:wrap; }
   .appbar .grow{ flex:1; }
@@ -118,6 +149,15 @@
   .startgate .opt.primary{ border-color:#5a4620; }
   .startgate .foot{ font-size:.66rem; color:#7a7259; margin-top:10px; }
   .startgate .foot a{ color:var(--amber-dim); cursor:pointer; text-decoration:underline; }
+  /* First-run notice — read before anything is briefed. Left-aligned and full contrast:
+     small print nobody can read is worse than no notice at all. */
+  .startgate .notice{ text-align:left; }
+  .startgate .notice h4{ margin:14px 0 8px; font-size:.8rem; color:var(--bone); letter-spacing:.02em; }
+  .startgate .notice p{ font-size:.72rem; line-height:1.55; color:var(--bone-dim); margin:0 0 9px; }
+  .startgate .notice p:first-of-type{ color:var(--bone); }
+  .startgate .noticebox{ border-left:2px solid #8a3226; padding-left:11px; margin:10px 0 14px; }
+  .startgate .opt.accept{ text-align:center; border-color:#5a4620; }
+  .startgate .opt.accept b{ margin:0; color:var(--amber); }
   body.real{ align-items:flex-start; }                     /* don't vertically stretch the wrap — let it size to content so its bottom padding actually shows */
   body.real .wrap{ max-width:1120px; padding:14px 0 48px; }   /* a bit larger in the app window; keep the last card off the bottom edge */
   body.real .masthead{ margin-bottom:14px; }
@@ -239,7 +279,7 @@
     </div>
   </div>
   <p class="foot">
-    Now the newsroom runs as a <span class="k">live sim</span> (à la Munder Difflin): brief the Chief and the staff work it
+    Now the newsroom runs as a <span class="k">live sim</span>: brief the Chief and the staff work it
     <b>concurrently on their own token budgets</b> — the reporter digs, the copy boy runs pages desk-to-desk, the copy desk bounces
     thin recon back to verify, the editor writes; idle staff banter across the room. The Chief escalates only <span class="k">the
     few calls that need you</span> — “bump a budget?”, “run page one?”. Each <span class="k">staff card</span> (top) shows the
@@ -726,7 +766,7 @@
     pg.drawImage(t,0,0,22,22,0,0,42,42); }
 
   // ================ Newsroom sim: roles + per-agent token budgets, event-driven ================
-  // Inspired by Munder Difflin — you brief the Chief; staff work concurrently on their own budgets;
+  // The shape of the thing: you brief the Chief; staff work concurrently on their own budgets;
   // the Chief only kicks the few calls that need you (bump a budget, run page one) upstairs to you.
   const briefInput=document.getElementById('briefInput'), budgetRange=document.getElementById('budgetRange'),
         budgetLabel=document.getElementById('budgetLabel'), frontpage=document.getElementById('frontpage'),
@@ -1060,7 +1100,7 @@
     finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   function buildAppChrome(){
     const mast=document.querySelector('.masthead'); if(mast) mast.innerHTML='<h1>Late <span class="rule">Edition</span></h1><p>Your agents · your paper</p>';   // a proper masthead in place of "SCREEN TEST"
-    const foot=document.querySelector('.foot'); if(foot) foot.style.display='none';                        // drop the sim blurb (Munder Difflin / "Load real edition" / "Rough on purpose")
+    const foot=document.querySelector('.foot'); if(foot) foot.style.display='none';                        // drop the sim blurb ("Load real edition" / "Rough on purpose")
     const reelWrap=document.getElementById('reelInput'); if(reelWrap&&reelWrap.closest('label')) reelWrap.closest('label').style.display='none';   // "Load a real edition" is a sim tool
     const scenes=document.getElementById('scenes'); if(scenes) for(const b of [...scenes.children]) b.style.display='none';   // sim scene buttons — the app has its own look-around controls
     const mq=document.querySelector('.marquee'); if(mq&&mq.lastElementChild){ mq.lastElementChild.innerHTML='<span id="appUsage" class="usage"></span>'; }   // usage readout replaces "REC · PARALLAX · 12 FPS"
@@ -1100,45 +1140,123 @@
     $('appSettings').addEventListener('click', ()=>{ const s=document.querySelector('.setup'); if(s){ s.hidden=!s.hidden; if(!s.hidden) s.scrollIntoView({behavior:'smooth',block:'start'}); } });
   }
 
+  // ---- Setup: which agent runs which desk ---------------------------------------------
+  // One row per agent with its status and the exact commands to fix it, then one row per
+  // desk. Recommendations come from the provider itself (le:detect), so they follow the
+  // agent you pick instead of always showing Claude's aliases.
   const SETUP_ROLES=[['researcher','Researcher'],['reporter','Reporter'],['writer','Copywriter'],['editor','Editor / Chief'],['copydesk','Copy desk']];
   const SETUP_KEY={ researcher:'researchers', reporter:'reporters', writer:'writers', editor:'managing_editor', copydesk:'copy_desk' };
-  // Recommended model per role (cheap where it's grunt work, strong where judgement matters).
-  // Claude aliases shown; leave the box blank to use each provider's default, or type any model to override.
-  const SETUP_REC={ researcher:'haiku', reporter:'sonnet', writer:'sonnet', editor:'sonnet', copydesk:'haiku' };
+  const UNSET='unset';
+  let noticeText=null, providerInfo=[];
+  const provById=id=>providerInfo.find(p=>p.id===id);
+  // The offline stand-in is not an agent — it's a dry run. It stays out of the desk list
+  // unless you deliberately ask for it, because a paper written by it is entirely invented.
+  let showDryRun=false;
+  function applyBillingNotices(){
+    if(!noticeText) return;
+    for(const el of document.querySelectorAll('.setup .ag-say[data-billing]')){
+      const b=el.dataset.billing;
+      if(b==='api'){ el.textContent=noticeText.apiBilling; el.classList.add('money'); }
+      else if(b==='subscription'){ el.textContent=noticeText.planBilling; el.classList.remove('money'); }
+    } }
   function buildSetup(){ const LE=window.lateEdition, anchor=document.querySelector('.cabinet'); if(!anchor) return;
     const box=document.createElement('div'); box.className='setup';
     box.innerHTML=`<h3>Setup — wire your agents <span class="real-badge">REAL ENGINE</span></h3>
-      <p class="sub">Pick which agent runs each desk. Sign in inside each agent's own CLI — we never store your subscription. <b>fake</b> runs offline for a dry run.</p>
-      <div class="folder"><span>Newsroom folder</span> <code id="setupRoot">…</code> <button class="chip" id="setupPick">Change…</button> <span class="hint">config, staff & every edition's history live here</span></div>
-      <div class="row" style="justify-content:space-between; align-items:center; margin:12px 0 4px"><span class="lbl">Detected agents</span><button class="chip" id="setupRecheck">Recheck</button></div>
-      <div class="prov" id="setupProv">detecting agents…</div>
-      <div class="authhint" id="setupAuth"></div>
+      <p class="sub">Late Edition doesn't run any AI itself. Each desk is handed to an agent you have already installed and signed into on this machine.</p>
+      <div class="folder"><span>Newsroom folder</span> <code id="setupRoot">…</code> <button class="chip" id="setupPick">Change…</button> <span class="hint">config, staff &amp; every edition's history live here</span></div>
+      <div class="row" style="justify-content:space-between; align-items:center; margin:16px 0 0"><h4 style="margin:0">Your agents</h4><button class="chip" id="setupRecheck">Recheck</button></div>
+      <div class="agents" id="setupAgents">looking for agents…</div>
+      <h4>The desks</h4>
       <div class="roles" id="setupRoles"></div>
+      <label class="dryrun"><input type="checkbox" id="setupDry"> Offer the offline stand-in as a dry run</label>
+      <p class="drywarn" id="setupDryWarn" hidden>The stand-in writes a complete newspaper without contacting any model. Every word of it is invented. Use it to watch the floor work, never for anything you intend to read or publish.</p>
       <div class="row" style="margin-top:12px; gap:8px"><button class="chip primary" id="setupSave">Save staff</button><span class="hint" id="setupMsg"></span></div>
-      <p class="note">Not signed in? Run the agent's own login once — e.g. <b>claude auth login</b> in a terminal — then hit <b>Recheck</b> and it turns <b>ready</b>. Usage on a signed-in plan counts toward that plan, not billed as API. Default desks are <b>fake</b> (offline) until you set real ones.</p>`;
+      <div class="foot-help">
+        <p>You sign in inside each agent's own tool. Late Edition never sees or stores your login.</p>
+        <p>If you are on a paid plan, the work counts against that plan's allowance in the normal way. If you are using an API key instead, you are paying per use.</p>
+        <p>A desk with no agent will stop and tell you, rather than make something up. Leave the model box blank to take whatever the agent uses by default.</p>
+      </div>`;
     anchor.parentNode.insertBefore(box, anchor);   // put Setup at the TOP, above the newsroom
     box.hidden=true;                               // hidden on launch — the start gate + ⚙ Settings reveal it
     const $=id=>box.querySelector('#'+id);
     if(LE.getRoot) LE.getRoot().then(r=>{ $('setupRoot').textContent=r; });
     $('setupPick').addEventListener('click', async()=>{ if(!LE.pickRoot) return; const r=await LE.pickRoot(); if(r){ $('setupRoot').textContent=r; refreshRoles(); $('setupMsg').textContent='Newsroom folder set.'; } });
-    async function refreshProviders(){ const det=await LE.detect(); const prov=$('setupProv'); prov.innerHTML=''; const notReady=[];
-      for(const d of det){ const ready=d.installed&&d.authenticated; const cls=!ready?'':d.billing==='api'?'api':'ready';
-        const tag=!d.installed?'not installed':!d.authenticated?'not signed in':d.billing==='subscription'?'plan usage':d.billing==='api'?'⚠ API $':d.billing==='free'?'free':'ready';
-        const sp=document.createElement('span'); sp.className='pv '+cls; sp.textContent=`${d.id} · ${tag}`; if(d.detail) sp.title=d.detail; prov.appendChild(sp);
-        if(!ready&&d.detail) notReady.push(`<b>${d.id}</b> — ${d.detail}`); }
-      $('setupAuth').innerHTML = notReady.length? 'To add one: '+notReady.join(' · ') : ''; return det; }
-    async function refreshRoles(){ const [det,cfg]=await Promise.all([LE.detect(), LE.staff()]); const ids=det.map(d=>d.id), rolesEl=$('setupRoles'); rolesEl.innerHTML='';
-      for(const [rk,label] of SETUP_ROLES){ const cur=cfg[SETUP_KEY[rk]]||{provider:'fake',model:''};
+
+    // --- Agents: status, what it costs you, and the commands that make it ready ---
+    function agentRow(d){
+      const ready=d.installed&&d.authenticated;
+      const el=document.createElement('div'); el.className='ag'+(ready?(d.billing==='api'?' warn':' ready'):'');
+      const pills=[];
+      pills.push(ready
+        ? '<span class="pill ok">ready</span>'
+        : `<span class="pill no">${d.installed?'not signed in':'not installed'}</span>`);
+      if(ready&&d.billing==='api') pills.push('<span class="pill api">costs money</span>');
+      if(ready&&d.billing==='subscription') pills.push('<span class="pill ok">on your plan</span>');
+      if(d.maturity==='untested') pills.push('<span class="pill beta">untested here</span>');
+      if(d.webSearch) pills.push('<span class="pill">can browse</span>');
+      const say = ready&&(d.billing==='api'||d.billing==='subscription')
+        ? `<p class="ag-say" data-billing="${d.billing}"></p>` : '';
+      const steps = !ready&&(d.setupSteps||[]).length
+        ? `<ol class="steps">${d.setupSteps.map(s=>`<li>${escH(s)}</li>`).join('')}</ol>` : '';
+      el.innerHTML=`<div class="ag-hd"><span class="ag-nm">${escH(d.displayName||d.id)}</span>${pills.join('')}</div>${say}${steps}`;
+      return el; }
+    async function refreshProviders(){
+      providerInfo=await LE.detect();
+      const host=$('setupAgents'); host.innerHTML='';
+      // Real agents only; the stand-in is a dry run, not something you "sign in" to.
+      for(const d of providerInfo.filter(p=>p.maturity!=='internal')) host.appendChild(agentRow(d));
+      applyBillingNotices();
+      return providerInfo; }
+
+    // --- Desks: role, agent, model. The recommendation follows the chosen agent. ---
+    function modelHint(rk, providerId){
+      const p=provById(providerId);
+      if(!p||providerId===UNSET) return '';
+      const rec=(p.recommend||{})[rk];
+      return rec ? ('suggested: '+rec) : 'blank = this agent’s default'; }
+    function fillModels(list, providerId){
+      const p=provById(providerId); list.innerHTML='';
+      for(const m of ((p&&p.models)||[])){ const o=document.createElement('option'); o.value=m; list.appendChild(o); } }
+    async function refreshRoles(){
+      const [det,cfg]=await Promise.all([LE.detect(), LE.staff()]);
+      providerInfo=det;
+      const rolesEl=$('setupRoles'); rolesEl.innerHTML='';
+      const choosable=det.filter(d=>d.maturity!=='internal'||showDryRun);
+      for(const [rk,label] of SETUP_ROLES){
+        const cur=cfg[SETUP_KEY[rk]]||{provider:UNSET,model:''};
         const l=document.createElement('label'); l.textContent=label;
         const sel=document.createElement('select'); sel.dataset.role=rk;
-        for(const p of ids){ const o=document.createElement('option'); o.value=p; o.textContent=p; if(p===cur.provider)o.selected=true; sel.appendChild(o); }
-        const mdl=document.createElement('input'); mdl.className='mdl'; mdl.dataset.role=rk; mdl.placeholder='rec: '+(SETUP_REC[rk]||'default')+' — type to override'; mdl.title='Recommended: '+(SETUP_REC[rk]||'provider default')+'. Blank = provider default.'; mdl.value=cur.model||'';
-        rolesEl.append(l,sel,mdl); } }
+        const none=document.createElement('option'); none.value=UNSET; none.textContent='— nobody yet —'; sel.appendChild(none);
+        for(const d of choosable){ const o=document.createElement('option'); o.value=d.id;
+          o.textContent=(d.displayName||d.id)+(d.installed&&d.authenticated?'':' (not ready)');
+          sel.appendChild(o); }
+        sel.value=cur.provider||UNSET;
+        const wrap=document.createElement('div'); wrap.className='mdlwrap';
+        const listId='mdl-'+rk;
+        const mdl=document.createElement('input'); mdl.className='mdl'; mdl.dataset.role=rk;
+        mdl.setAttribute('list',listId); mdl.placeholder='model (optional)'; mdl.value=cur.model||'';
+        const list=document.createElement('datalist'); list.id=listId;
+        const rec=document.createElement('span'); rec.className='rec';
+        const sync=()=>{ rec.textContent=modelHint(rk, sel.value); fillModels(list, sel.value);
+          sel.classList.toggle('un', sel.value===UNSET);
+          mdl.disabled=(sel.value===UNSET); };
+        sync();
+        // THE fix for "changing provider doesn't change the recommended model".
+        sel.addEventListener('change', sync);
+        wrap.append(mdl,list,rec);
+        rolesEl.append(l,sel,wrap); } }
+
+    $('setupDry').addEventListener('change', e=>{ showDryRun=e.target.checked;
+      $('setupDryWarn').hidden=!showDryRun; refreshRoles(); });
     refreshProviders(); refreshRoles();
     $('setupRecheck').addEventListener('click', async()=>{ $('setupMsg').textContent='Rechecking…'; await refreshProviders(); await refreshRoles(); $('setupMsg').textContent='Rechecked.'; });
     $('setupSave').addEventListener('click', async()=>{ const out={};
       for(const [rk] of SETUP_ROLES){ const sel=box.querySelector(`select[data-role="${rk}"]`), mdl=box.querySelector(`input[data-role="${rk}"]`); out[SETUP_KEY[rk]]={ provider:sel.value, model:(mdl.value||'').trim() }; }
-      try{ await LE.setStaff(out); $('setupMsg').textContent='Saved — the desks use these next run.'; }
+      const empty=SETUP_ROLES.filter(([rk])=>out[SETUP_KEY[rk]].provider===UNSET).length;
+      try{ await LE.setStaff(out);
+        $('setupMsg').textContent = empty
+          ? `Saved. ${empty} desk${empty>1?'s':''} still empty — a run will stop there.`
+          : 'Saved — the desks use these next run.'; }
       catch(e){ $('setupMsg').textContent='Could not save: '+((e&&e.message)||e); } }); }
 
   // First-run gate: pick up the last newsroom or start a fresh one, before the floor is briefed.
@@ -1146,14 +1264,30 @@
     const gate=document.createElement('div'); gate.className='startgate';
     gate.innerHTML=`<div class="gatecard">
       <div class="mast">LATE EDITION</div>
-      <div class="tag">Your agents, your paper. Where should this newsroom live?</div>
-      <button class="opt primary" id="gateResume"><b>Resume this newsroom →</b><small id="gateRoot">…</small></button>
-      <button class="opt" id="gateNew"><b>Start a new newsroom…</b><small>Pick a fresh folder — config, staff & history start clean.</small></button>
-      <div class="foot">You can re-open <a id="gateSetup">⚙ Setup — wire your agents</a> any time from the Settings button.</div>
+      <div class="notice" id="gateNotice" hidden>
+        <h4>Before you start</h4>
+        <div class="noticebox" id="gateNoticeText"></div>
+        <button class="opt accept" id="gateAccept"><b>I understand — continue</b></button>
+      </div>
+      <div id="gateChoice" hidden>
+        <div class="tag">Your agents, your paper. Where should this newsroom live?</div>
+        <button class="opt primary" id="gateResume"><b>Resume this newsroom →</b><small id="gateRoot">…</small></button>
+        <button class="opt" id="gateNew"><b>Start a new newsroom…</b><small>Pick a fresh folder — config, staff & history start clean.</small></button>
+        <div class="foot">You can re-open <a id="gateSetup">⚙ Setup — wire your agents</a> any time from the Settings button.</div>
+      </div>
     </div>`;
     document.body.appendChild(gate);
     const $=id=>gate.querySelector('#'+id);
     if(LE.getRoot) LE.getRoot().then(r=>{ $('gateRoot').textContent=r; });
+    // The notice comes first, once. After it's been read we go straight to the folder choice.
+    const showChoice=()=>{ $('gateNotice').hidden=true; $('gateChoice').hidden=false; };
+    if(LE.notices){ LE.notices().then(n=>{
+      noticeText=n; applyBillingNotices();
+      if(n.accepted){ showChoice(); return; }
+      $('gateNoticeText').innerHTML=(n.firstRun||[]).map(p=>`<p>${escH(p)}</p>`).join('');
+      $('gateNotice').hidden=false;
+    }).catch(showChoice); } else showChoice();
+    $('gateAccept').addEventListener('click', async()=>{ try{ await LE.acceptNotice(); }catch(_){} showChoice(); });
     const close=()=>{ gate.hidden=true; };
     $('gateResume').addEventListener('click', close);
     $('gateNew').addEventListener('click', async()=>{ if(LE.pickRoot){ const r=await LE.pickRoot(); const sr=document.getElementById('setupRoot'); if(sr&&r) sr.textContent=r; } close(); });

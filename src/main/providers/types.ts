@@ -15,8 +15,14 @@ export interface AgentCapabilities {
   jsonOutput: boolean;
   /** Does the CLI stream tokens as it works? */
   streaming: boolean;
-  /** Known model ids, if enumerable. */
+  /** Known model ids, if enumerable. Offered in Setup's model picker; free text still wins. */
   models?: string[];
+  /**
+   * Which of this provider's models suits each desk, cheap where it's grunt work and strong
+   * where judgement matters. Setup shows this as the recommendation, so it has to follow the
+   * provider the user picked — a Claude alias next to an Ollama desk is worse than nothing.
+   */
+  recommend?: Partial<Record<AgentRole, string>>;
 }
 
 /**
@@ -66,10 +72,21 @@ export type AgentEvent =
   | { type: 'done'; output: string }
   | { type: 'error'; error: string };
 
+/**
+ * How far a provider has actually been driven. Only `proven` has filed a real edition
+ * end to end; `untested` is written and detected but never confirmed against a live CLI.
+ * Setup surfaces this rather than presenting every provider as an equal choice.
+ */
+export type ProviderMaturity = 'proven' | 'untested' | 'internal';
+
 export interface AgentProvider {
   /** Stable id: "claude" | "codex" | "gemini" | "ollama" | "fake" | ... */
   id: string;
   displayName: string;
+  /** Honest status of this integration. Defaults to `untested` where unset. */
+  maturity?: ProviderMaturity;
+  /** Exact commands that make this provider ready, one step per line, for Setup to show. */
+  setupSteps?: string[];
   /** Is the CLI installed and authenticated? */
   detect(): Promise<Detection>;
   /** Run a job, streaming events. Must always end with a 'done' or 'error'. */

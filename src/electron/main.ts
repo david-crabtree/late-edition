@@ -5,10 +5,16 @@ import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron';
 // The engine — the same library the CLI uses, called in-process.
 import { loadNewsroom } from '../main/config/newsroom.js';
 import { scaffoldNewsroom } from '../main/config/scaffold.js';
+import {
+  API_BILLING_NOTICE,
+  FIRST_RUN_NOTICE,
+  OUTPUT_DISCLAIMER_SHORT,
+  PLAN_BILLING_NOTICE,
+} from '../main/core/disclaimer.js';
 import type { Edition } from '../main/core/edition.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { runEdition } from '../main/pipeline/run.js';
-import { detectAll } from '../main/providers/registry.js';
+import { detectAll, listProviders } from '../main/providers/registry.js';
 import { clearHalt, isHalted, setHalt } from '../main/store/halt.js';
 import type { LogEvent } from '../main/store/log.js';
 import { paths } from '../main/store/paths.js';
@@ -27,14 +33,20 @@ const PRELOAD = existsSync(join(here, 'preload.cjs'))
 function appConfigPath(): string {
   return join(app.getPath('userData'), 'le-config.json');
 }
-function readAppConfig(): { root?: string } {
+interface AppConfig {
+  root?: string;
+  /** Version of the first-run notice the user has read. Bump NOTICE_VERSION to re-show it. */
+  noticeAccepted?: number;
+}
+const NOTICE_VERSION = 1;
+function readAppConfig(): AppConfig {
   try {
-    return JSON.parse(readFileSync(appConfigPath(), 'utf8')) as { root?: string };
+    return JSON.parse(readFileSync(appConfigPath(), 'utf8')) as AppConfig;
   } catch {
     return {};
   }
 }
-function writeAppConfig(c: { root?: string }): void {
+function writeAppConfig(c: AppConfig): void {
   writeFileSync(appConfigPath(), JSON.stringify(c, null, 2), 'utf8');
 }
 /** Ensure a newsroom exists at `root` (scaffold on first use) and return it. */
@@ -124,6 +136,33 @@ function createWindow(): void {
         `LE_DEBUG banter: on=${first.banter}, spoke in ${seconds}s: ${[...spoke].join(', ') || 'nobody'}`,
       );
       console.log(`LE_DEBUG staff: ${prev.people.map((p) => `${p.id}:${p.st}`).join(' ')}`);
+      // Setup panel: agent rows, whether the stand-in is hidden, and whether the model
+      // recommendation actually follows the provider dropdown (it used to not).
+      console.log(
+        'LE_DEBUG setup:',
+        await js(`(() => {
+          const q = (s) => document.querySelector(s);
+          const agents = [...document.querySelectorAll('.setup .ag .ag-nm')].map(e => e.textContent);
+          const desks = [...document.querySelectorAll('.setup select[data-role]')]
+            .map(s => s.dataset.role + '=' + s.value);
+          const sel = q('.setup select[data-role="reporter"]');
+          // The row is [label, select, wrap] inside one grid, so the hint for THIS desk is
+          // in the select's next sibling — not the first .rec in the whole grid.
+          const rec = () => sel.nextElementSibling.querySelector('.rec').textContent;
+          const opts = [...sel.options].map(o => o.value);
+          const before = rec();
+          const other = opts.find(v => v !== sel.value && v !== 'unset');
+          if (other) { sel.value = other; sel.dispatchEvent(new Event('change')); }
+          const after = rec();
+          if (other) { sel.value = 'unset'; sel.dispatchEvent(new Event('change')); }
+          return JSON.stringify({
+            agents, desks, deskOptions: opts,
+            standInOffered: opts.includes('fake'),
+            recFollowsProvider: before !== after,
+            recBefore: before, recAfter: after,
+          });
+        })()`),
+      );
     } catch (e) {
       console.log('LE_DEBUG error:', e instanceof Error ? e.message : e);
     }
@@ -155,14 +194,46 @@ ipcMain.handle('le:pickRoot', async () => {
   });
   if (res.canceled || !res.filePaths[0]) return newsroomRoot();
   const root = res.filePaths[0];
-  writeAppConfig({ root });
+  writeAppConfig({ ...readAppConfig(), root }); // merge — don't drop the accepted notice
   return ensureNewsroom(root);
 });
 
-/** Which providers are installed/authenticated, and how they bill (plan vs API). */
+/**
+ * The disclaimers, and whether this user has already read the first-run one. The words
+ * live in one module so the paper, the app and the README can never say different things.
+ */
+ipcMain.handle('le:notices', () => ({
+  firstRun: FIRST_RUN_NOTICE,
+  outputShort: OUTPUT_DISCLAIMER_SHORT,
+  apiBilling: API_BILLING_NOTICE,
+  planBilling: PLAN_BILLING_NOTICE,
+  accepted: readAppConfig().noticeAccepted === NOTICE_VERSION,
+}));
+
+/** Record that the first-run notice has been read, so it isn't shown again. */
+ipcMain.handle('le:acceptNotice', () => {
+  writeAppConfig({ ...readAppConfig(), noticeAccepted: NOTICE_VERSION });
+  return true;
+});
+
+/**
+ * Everything Setup needs about each agent in one call: whether it's ready, how it bills,
+ * how far the integration has actually been proven, the exact commands to make it work,
+ * and which of its models suits each desk. The panel used to hardcode Claude's aliases as
+ * the recommendation for every provider; now the provider answers for itself.
+ */
 ipcMain.handle('le:detect', async () => {
   const m = await detectAll();
-  return [...m].map(([id, d]) => ({ id, ...d }));
+  return listProviders().map((p) => ({
+    id: p.id,
+    displayName: p.displayName,
+    maturity: p.maturity ?? 'untested',
+    setupSteps: p.setupSteps ?? [],
+    models: p.capabilities.models ?? [],
+    recommend: p.capabilities.recommend ?? {},
+    webSearch: p.capabilities.webSearch,
+    ...(m.get(p.id) ?? { installed: false, authenticated: false }),
+  }));
 });
 
 /** The current per-role staff assignment (for the Setup panel). */

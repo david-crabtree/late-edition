@@ -115,7 +115,7 @@ function normalizeStaff(raw: unknown, file: string): StaffConfig {
   const writersRaw = asRecord(r.writers ?? {}, file);
 
   const reporters: StaffConfig['reporters'] = {
-    default: role(reportersRaw.default ?? { provider: 'fake' }, file, 'reporters.default'),
+    default: role(reportersRaw.default ?? { provider: 'unset' }, file, 'reporters.default'),
   };
   for (const [k, v] of Object.entries(reportersRaw)) {
     if (k !== 'default') reporters[k] = role(v, file, `reporters.${k}`);
@@ -131,7 +131,7 @@ function normalizeStaff(raw: unknown, file: string): StaffConfig {
   }
 
   const writers: StaffConfig['writers'] = {
-    default: role(writersRaw.default ?? { provider: 'fake' }, file, 'writers.default'),
+    default: role(writersRaw.default ?? { provider: 'unset' }, file, 'writers.default'),
   };
   for (const [k, v] of Object.entries(writersRaw)) {
     if (k !== 'default') writers[k] = role(v, file, `writers.${k}`);
@@ -139,14 +139,14 @@ function normalizeStaff(raw: unknown, file: string): StaffConfig {
 
   return {
     managingEditor: role(
-      r.managing_editor ?? r.managingEditor ?? { provider: 'fake' },
+      r.managing_editor ?? r.managingEditor ?? { provider: 'unset' },
       file,
       'managing_editor',
     ),
     researchers,
     reporters,
     writers,
-    copyDesk: role(r.copy_desk ?? r.copyDesk ?? { provider: 'fake' }, file, 'copy_desk'),
+    copyDesk: role(r.copy_desk ?? r.copyDesk ?? { provider: 'unset' }, file, 'copy_desk'),
   };
 }
 

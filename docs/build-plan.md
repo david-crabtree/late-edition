@@ -11,7 +11,7 @@ This document is written for an autonomous build agent (Claude Opus or similar).
 
 Late Edition is a free desktop app that wraps the AI coding agent CLIs a person already pays for (Claude Code, Codex, Gemini CLI, Grok, Copilot CLI, OpenCode, local models via Ollama) and turns them into the staff of a 1940s newspaper. Field reporters go out and investigate the user's own sources: repos, support inboxes, competitor sites, subreddits, RSS, logs. They file multiple angles on the same story. A managing editor makes the call. Writers can stop the press when something urgent turns up. The user, as editor in chief, reads the paper before it goes to their team. It looks like a LucasArts point and click adventure. No backend, no subscription, no data leaves the machine except what the user's own agents already send to their own providers.
 
-The Munder Difflin lesson applies: the fun is the hook, the orchestration is the product, and BYO agent is what makes it free to run.
+The lesson from multi-agent harnesses that people actually enjoy using: the fun is the hook, the orchestration is the product, and BYO agent is what makes it free to run.
 
 ---
 

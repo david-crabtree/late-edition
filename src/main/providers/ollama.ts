@@ -13,6 +13,12 @@ const DEFAULT_MODEL = 'llama3.2';
 export const ollamaProvider: AgentProvider = {
   id: 'ollama',
   displayName: 'Ollama (local models)',
+  maturity: 'untested',
+  setupSteps: [
+    'Install Ollama from https://ollama.com',
+    'ollama serve',
+    'ollama pull llama3.1   (or any model you prefer)',
+  ],
   capabilities: { webSearch: false, fileAccess: false, jsonOutput: true, streaming: true },
 
   async detect(): Promise<Detection> {

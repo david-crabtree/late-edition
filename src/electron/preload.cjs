@@ -4,6 +4,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('lateEdition', {
+  /** The disclaimers (first-run, output, billing) + whether the first-run one was read. */
+  notices: () => ipcRenderer.invoke('le:notices'),
+  /** Record that the first-run notice has been read. */
+  acceptNotice: () => ipcRenderer.invoke('le:acceptNotice'),
   /** Which agent providers are ready, and how they bill (plan usage vs metered API). */
   detect: () => ipcRenderer.invoke('le:detect'),
   /** The current per-role staff assignment. */

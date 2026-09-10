@@ -11,6 +11,8 @@ import { composePrompt } from './util.js';
 export const opencodeProvider: AgentProvider = {
   id: 'opencode',
   displayName: 'OpenCode',
+  maturity: 'untested',
+  setupSteps: ['Install OpenCode from https://opencode.ai', 'opencode auth login'],
   capabilities: { webSearch: false, fileAccess: true, jsonOutput: false, streaming: true },
 
   async detect(): Promise<Detection> {

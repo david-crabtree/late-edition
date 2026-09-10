@@ -16,7 +16,23 @@ import { composePrompt } from './util.js';
 export const codexProvider: AgentProvider = {
   id: 'codex',
   displayName: 'Codex CLI',
-  capabilities: { webSearch: false, fileAccess: true, jsonOutput: false, streaming: true },
+  maturity: 'untested',
+  setupSteps: ['Install the Codex CLI from https://developers.openai.com/codex', 'codex login'],
+  capabilities: {
+    webSearch: false,
+    fileAccess: true,
+    jsonOutput: false,
+    streaming: true,
+    models: ['gpt-5-codex', 'gpt-5', 'gpt-5-mini'],
+    recommend: {
+      triage: 'gpt-5-mini',
+      researcher: 'gpt-5-mini',
+      reporter: 'gpt-5',
+      writer: 'gpt-5',
+      editor: 'gpt-5',
+      copydesk: 'gpt-5-mini',
+    },
+  },
 
   async detect(): Promise<Detection> {
     const p = await probe('codex', ['--version']);

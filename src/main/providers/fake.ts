@@ -19,6 +19,7 @@ import type { AgentEvent, AgentJob, AgentProvider, Detection } from './types.js'
 export const fakeProvider: AgentProvider = {
   id: 'fake',
   displayName: 'Fake (offline test provider)',
+  maturity: 'internal',
   capabilities: {
     webSearch: false,
     fileAccess: true,

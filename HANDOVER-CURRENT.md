@@ -15,8 +15,7 @@ AI-agent CLIs (Claude Code, etc.) as the staff of a **1940s noir newspaper**. Yo
 a topic; a multi-agent pipeline (researchers → reporters → copywriters → editors) researches your
 own sources and files a real newspaper edition. Users bring their **own subscriptions** (Claude,
 ChatGPT, Grok) and pick which model runs each role. The multi-agent orchestration is the product;
-the newsroom fiction (a live pixel-art floor you watch) is the hook. Modelled on "Munder Difflin"
-but must not be a clone.
+the newsroom fiction (a live pixel-art floor you watch) is the hook.
 
 **Cost framing (important):** agents run on the user's **plan/subscription usage**, not metered
 API spend. The UI must reassure plan users their usage isn't a real-money charge, and put a heavy

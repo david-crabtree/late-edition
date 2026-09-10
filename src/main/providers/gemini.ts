@@ -10,7 +10,26 @@ import { composePrompt, jsonField } from './util.js';
 export const geminiProvider: AgentProvider = {
   id: 'gemini',
   displayName: 'Gemini CLI',
-  capabilities: { webSearch: true, fileAccess: true, jsonOutput: true, streaming: true },
+  maturity: 'untested',
+  setupSteps: [
+    'Install the Gemini CLI from https://geminicli.com',
+    'gemini  (sign in), or set GEMINI_API_KEY',
+  ],
+  capabilities: {
+    webSearch: true,
+    fileAccess: true,
+    jsonOutput: true,
+    streaming: true,
+    models: ['gemini-2.5-flash', 'gemini-2.5-pro'],
+    recommend: {
+      triage: 'gemini-2.5-flash',
+      researcher: 'gemini-2.5-flash',
+      reporter: 'gemini-2.5-pro',
+      writer: 'gemini-2.5-pro',
+      editor: 'gemini-2.5-pro',
+      copydesk: 'gemini-2.5-flash',
+    },
+  },
 
   async detect(): Promise<Detection> {
     const p = await probe('gemini', ['--version']);

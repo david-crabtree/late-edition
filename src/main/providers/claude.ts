@@ -38,7 +38,24 @@ function parseUsage(stdout: string): AgentUsage | undefined {
 export const claudeProvider: AgentProvider = {
   id: 'claude',
   displayName: 'Claude Code',
-  capabilities: { webSearch: true, fileAccess: true, jsonOutput: true, streaming: true },
+  maturity: 'proven',
+  setupSteps: ['Install Claude Code from https://claude.com/code', 'claude auth login'],
+  capabilities: {
+    webSearch: true,
+    fileAccess: true,
+    jsonOutput: true,
+    streaming: true,
+    models: ['haiku', 'sonnet', 'opus'],
+    // Cheap on the token-hungry and the mechanical desks, strong where the call is made.
+    recommend: {
+      triage: 'sonnet',
+      researcher: 'haiku',
+      reporter: 'sonnet',
+      writer: 'sonnet',
+      editor: 'opus',
+      copydesk: 'haiku',
+    },
+  },
 
   async detect(): Promise<Detection> {
     const p = await probe('claude', ['--version']);

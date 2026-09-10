@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { OUTPUT_DISCLAIMER } from '../core/disclaimer.js';
 import type { Edition, Story } from '../core/edition.js';
 import { renderHtml, renderMarkdown } from './render.js';
 
@@ -80,5 +81,13 @@ describe('citation rendering', () => {
     expect(html).toContain('href="#src-1"');
     expect(html).toContain('id="src-1"');
     expect(html).not.toContain('research:bbbbbbbbbbbb');
+  });
+  // The notice has to live in the artefact, not just the app window — an edition gets
+  // copied, exported and posted somewhere else, and it must carry this with it.
+  it('writes the AI-output disclaimer into both the Markdown and the HTML', () => {
+    const ed = edition({ body: 'A claim [research:aaaaaaaaaaaa].', sources: SOURCES });
+    expect(renderMarkdown(ed)).toContain(OUTPUT_DISCLAIMER);
+    expect(renderHtml(ed)).toContain('About this edition.');
+    expect(renderHtml(ed)).toContain('not journalism');
   });
 });

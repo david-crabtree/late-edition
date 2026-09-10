@@ -29,6 +29,11 @@ function cfg() {
 export const directApiProvider: AgentProvider = {
   id: 'directapi',
   displayName: 'Direct API (bring your own key)',
+  maturity: 'untested',
+  setupSteps: [
+    'Set LATE_EDITION_API_KEY to your API key',
+    'Optionally set LATE_EDITION_API_URL, _MODEL and _FORMAT',
+  ],
   capabilities: { webSearch: false, fileAccess: false, jsonOutput: true, streaming: false },
 
   async detect(): Promise<Detection> {

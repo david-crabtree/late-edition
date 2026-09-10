@@ -30,7 +30,7 @@ disagree, and skim [`docs/decisions.md`](docs/decisions.md) for the "why" behind
   art reference* and has since grown into the **product demo** (see next bullet). §6 has the art state.
 
 - **Where it's at now — the product turn (this session):** the shape crystallised into *a newsroom
-  you brief like a publisher* (modelled on **Munder Difflin**, a local multi-agent harness). You tell
+  you brief like a publisher* (the shape of a local multi-agent harness). You tell
   **the Chief** a topic (a competitor, a rumour, "leaked GTA 6 build"); staff-with-personalities
   research it on their **own token budgets**, concurrently and event-driven (not a linear script);
   the Chief escalates only the few calls that need you — *bump a budget?* / *run page one?* Built
@@ -420,7 +420,7 @@ Each line is one commit; see `git log` for the exact SHAs.
   **the product's shape is now settled: a newsroom you brief like a publisher** — you tell the
   Chief a topic (a competitor, a rumour, "leaked GTA 6 build"), staff-with-personalities research
   it, banter, pass work, flag bad recon and re-verify, and hand you a clean front page; you mostly
-  just approve the Chief's escalations. (Modelled on **Munder Difflin**, a local multi-agent harness
+  just approve the Chief's escalations. (The shape of a local multi-agent harness
   where you brief one boss and agents work on their own budgets.) The prototype became a *live sim* you
   brief like a publisher — staff have **roles + per-agent token budgets**, work event-driven and
   concurrent (copy boy runs pages desk-to-desk, copy desk bounces thin recon back to verify, idle
