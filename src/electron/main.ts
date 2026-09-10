@@ -6,6 +6,7 @@ import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron';
 import { loadNewsroom } from '../main/config/newsroom.js';
 import { scaffoldNewsroom } from '../main/config/scaffold.js';
 import type { Edition } from '../main/core/edition.js';
+import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { detectAll } from '../main/providers/registry.js';
 import { clearHalt, isHalted, setHalt } from '../main/store/halt.js';
@@ -178,7 +179,7 @@ ipcMain.handle(
         brief,
         forceProvider: opts?.provider || undefined,
         research: opts?.research,
-        clarify: false,
+        clarify: true, // let the Chief pause a vague brief and ask the user
         onEvent: send,
       });
       return {
@@ -189,10 +190,52 @@ ipcMain.handle(
         usage: await summarizeUsage(res.edition),
       };
     } catch (err) {
+      if (err instanceof ClarificationNeededError) {
+        return {
+          ok: false as const,
+          needsClarification: true as const,
+          editionId: err.editionId,
+          questions: err.questions,
+        };
+      }
       return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
     }
   },
 );
+
+/** The user's answer to the Chief's clarification → resume the paused edition and finish it. */
+ipcMain.handle('le:answerClarification', async (e, editionId: string, answer: string) => {
+  const root = newsroomRoot();
+  const send = (ev: LogEvent) => {
+    if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
+  };
+  try {
+    const res = await runEdition({
+      root,
+      resumeId: editionId,
+      clarificationAnswer: answer,
+      clarify: true,
+      onEvent: send,
+    });
+    return {
+      ok: true as const,
+      editionId: res.editionId,
+      edition: res.edition,
+      warnings: res.warnings,
+      usage: await summarizeUsage(res.edition),
+    };
+  } catch (err) {
+    if (err instanceof ClarificationNeededError) {
+      return {
+        ok: false as const,
+        needsClarification: true as const,
+        editionId: err.editionId,
+        questions: err.questions,
+      };
+    }
+    return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
+  }
+});
 
 /** Per-role token totals + how it's paid for — the app's honest usage readout. */
 async function summarizeUsage(edition: Edition) {

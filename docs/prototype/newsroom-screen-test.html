@@ -80,6 +80,7 @@
   .clog-body .do{ color:#9fd0ff; } .clog-body .do::before{ content:'▸ '; color:#5b9bd5; }
   .clog-body .act{ color:#c9e6b0; } .clog-body .act::before{ content:'✓ '; color:#7bb661; }
   .clog-body .think{ color:#c2b48f; font-style:italic; } .clog-body .think::before{ content:'“'; } .clog-body .think::after{ content:'”'; }
+  .clog-body .ask{ color:#e8b04b; } .clog-body .ask::before{ content:'? '; color:#e8b04b; }
   .clog-body .sys{ color:#6a6250; border-bottom:1px dashed #2c2519; padding-bottom:5px; margin-bottom:5px; font-family:var(--pixel); font-size:.56rem; letter-spacing:.03em; }
   @media (max-width:720px){ .clog-hint{ display:none; } }
   .setup{ margin-top:10px; margin-bottom:16px; background:#0c0f14; border:1px solid #3a2e1b; border-radius:6px; padding:12px 14px; }
@@ -710,7 +711,7 @@
   function setSceneFor(s,scene){ if(state.castIdx===s.ci){ state.mode='desk'; state.scene=scene; player.x=AC(); } }
 
   function briefChief(topic){ const T=(topic||'').trim(); if(!T) return; frontpage.hidden=true;
-    if(window.lateEdition){ realRun(T); return; }   // in the app, brief the REAL engine (not the sim)
+    if(window.lateEdition){ if(pendingClarify) answerChief(T); else realRun(T); return; }   // in the app, brief the REAL engine (not the sim); answer a pending clarification if one's open
     const st={ id:++storySeq, topic:T, short:shortT(T), stage:'assigned', owner:null, quality:0, checks:0, t:0, headline:'' };
     stories.push(st); chief.status='briefing'; charLog(chief,'do',`Reading the brief: "${st.topic}"`); agentSay(chief,`Front page: ${st.short}. Two sources.`,56);
     logEvent(`Chief takes the brief — ${st.short}`); focusOn(chief); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING'; renderRoster(); }
@@ -879,12 +880,12 @@
   // A staffer with a question walks over to the Chief's office door, puts it to them, then heads back.
   const visitChief=p=>{ p.st='chief'; p.tx=OFFICE_XB+18; p.query=true; p.beat='none'; p.t=64+((Math.random()*50)|0); };
   function updatePeople(){ if(!people||reduce) return;
-    for(const p of people){ const dx=DESKX[p.ci], bx=p.px;
-      if(realActive && realActive.ci===p.ci){ if(p.st!=='work'){ p.st='work'; p.query=false; } }
+    for(const p of people){ const dx=DESKX[p.ci], bx=p.px; const isActive=realActive && realActive.ci===p.ci;
+      if(isActive){ if(p.st!=='work'&&p.st!=='chief'){ p.st='work'; p.query=false; } }   // the active worker may still detour to the Chief with a call
       else if(p.st==='work'){ p.beat='none'; wander(p); }
       if(p.st==='work'){ p.seated=approach(p,dx,2.4); }
       else if(p.st==='handoff'){ p.seated=false; if(approach(p,p.tx,2.7)){ if(--p.t<=0){ p.carry=false; wander(p); } } }
-      else if(p.st==='chief'){ p.seated=false; if(approach(p,p.tx,2.0)){ p.face=p.px<WINDOW_XB?1:-1; officeBlipT=Math.max(officeBlipT,4); if(--p.t<=0){ p.query=false; wander(p); } } }
+      else if(p.st==='chief'){ p.seated=false; if(approach(p,p.tx,2.0)){ p.face=p.px<WINDOW_XB?1:-1; officeBlipT=Math.max(officeBlipT,4); if(--p.t<=0){ p.query=false; if(isActive) p.st='work'; else wander(p); } } }
       else if(p.st==='sit'){ if(approach(p,dx,1.7)){ p.seated=true; if(--p.t<=0){ p.seated=false; wander(p); } } else p.seated=false; }
       else if(p.st==='walk'){ p.seated=false; if(approach(p,p.tx,1.4)) idleBeat(p); }
       else { p.seated=false;
@@ -892,7 +893,7 @@
       p.walking = Math.abs(p.px-bx)>0.25;
     } }
   // Send a specific staffer to consult the Chief (drives the "I've got a query" walk on demand).
-  function askChief(s){ if(!people||!s||s.ci<0) return; const p=people[s.ci]; if(p && p.st!=='work') visitChief(p); }
+  function askChief(s){ if(!people||!s||s.ci<0) return; const p=people[s.ci]; if(p && p.st!=='chief') visitChief(p); }
   function drawPeople(){ if(!people) return;
     for(const p of people){ if(p.seated) continue; const c=CAST[p.ci], px=p.px|0; let h=null;
       if(p.walking) drawWalk(c,px,FLOOR,p.face); else h=drawStand(c,px,FLOOR);
@@ -920,28 +921,50 @@
   function applyRealEvent(ev){ if(!ev||!ev.stage) return;
     const m=STAGE2DO[ev.stage];
     if(m&&ev.event==='stage_start'){ const s=m[0]==='chief'?chief:roleAgent(m[0]); if(s){ setWorking(s,m[1].toUpperCase()); charLog(s,'do',m[1]+'…'); bubbleOnly(s,m[1]+'…'); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, m[0]==='copydesk'?'idle':'type'); renderRoster(); } }
-    const s=realAgent(ev.stage); if(s){ const f=friendly(ev); if(f){ setWorking(s,f[1].toUpperCase()); charLog(s,f[0],f[1]); bubbleOnly(s,f[1]); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, ev.stage==='copydesk'?'idle':'type'); renderRoster(); } } }
+    const s=realAgent(ev.stage); if(s){ const f=friendly(ev); if(f){ setWorking(s,f[1].toUpperCase()); charLog(s,f[0],f[1]); bubbleOnly(s,f[1]); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, ev.stage==='copydesk'?'idle':'type'); renderRoster(); } }
+    // Real decision points → the agent walks over to put the call to the Chief (mid-run, then back to the desk).
+    if(ev.stage==='editor' && ev.event==='call' && ev.competingTakes){ const ed=realAgent('editor'); if(ed){ askChief(ed); charLog(ed,'ask',"Competing takes on page one — the Chief's call."); logEvent(`${ed.label}: competing takes — the Chief's call`); } }
+    if(ev.stage==='reporter' && ev.event==='capped'){ const rp=realAgent('reporter'); if(rp){ askChief(rp); charLog(rp,'ask',"Over the token cap — held a reporter. The Chief's call."); logEvent(`${rp.label}: over budget — the Chief's call`); } } }
   function applyUsage(usage){ if(!usage) return; const map={ triage:chief, researcher:roleAgent('research'), reporter:roleAgent('reporter'), writer:roleAgent('copywriter'), editor:roleAgent('editor'), copydesk:roleAgent('copydesk') };
     for(const role in (usage.byRole||{})){ const s=map[role], tok=usage.byRole[role]||0; if(s){ s.spent=tok; if(tok>s.budget) s.budget=Math.ceil(tok*1.05); } }
     renderRoster();
     const el=document.getElementById('appUsage'); if(el){ const b=usage.billing;
       el.textContent = b==='api' ? `⚠ ${fmtK(usage.total)} tokens · REAL API SPEND $${(usage.costUsd||0).toFixed(2)}` : b==='subscription' ? `${fmtK(usage.total)} tokens · plan usage — not billed` : `${fmtK(usage.total)} tokens · offline`;
       el.className='usage '+(b==='api'?'api':b==='subscription'?'plan':'free'); } }
-  let realBusy=false;
-  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null;
+  let realBusy=false, pendingClarify=null;
+  // Handle whatever the engine returns: a finished edition, a clarification request, or a failure.
+  function applyRunResult(r){ const openBtn=document.getElementById('appOpen');
+    if(r&&r.ok){ pendingClarify=null; lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
+      if(st){ fpHead.textContent=st.headline||'A quiet day on the wire'; fpStand.textContent=st.standfirst||''; frontpage.hidden=false; }
+      const ed=roleAgent('editor'); if(ed) charLog(ed,'act',`Page one: ${st?st.headline:'(quiet day)'}`);
+      applyUsage(r.usage); mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`);
+      if(openBtn) openBtn.hidden=false; return; }
+    if(r&&r.needsClarification){ askClarification(r.editionId, r.questions||[]); return; }
+    pendingClarify=null; charLog(chief,'act',`Run failed: ${(r&&r.error)||'unknown error'}`); mScene.textContent='RUN FAILED'; }
+  // The Chief pops out with a question and waits — the brief box becomes the answer box.
+  function askClarification(editionId, questions){ pendingClarify={ editionId };
+    realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } chief.status='working'; chief.doing='NEEDS A STEER';
+    officeBlipT=Math.max(officeBlipT,120); bubbleOnly(chief, questions[0]||'A steer, before we run?');
+    charLog(chief,'ask','The Chief needs a steer before the floor runs:'); for(const q of questions) charLog(chief,'ask',`• ${q}`);
+    selectLog(chief); focusOn(chief); mScene.textContent='The Chief needs a steer — answer below ▸';
+    briefInput.placeholder=(questions[0]||'Answer the Chief…'); const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Answer the Chief ▸'; renderRoster(); }
+  function clearClarifyUi(){ const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Send to the Chief ▸'; briefInput.placeholder="What's the front page? Enter to send · Shift+Enter for a new line"; }
+  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; pendingClarify=null;
     for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } chief.status='working'; chief.doing='BRIEFING';
     charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
     const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;
     const unsub=window.lateEdition.onEvent(applyRealEvent);
-    try{ const r=await window.lateEdition.run(brief,{});
-      if(r&&r.ok){ lastEditionId=r.editionId||null; const st=r.edition&&r.edition.stories&&r.edition.stories[0];
-        if(st){ fpHead.textContent=st.headline||'A quiet day on the wire'; fpStand.textContent=st.standfirst||''; frontpage.hidden=false; }
-        const ed=roleAgent('editor'); if(ed) charLog(ed,'act',`Page one: ${st?st.headline:'(quiet day)'}`);
-        applyUsage(r.usage); mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`);
-        if(openBtn) openBtn.hidden=false; }
-      else { charLog(chief,'act',`Run failed: ${(r&&r.error)||'unknown error'}`); mScene.textContent='RUN FAILED'; }
-    }catch(err){ charLog(chief,'act',`Run error: ${(err&&err.message)||err}`); mScene.textContent='RUN FAILED'; }
-    finally{ if(unsub)unsub(); realBusy=false; realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } renderRoster(); } }
+    try{ const r=await window.lateEdition.run(brief,{}); applyRunResult(r); }
+    catch(err){ charLog(chief,'act',`Run error: ${(err&&err.message)||err}`); mScene.textContent='RUN FAILED'; }
+    finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
+  // The user's answer to the Chief → resume the paused edition and finish it.
+  async function answerChief(answer){ if(realBusy||!pendingClarify) return; const editionId=pendingClarify.editionId; pendingClarify=null; realBusy=true; clearClarifyUi();
+    chief.status='working'; chief.doing='ON IT'; charLog(chief,'do',`Answer taken: "${answer}" — running the floor.`); bubbleOnly(chief,'Right — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE';
+    const openBtn=document.getElementById('appOpen'); if(openBtn) openBtn.hidden=true; renderRoster();
+    const unsub=window.lateEdition.onEvent(applyRealEvent);
+    try{ const r=await window.lateEdition.answerClarification(editionId, answer); applyRunResult(r); }
+    catch(err){ charLog(chief,'act',`Run error: ${(err&&err.message)||err}`); mScene.textContent='RUN FAILED'; }
+    finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   function buildAppChrome(){
     const mast=document.querySelector('.masthead'); if(mast) mast.style.display='none';                    // drop "SCREEN TEST" + intro
     const reelWrap=document.getElementById('reelInput'); if(reelWrap&&reelWrap.closest('label')) reelWrap.closest('label').style.display='none';   // "Load a real edition" is a sim tool

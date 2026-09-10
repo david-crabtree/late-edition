@@ -14,8 +14,11 @@ contextBridge.exposeInMainWorld('lateEdition', {
   getRoot: () => ipcRenderer.invoke('le:getRoot'),
   /** Open a folder picker to choose where the newsroom is stored; returns the new path. */
   pickRoot: () => ipcRenderer.invoke('le:pickRoot'),
-  /** Brief the Chief -> run the real pipeline. Resolves with the finished edition + usage. */
+  /** Brief the Chief -> run the real pipeline. Resolves with the finished edition + usage, or a clarification request. */
   run: (brief, opts) => ipcRenderer.invoke('le:run', brief, opts || {}),
+  /** Answer the Chief's clarification -> resume the paused edition and finish it. */
+  answerClarification: (editionId, answer) =>
+    ipcRenderer.invoke('le:answerClarification', editionId, answer),
   /** Stop switch: halt all agent calls / lift the halt / query it. */
   halt: () => ipcRenderer.invoke('le:halt'),
   resume: () => ipcRenderer.invoke('le:resume'),
