@@ -615,9 +615,18 @@
   function simBeat(){
     for(const st of stories){ if(['done','held','press'].includes(st.stage) || Math.random()>0.74) continue;
       if(st.stage==='assigned'){ if(!canAfford(chief,1500)){ escalate('budget',chief); continue; }
-        if(!st.real) spend(chief,1500); chief.status='idle'; const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; rep.status='working';
-        agentSay(chief,`${rep.label.split(' ')[0]}, chase ${st.short}.`,44); agentSay(rep,`On it, Chief.`,34);
-        handoff(WINDOW_XB, deskX(rep.ci)); logEvent(`Chief → ${rep.label}: cover ${st.short}`); focusOn(rep); }
+        if(!st.real) spend(chief,1500); chief.status='idle';
+        const res=roleAgent('research');
+        if(res){ st.researcher=res.ci; st.stage='researching'; res.status='working';                 // the researcher digs first
+          agentSay(chief,`${res.label.split(' ')[0]}, dig up ${st.short}.`,44); agentSay(res,`On it — sources first.`,34);
+          handoff(WINDOW_XB, deskX(res.ci)); logEvent(`Chief → ${res.label}: research ${st.short}`); focusOn(res); }
+        else { const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; rep.status='working';
+          agentSay(chief,`${rep.label.split(' ')[0]}, chase ${st.short}.`,44); handoff(WINDOW_XB, deskX(rep.ci)); logEvent(`Chief → ${rep.label}: cover ${st.short}`); focusOn(rep); } }
+      else if(st.stage==='researching'){ const res=staff.find(s=>s.ci===st.researcher); if(!canAfford(res,3000)){ escalate('budget',res,st); continue; }
+        if(!st.real) spend(res,2500+((Math.random()*1500)|0)); res.status='working'; focusOn(res); setSceneFor(res,'type'); st.rq=(st.rq||0)+38+((Math.random()*30)|0);
+        if(Math.random()<0.5) agentSay(res, researcherLine(st),40);
+        if(st.rq>=100){ const rep=roleAgent('reporter'); st.owner=rep.ci; st.stage='reporting'; res.status='idle'; rep.status='working';   // hands sourced findings to the reporter
+          handoff(deskX(res.ci), deskX(rep.ci)); agentSay(res,`Sourced — ${st.short}.`,34); logEvent(`${res.label} hands sources to ${rep.label}`); } }
       else if(st.stage==='reporting'){ const rep=staff.find(s=>s.ci===st.owner); if(rep.status==='blocked') continue;
         if(!canAfford(rep,4500)){ rep.status='blocked'; escalate('budget',rep,st); logEvent(`${rep.label} is out of budget on ${st.short}`); continue; }
         if(!st.real) spend(rep,3500+((Math.random()*3000)|0)); st.quality+=30+((Math.random()*28)|0); rep.status='working'; focusOn(rep); setSceneFor(rep,'type');
@@ -629,13 +638,19 @@
         if(Math.random()<0.42 && st.checks<2 && !st.real){ st.checks++; st.quality=Math.max(40,st.quality-45); st.stage='reporting';
           const rep=staff.find(s=>s.ci===st.owner); rep.status='working'; handoff(deskX(mac.ci), deskX(st.owner));
           agentSay(mac,`Thin recon on ${st.short}. Verify it.`,48); logEvent(`${mac.label}: ${st.short} needs a 2nd source — back to ${rep.label}`); }
-        else { st.stage='writing'; handoff(deskX(mac.ci), deskX(roleAgent('editor').ci)); agentSay(mac,`Stands up — ${st.short}.`,34); logEvent(`${mac.label} clears ${st.short}`); } }
-      else if(st.stage==='writing'){ const ed=roleAgent('editor'); if(!canAfford(ed,4000)){ escalate('budget',ed,st); continue; }
-        if(!st.real) spend(ed,4000); focusOn(ed); setSceneFor(ed,'type'); st.t++;
+        else { const w=roleAgent('copywriter')||roleAgent('editor'); st.stage='writing'; handoff(deskX(mac.ci), deskX(w.ci)); agentSay(mac,`Stands up — ${st.short}.`,34); logEvent(`${mac.label} clears ${st.short}`); } }
+      else if(st.stage==='writing'){ const w=roleAgent('copywriter')||roleAgent('editor'); if(!canAfford(w,3500)){ escalate('budget',w,st); continue; }   // the rewrite desk turns recon into copy
+        if(!st.real) spend(w,3500); focusOn(w); setSceneFor(w,'type'); st.wt=(st.wt||0)+1;
+        if(Math.random()<0.5) agentSay(w, writerLine(st),40);
+        if(st.wt>=2){ st.stage='editing'; handoff(deskX(w.ci), deskX(roleAgent('editor').ci)); agentSay(w,`Copy's ready — ${st.short}.`,34); logEvent(`${w.label} files copy on ${st.short}`); } }
+      else if(st.stage==='editing'){ const ed=roleAgent('editor'); if(!canAfford(ed,4000)){ escalate('budget',ed,st); continue; }        // the editor makes the call
+        if(!st.real) spend(ed,4000); focusOn(ed); setSceneFor(ed,'idle'); st.t=(st.t||0)+1;
         if(st.t>=2){ if(st.real){ st.stage='done'; runFrontPage(st); } else { st.stage='press'; escalate('press',ed,st); agentSay(ed,`${st.short} — ready for page one.`,46); logEvent(`${ed.label} has ${st.short} ready — the Chief wants your call`); } } }
     }
     aliveBeat(); }
   function reporterLine(st){ const L=['Chasing the paper trail…',`Who leaked ${st.short}?`,'Two sources, then it runs.','This one has legs.']; return L[(tick+st.id)%L.length]; }
+  function researcherLine(st){ const L=['Pulling the filings…',`Primary source on ${st.short}?`,'Cross-checking the record.','Found the paper trail.']; return L[(tick+st.id)%L.length]; }
+  function writerLine(st){ const L=['Finding the lede…','Tightening the copy.',`Three grafs on ${st.short}.`,'Killing the adjectives.']; return L[(tick+st.id)%L.length]; }
   function aliveBeat(){ const idle=staff.filter(s=>s.ci>=0 && s.status==='idle' && s.sayT<=0);
     if(idle.length>=2 && Math.random()<0.35){ const a=idle.splice((Math.random()*idle.length)|0,1)[0], b=idle[(Math.random()*idle.length)|0];   // a two-way exchange across the room
       agentSay(a, CAST[a.ci].lines[(Math.random()*CAST[a.ci].lines.length)|0],42); pendingReply={ s:b, text:CAST[b.ci].lines[(Math.random()*CAST[b.ci].lines.length)|0], t:24 }; }
@@ -656,20 +671,31 @@
     const heads=[`${U} — SOURCES SPLIT AS CITY DESK CHASES IT`,`INSIDE ${U}: WHAT THEY DIDN'T WANT PRINTED`,`${U} BREAKS — THE DAILY BIT STANDS IT UP`,`THE TRUTH ABOUT ${U}, PAGE ONE`]; return st.headline=heads[U.length%heads.length]; }
   function runFrontPage(st){
     if(st.real&&st.realBudget){ const b=st.realBudget, set=(role,v)=>{ const a=roleAgent(role); if(a) a.spent=v; };  // lock in the real per-role spend from the loaded reel
-      set('reporter',b.reporter||0); set('copydesk',b.copydesk||0); const ed=roleAgent('editor'); if(ed) ed.spent=(b.editor||0)+(b.writer||0); if(b.chief!=null) chief.spent=b.chief; renderRoster(); }
+      set('research',b.researcher||0); set('reporter',b.reporter||0); set('copywriter',b.writer||0); set('copydesk',b.copydesk||0);
+      const ed=roleAgent('editor'); if(ed) ed.spent=b.editor||0; if(b.chief!=null) chief.spent=b.chief; renderRoster(); }
     fpHead.textContent=headlineFor(st); fpStand.textContent=st.standfirst||`Two sources, one long night. The Daily Bit's account of ${tidy(st.topic)} — chased, corrected on the copy desk, and put to bed.`;
     frontpage.hidden=false; const ed=roleAgent('editor'); focusOn(ed); setSceneFor(ed,'stop'); logEvent(`STOP THE PRESS — ${st.short} runs page one`); mScene.textContent=st.real?'REAL EDITION FILED':'EDITION FILED'; }
   // Load a real edition's reel.json (produced by `late-edition run --brief … `) and replay it here.
   function loadReel(reel){ if(!reel||!reel.stories||!reel.stories[0]) return; const s0=reel.stories[0], br=(reel.tokens&&reel.tokens.byRole)||{};
     const topic=(reel.topic||s0.headline||'a real edition');
     const set=(role,v)=>{ const a=roleAgent(role); if(a){ a.spent=Math.min(v,a.budget); if(v>a.budget) a.budget=v+20000; } };
-    set('reporter',br.reporter||0); set('copydesk',br.copydesk||0); const ed=roleAgent('editor'); if(ed){ const w=(br.editor||0)+(br.writer||0); ed.spent=Math.min(w,ed.budget); if(w>ed.budget) ed.budget=w+20000; }
+    set('research',br.researcher||0); set('reporter',br.reporter||0); set('copywriter',br.writer||0); set('copydesk',br.copydesk||0); set('editor',br.editor||0);
     briefChief(topic); const st=stories[stories.length-1]; st.real=true; st.headline=s0.headline; st.standfirst=s0.standfirst;
-    st.realBudget={ reporter:br.reporter||0, editor:br.editor||0, writer:br.writer||0, copydesk:br.copydesk||0, chief:Math.round(((reel.tokens&&reel.tokens.total)||0)*0.03) };
+    st.realBudget={ researcher:br.researcher||0, reporter:br.reporter||0, editor:br.editor||0, writer:br.writer||0, copydesk:br.copydesk||0, chief:Math.round(((reel.tokens&&reel.tokens.total)||0)*0.03) };
     logEvent(`Loaded real edition ${reel.edition||''} — ${(reel.tokens&&reel.tokens.total)||0} tokens`); renderRoster(); }
 
-  function statusText(s){ if(s.status==='blocked') return 'OUT OF BUDGET'; const st=stories.find(x=>x.owner===s.ci && !['done','held'].includes(x.stage));
-    if(st) return (s.role==='copydesk'?'CHECKING ':s.role==='editor'?'WRITING ':'ON ')+st.short.toUpperCase();
+  // Who is actively working a story right now depends on its stage — not just the reporter/owner.
+  function activeCi(st){ switch(st.stage){
+    case 'researching': return st.researcher;
+    case 'reporting': return st.owner;
+    case 'checking': { const m=roleAgent('copydesk'); return m?m.ci:-2; }
+    case 'writing': { const w=roleAgent('copywriter')||roleAgent('editor'); return w?w.ci:-2; }
+    case 'editing': case 'press': { const e=roleAgent('editor'); return e?e.ci:-2; }
+    default: return -2; } }
+  const stageVerb=role=> role==='research'?'DIGGING ':role==='copydesk'?'CHECKING ':role==='copywriter'?'REWRITING ':role==='editor'?'ON THE CALL ':'ON ';
+  function statusText(s){ if(s.status==='blocked') return 'OUT OF BUDGET';
+    const st=stories.find(x=>!['done','held'].includes(x.stage) && activeCi(x)===s.ci);
+    if(st) return stageVerb(s.role)+st.short.toUpperCase();
     if(s.status==='briefing') return 'BRIEFING'; return 'IDLE'; }
   function chiefPortrait(canvas){ const pg=canvas.getContext('2d'); pg.imageSmoothingEnabled=false; const t=document.createElement('canvas'); t.width=22;t.height=22; const o=t.getContext('2d'); const rr=(x,y,w,h,c)=>{o.fillStyle=c;o.fillRect(x,y,w,h);};
     rr(0,0,22,22,'#0a0d12'); const cx=11,y=5;
