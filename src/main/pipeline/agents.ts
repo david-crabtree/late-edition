@@ -4,8 +4,7 @@ import { join } from 'node:path';
 import type { Newsroom, RoleAssignment } from '../config/types.js';
 import type { Signal } from '../core/signal.js';
 import { getProvider } from '../providers/registry.js';
-import type { AgentJob, AgentProvider, AgentRole } from '../providers/types.js';
-import { runToText } from '../providers/types.js';
+import type { AgentJob, AgentProvider, AgentRole, AgentUsage } from '../providers/types.js';
 import { extractJson } from './json.js';
 import { StaffNotConfiguredError, isUnstaffed } from './staffing.js';
 
@@ -128,13 +127,44 @@ export interface JobRequest {
   timeoutMs: number;
   /** When true, parse the output as JSON (with one repair retry). */
   wantJson: boolean;
+  /**
+   * Optional sink for the agent's output as it arrives. Providers stream text while they
+   * work; without this it was collected and thrown away, so the per-desk console had
+   * nothing to show but stage transitions.
+   */
+  onText?: (chunk: string) => void;
 }
 
 export interface JobOutcome<T> {
   text: string;
   data?: T;
-  usage?: { inputTokens?: number; outputTokens?: number };
+  usage?: { inputTokens?: number; outputTokens?: number; costUsd?: number };
   providerId: string;
+  /** Which model actually took the desk — blank means the provider's own default. */
+  model?: string;
+}
+
+/**
+ * Drain a provider run, passing every text chunk to `onText` on the way past. This is
+ * `runToText` plus a tap — the tap is what lets the app show an agent working rather than
+ * just report that it finished.
+ */
+async function runStreaming(
+  provider: AgentProvider,
+  job: AgentJob,
+  onText?: (chunk: string) => void,
+): Promise<{ output: string; usage?: AgentUsage }> {
+  let output = '';
+  let usage: AgentUsage | undefined;
+  for await (const ev of provider.run(job)) {
+    if (ev.type === 'text') {
+      if (onText && ev.text) onText(ev.text);
+    } else if (ev.type === 'done') output = ev.output;
+    else if (ev.type === 'usage')
+      usage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens, costUsd: ev.costUsd };
+    else if (ev.type === 'error') throw new Error(`[${provider.id}] ${ev.error}`);
+  }
+  return { output, usage };
 }
 
 /**
@@ -155,9 +185,14 @@ export async function runJob<T>(req: JobRequest): Promise<JobOutcome<T>> {
     timeoutMs: req.timeoutMs,
   };
   try {
-    const first = await runToText(provider, baseJob);
+    const first = await runStreaming(provider, baseJob, req.onText);
     if (!req.wantJson) {
-      return { text: first.output, usage: first.usage, providerId: req.resolved.providerId };
+      return {
+        text: first.output,
+        usage: first.usage,
+        providerId: req.resolved.providerId,
+        model: req.resolved.model,
+      };
     }
     try {
       return {
@@ -165,19 +200,26 @@ export async function runJob<T>(req: JobRequest): Promise<JobOutcome<T>> {
         data: extractJson<T>(first.output),
         usage: first.usage,
         providerId: req.resolved.providerId,
+        model: req.resolved.model,
       };
     } catch (parseErr) {
-      const retry = await runToText(provider, {
-        ...baseJob,
-        userPrompt: `${req.userPrompt}\n\n----- PARSE ERROR -----\nYour previous response could not be parsed as JSON (${
-          parseErr instanceof Error ? parseErr.message : String(parseErr)
-        }). Return ONLY a valid JSON object this time.`,
-      });
+      req.onText?.('\n[unreadable JSON came back — asking the desk again]\n');
+      const retry = await runStreaming(
+        provider,
+        {
+          ...baseJob,
+          userPrompt: `${req.userPrompt}\n\n----- PARSE ERROR -----\nYour previous response could not be parsed as JSON (${
+            parseErr instanceof Error ? parseErr.message : String(parseErr)
+          }). Return ONLY a valid JSON object this time.`,
+        },
+        req.onText,
+      );
       return {
         text: retry.output,
         data: extractJson<T>(retry.output),
         usage: retry.usage,
         providerId: req.resolved.providerId,
+        model: req.resolved.model,
       };
     }
   } finally {

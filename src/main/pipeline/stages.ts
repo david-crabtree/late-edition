@@ -38,6 +38,76 @@ import {
 } from './draft.js';
 import { loadPrompt, renderTemplate } from './prompts.js';
 
+/**
+ * A tap on an agent's output that the app can show as that desk's console.
+ *
+ * Models stream in small, ragged chunks, so this buffers and releases on a boundary —
+ * a decent run of text, or a short pause — and caps what any one desk can push, so a
+ * chatty model can't flood the window or bloat the log file.
+ */
+const CHATTER_FLUSH_CHARS = 220;
+const CHATTER_FLUSH_MS = 900;
+const CHATTER_MAX_CHARS = 12000;
+
+export interface Chatter {
+  (chunk: string): void;
+  flush(): void;
+}
+
+/**
+ * Break a block of agent output into console-sized lines, preferring the boundaries the
+ * text already has (blank lines, then line breaks, then sentences) and only cutting mid-run
+ * when a single line is longer than the window.
+ */
+export function splitForConsole(text: string, max = CHATTER_FLUSH_CHARS): string[] {
+  const out: string[] = [];
+  for (const para of text.split(/\n+/)) {
+    let rest = para.trim();
+    if (!rest) continue;
+    while (rest.length > max) {
+      const window = rest.slice(0, max);
+      const cut = Math.max(window.lastIndexOf('. '), window.lastIndexOf(' '));
+      const at = cut > max * 0.5 ? cut + 1 : max;
+      out.push(rest.slice(0, at).trim());
+      rest = rest.slice(at).trim();
+    }
+    if (rest) out.push(rest);
+  }
+  return out;
+}
+
+export function chatter(ctx: PipelineContext, role: string, story?: string): Chatter {
+  let buf = '';
+  let sent = 0;
+  let last = Date.now();
+  let trimmed = false;
+  const flush = (): void => {
+    const text = buf.trim();
+    buf = '';
+    last = Date.now();
+    if (!text) return;
+    if (sent >= CHATTER_MAX_CHARS) {
+      if (!trimmed) {
+        trimmed = true;
+        ctx.log.emit(role, 'chatter', { story, text: '… (rest of this desk’s output trimmed)' });
+      }
+      return;
+    }
+    sent += text.length;
+    // Most agent CLIs hand back one big block rather than a token stream, so break it into
+    // console-sized lines here. Otherwise the desk's window gets a single wall of text.
+    for (const line of splitForConsole(text)) {
+      ctx.log.emit(role, 'chatter', story ? { story, text: line } : { text: line });
+    }
+  };
+  const write = ((chunk: string): void => {
+    buf += chunk;
+    if (buf.length >= CHATTER_FLUSH_CHARS || Date.now() - last >= CHATTER_FLUSH_MS) flush();
+  }) as Chatter;
+  write.flush = flush;
+  return write;
+}
+
 function personaBlock(ctx: PipelineContext, reporterName: string): string {
   const persona =
     ctx.newsroom.personas.get(reporterName) ?? ctx.newsroom.personas.get(slugify(reporterName));
@@ -133,6 +203,7 @@ export async function stageTriage(draft: EditionDraft, ctx: PipelineContext): Pr
   }
   const template = await loadPrompt(ctx.root, 'triage');
   const resolved = resolveEditor(ctx.newsroom, ctx.forceProvider);
+  const say = chatter(ctx, 'triage');
   try {
     const outcome = await runJob<TriageResult>({
       role: 'triage',
@@ -141,9 +212,11 @@ export async function stageTriage(draft: EditionDraft, ctx: PipelineContext): Pr
       userPrompt: briefSignal.title,
       signals: briefStory.signals,
       timeoutMs: ctx.editorTimeoutMs,
+      onText: say,
       wantJson: true,
     });
-    recordUsage(draft, outcome.providerId, 'triage', outcome.usage);
+    say.flush();
+    recordUsage(draft, outcome.providerId, 'triage', outcome.usage, ctx.log, outcome.model);
     const result = outcome.data;
     const questions = Array.isArray(result?.questions)
       ? result.questions.filter((q) => typeof q === 'string' && q.trim()).slice(0, 3)
@@ -239,6 +312,7 @@ export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): 
       maxFindings: String(ctx.maxFindings ?? beat?.maxFindings ?? DEFAULT_MAX_FINDINGS),
     });
     ctx.log.emit('researcher', 'leave_desk', { story: t.story.slug, pass: t.pass + 1 });
+    const say = chatter(ctx, 'researcher', t.story.slug);
     try {
       const outcome = await runJob<ResearchDossier>({
         role: 'researcher',
@@ -247,9 +321,11 @@ export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): 
         userPrompt: formatSignals(t.story.signals),
         signals: t.story.signals,
         timeoutMs: ctx.researcherTimeoutMs,
+        onText: say,
         wantJson: true,
       });
-      recordUsage(draft, outcome.providerId, 'researcher', outcome.usage);
+      say.flush();
+      recordUsage(draft, outcome.providerId, 'researcher', outcome.usage, ctx.log, outcome.model);
       const findings = normalizeFindings(outcome.data);
       ctx.log.emit('researcher', 'filed', { story: t.story.slug, findings: findings.length });
       return { story: t.story, findings };
@@ -405,6 +481,7 @@ export async function stageReport(draft: EditionDraft, ctx: PipelineContext): Pr
       persona: personaBlock(ctx, t.story.reporterName),
       angleDirective: angleDirective(t.index, t.total),
     });
+    const say = chatter(ctx, 'reporter', t.story.slug);
     try {
       const outcome = await runJob<FiledReport>({
         role: 'reporter',
@@ -413,9 +490,11 @@ export async function stageReport(draft: EditionDraft, ctx: PipelineContext): Pr
         userPrompt: formatSignals(t.story.signals),
         signals: t.story.signals,
         timeoutMs: ctx.reporterTimeoutMs,
+        onText: say,
         wantJson: true,
       });
-      recordUsage(draft, outcome.providerId, 'reporter', outcome.usage);
+      say.flush();
+      recordUsage(draft, outcome.providerId, 'reporter', outcome.usage, ctx.log, outcome.model);
       const report = normalizeReport(outcome.data, t.story);
       report.reporter = t.label;
       writeStoryFile(
@@ -513,6 +592,7 @@ export async function stageCall(draft: EditionDraft, ctx: PipelineContext): Prom
       beatName: story.beatName,
       style: ctx.newsroom.style,
     });
+    const say = chatter(ctx, 'editor', story.slug);
     try {
       const outcome = await runJob<EditorCall>({
         role: 'editor',
@@ -521,9 +601,11 @@ export async function stageCall(draft: EditionDraft, ctx: PipelineContext): Prom
         userPrompt: reportsForEditor(story),
         signals: story.signals,
         timeoutMs: ctx.editorTimeoutMs,
+        onText: say,
         wantJson: true,
       });
-      recordUsage(draft, outcome.providerId, 'editor', outcome.usage);
+      say.flush();
+      recordUsage(draft, outcome.providerId, 'editor', outcome.usage, ctx.log, outcome.model);
       story.call = normalizeCall(outcome.data, story);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -570,6 +652,7 @@ async function frontPage(draft: EditionDraft, ctx: PipelineContext): Promise<voi
   const template = await loadPrompt(ctx.root, 'frontpage');
   const editor = resolveEditor(ctx.newsroom, ctx.forceProvider);
   try {
+    const say = chatter(ctx, 'editor');
     const outcome = await runJob<{ weatherLine?: string; editorsLog?: string[] }>({
       role: 'editor',
       resolved: editor,
@@ -580,9 +663,11 @@ async function frontPage(draft: EditionDraft, ctx: PipelineContext): Promise<voi
       userPrompt: headlines.map((h, i) => `${i + 1}. ${h}`).join('\n'),
       signals: [],
       timeoutMs: ctx.editorTimeoutMs,
+      onText: say,
       wantJson: true,
     });
-    recordUsage(draft, outcome.providerId, 'editor', outcome.usage);
+    say.flush();
+    recordUsage(draft, outcome.providerId, 'editor', outcome.usage, ctx.log, outcome.model);
     if (outcome.data?.weatherLine) draft.weatherLine = outcome.data.weatherLine;
     if (Array.isArray(outcome.data?.editorsLog)) draft.editorsLog.push(...outcome.data.editorsLog);
   } catch {
@@ -607,6 +692,7 @@ export async function stageWrite(draft: EditionDraft, ctx: PipelineContext): Pro
       // well-sourced, short when thin — never padded).
       sourceCount: String(story.signals.length),
     });
+    const say = chatter(ctx, 'writer', story.slug);
     try {
       const outcome = await runJob<string>({
         role: 'writer',
@@ -615,9 +701,11 @@ export async function stageWrite(draft: EditionDraft, ctx: PipelineContext): Pro
         userPrompt: writerMaterials(story),
         signals: story.signals,
         timeoutMs: ctx.writerTimeoutMs,
+        onText: say,
         wantJson: false,
       });
-      recordUsage(draft, outcome.providerId, 'writer', outcome.usage);
+      say.flush();
+      recordUsage(draft, outcome.providerId, 'writer', outcome.usage, ctx.log, outcome.model);
       story.copy = outcome.text.trim();
       writeStoryFile(ctx.root, draft.id, story.slug, 'copy.md', story.copy);
       ctx.log.emit('writer', 'copy', { story: story.slug, chars: story.copy.length });
@@ -643,6 +731,7 @@ export async function stageCheck(draft: EditionDraft, ctx: PipelineContext): Pro
     // weak or unavailable, and it catches links/citations injected by source material.
     const deterministic = verifyCopyCitations(story);
     let check = deterministic;
+    const say = chatter(ctx, 'copydesk', story.slug);
     try {
       const outcome = await runJob<CopyCheck>({
         role: 'copydesk',
@@ -651,9 +740,11 @@ export async function stageCheck(draft: EditionDraft, ctx: PipelineContext): Pro
         userPrompt: checkMaterials(story),
         signals: story.signals,
         timeoutMs: ctx.editorTimeoutMs,
+        onText: say,
         wantJson: true,
       });
-      recordUsage(draft, outcome.providerId, 'copydesk', outcome.usage);
+      say.flush();
+      recordUsage(draft, outcome.providerId, 'copydesk', outcome.usage, ctx.log, outcome.model);
       check = mergeChecks(normalizeCheck(outcome.data), deterministic);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

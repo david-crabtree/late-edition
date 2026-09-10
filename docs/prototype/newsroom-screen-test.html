@@ -81,6 +81,10 @@
   .clog-body .act{ color:#c9e6b0; } .clog-body .act::before{ content:'✓ '; color:#7bb661; }
   .clog-body .think{ color:#c2b48f; font-style:italic; } .clog-body .think::before{ content:'“'; } .clog-body .think::after{ content:'”'; }
   .clog-body .ask{ color:#e8b04b; } .clog-body .ask::before{ content:'? '; color:#e8b04b; }
+  /* What the agent actually wrote, streamed from the desk as it works. Dimmer than the
+     summary lines so the "what happened" beats stay readable through the flow. */
+  .clog-body .out{ color:#8f9aa8; } .clog-body .out::before{ content:'│ '; color:#4a5460; }
+  .clog-body .cost{ color:#c2a15a; } .clog-body .cost::before{ content:'≡ '; color:#8a7440; }
   .clog-body .sys{ color:#6a6250; border-bottom:1px dashed #2c2519; padding-bottom:5px; margin-bottom:5px; font-family:var(--pixel); font-size:.56rem; letter-spacing:.03em; }
   @media (max-width:720px){ .clog-hint{ display:none; } }
   .setup{ margin-top:10px; margin-bottom:16px; background:#0c0f14; border:1px solid #3a2e1b; border-radius:6px; padding:12px 14px; }
@@ -773,7 +777,9 @@
         fpHead=document.getElementById('fpHead'), fpStand=document.getElementById('fpStand'),
         fpByline=document.getElementById('fpByline'), fpBody=document.getElementById('fpBody'), fpSources=document.getElementById('fpSources'), fpAlso=document.getElementById('fpAlso'),
         staffEl=document.getElementById('staff'), approvalsEl=document.getElementById('approvals'), apListEl=document.getElementById('apList');
-  const fmtK=n=>Math.round(n/1000)+'k';
+  // Round to thousands once there are thousands. Early in a run there aren't, and a
+  // counter reading "0k" while the desks are visibly working looks broken.
+  const fmtK=n=>n<1000?String(Math.round(n)):(n<10000?(n/1000).toFixed(1):Math.round(n/1000))+'k';
   const tidy=t=>t.replace(/^\s*(rumou?rs?\s+(of|about|on)\s+|the\s+|a\s+|an\s+)/i,'').replace(/\s+/g,' ').trim();
   const shortT=t=>{ const s=tidy(t); return s.length>26? s.slice(0,24)+'…':s; };
   const staff=[{ id:'chief', ci:-1, role:'chief', label:'The Chief', sub:'assigns & makes the call', budget:+budgetRange.value, spent:0, status:'idle', say:'', sayT:0, log:[] }]
@@ -1031,19 +1037,70 @@
       if(from && from.ci>=0){ const fp=people[from.ci]; if(fp){ fp.st='handoff'; fp.tx=deskX(s.ci)-34; fp.carry=true; fp.t=42; } }
       else if(!courier.active){ handoff(WINDOW_XB, deskX(s.ci), -1); }
     } }
+  // ---- Live usage -------------------------------------------------------------------
+  // The engine announces spend per desk as it happens (`usage/spent`), so the readout
+  // climbs during a run instead of sitting still and then jumping to the final figure at
+  // the end. `live` is what we've heard so far; a finished run replaces it with the
+  // authoritative total from the edition itself.
+  const ROLE2STAFF=()=>({ triage:chief, researcher:roleAgent('research'), reporter:roleAgent('reporter'), writer:roleAgent('copywriter'), editor:roleAgent('editor'), copydesk:roleAgent('copydesk') });
+  const live={ total:0, costUsd:0, byRole:{}, models:{}, providers:{} };
+  let billingBy={};
+  async function learnBilling(){ try{ const det=await window.lateEdition.detect();
+    billingBy={}; for(const d of det) billingBy[d.id]=d.billing||'unknown'; }catch(_){ } }
+  function resetLiveUsage(){ live.total=0; live.costUsd=0; live.byRole={}; live.models={}; live.providers={};
+    for(const s of staff) s.spent=0; renderRoster(); paintUsage(); }
+  // Which agent is doing the spending — named, because "382k tokens" alone tells you
+  // nothing about what it was spent on or whose allowance it came out of.
+  function whoIsSpending(){
+    const models=Object.keys(live.models); const provs=Object.keys(live.providers);
+    if(models.length===1 && models[0]) return models[0];
+    if(models.length>1) return models.length+' models';
+    if(provs.length===1) return provs[0];
+    return provs.length? provs.length+' agents' : '';
+  }
+  function paintUsage(billing, total, costUsd){
+    const el=document.getElementById('appUsage'); if(!el) return;
+    const b=billing||live.billing||'unknown';
+    const tok=fmtK(total!=null?total:live.total), who=whoIsSpending(), on=who?` · ${who}`:'';
+    el.textContent =
+      b==='api'      ? `⚠ ${tok} tokens${on} · billed to your API key · $${(costUsd!=null?costUsd:live.costUsd||0).toFixed(2)}`
+    : b==='subscription' ? `${tok} tokens${on} · on your plan’s allowance, not billed per use`
+    : b==='free'     ? `${tok} tokens${on} · offline stand-in — invented copy`
+    :                  `${tok} tokens${on}`;
+    el.className='usage '+(b==='api'?'api':b==='subscription'?'plan':'free');
+  }
+  // One desk just spent something. Update its card, the running total and the readout.
+  function applySpend(ev){
+    const s=ROLE2STAFF()[ev.role]; const tok=+ev.tokens||0;
+    live.total = (typeof ev.total==='number') ? ev.total : live.total+tok;
+    if(typeof ev.totalCostUsd==='number') live.costUsd=ev.totalCostUsd;
+    live.byRole[ev.role]=(live.byRole[ev.role]||0)+tok;
+    if(ev.model) live.models[ev.model]=1;
+    if(ev.provider) live.providers[ev.provider]=1;
+    // Frame the spend from what this provider actually is, never a guess.
+    const b=billingBy[ev.provider]; if(b&&b!=='unknown') live.billing = live.billing==='api'?'api':(b==='api'?'api':b);
+    if(s){ s.spent=live.byRole[ev.role]; if(s.spent>s.budget) s.budget=Math.ceil(s.spent*1.05);
+      charLog(s,'cost',`${fmtK(tok)} tokens${ev.model?' · '+ev.model:''} (${fmtK(live.byRole[ev.role])} on this desk)`); }
+    renderRoster(); paintUsage();
+  }
   function applyRealEvent(ev){ if(!ev||!ev.stage) return;
+    // Live spend, and the agent's own output as it comes back — the two things the
+    // desk console had no way of showing before.
+    if(ev.stage==='usage'&&ev.event==='spent'){ applySpend(ev); return; }
+    if(ev.event==='chatter'){ const w=realAgent(ev.stage)||(ev.stage==='triage'?chief:null);
+      if(w&&ev.text) charLog(w,'out',ev.text); return; }
     const m=STAGE2DO[ev.stage];
     if(m&&ev.event==='stage_start'){ const s=m[0]==='chief'?chief:roleAgent(m[0]); if(s){ setWorking(s,m[1].toUpperCase()); charLog(s,'do',m[1]+'…'); bubbleOnly(s,m[1]+'…'); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, m[0]==='copydesk'?'idle':'type'); renderRoster(); } }
     const s=realAgent(ev.stage); if(s){ const f=friendly(ev); if(f){ setWorking(s,f[1].toUpperCase()); charLog(s,f[0],f[1]); bubbleOnly(s,f[1]); focusOn(s); selectLog(s); if(s.ci>=0) setSceneFor(s, ev.stage==='copydesk'?'idle':'type'); renderRoster(); } }
     // Real decision points → the agent walks over to put the call to the Chief (mid-run, then back to the desk).
     if(ev.stage==='editor' && ev.event==='call' && ev.competingTakes){ const ed=realAgent('editor'); if(ed){ askChief(ed); charLog(ed,'ask',"Competing takes on page one — the Chief's call."); logEvent(`${ed.label}: competing takes — the Chief's call`); } }
     if(ev.stage==='reporter' && ev.event==='capped'){ const rp=realAgent('reporter'); if(rp){ askChief(rp); charLog(rp,'ask',"Over the token cap — held a reporter. The Chief's call."); logEvent(`${rp.label}: over budget — the Chief's call`); } } }
-  function applyUsage(usage){ if(!usage) return; const map={ triage:chief, researcher:roleAgent('research'), reporter:roleAgent('reporter'), writer:roleAgent('copywriter'), editor:roleAgent('editor'), copydesk:roleAgent('copydesk') };
+  // The finished edition's own totals — authoritative, and they include any desk whose
+  // provider never reported usage mid-run.
+  function applyUsage(usage){ if(!usage) return; const map=ROLE2STAFF();
     for(const role in (usage.byRole||{})){ const s=map[role], tok=usage.byRole[role]||0; if(s){ s.spent=tok; if(tok>s.budget) s.budget=Math.ceil(tok*1.05); } }
-    renderRoster();
-    const el=document.getElementById('appUsage'); if(el){ const b=usage.billing;
-      el.textContent = b==='api' ? `⚠ ${fmtK(usage.total)} tokens · REAL API SPEND $${(usage.costUsd||0).toFixed(2)}` : b==='subscription' ? `${fmtK(usage.total)} tokens · plan usage — not billed` : `${fmtK(usage.total)} tokens · offline`;
-      el.className='usage '+(b==='api'?'api':b==='subscription'?'plan':'free'); } }
+    live.total=usage.total||live.total; live.costUsd=usage.costUsd||live.costUsd; live.billing=usage.billing||live.billing;
+    renderRoster(); paintUsage(usage.billing, usage.total, usage.costUsd); }
   let realBusy=false, pendingClarify=null;
   // Research depth — how many sources the desk digs up before writing. Standard is the baseline;
   // Deep runs a second pass and keeps more; Light keeps it cheap. Passed to the engine per run.
@@ -1083,7 +1140,7 @@
     briefInput.placeholder=(questions[0]||'Answer the Chief…'); const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Answer the Chief ▸'; renderRoster(); }
   function clearClarifyUi(){ const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Send to the Chief ▸'; briefInput.placeholder="What's the front page? Enter to send · Shift+Enter for a new line"; }
   async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; pendingClarify=null; setFollow(true);
-    for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } chief.status='working'; chief.doing='BRIEFING';
+    for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } resetLiveUsage(); await learnBilling(); chief.status='working'; chief.doing='BRIEFING';
     charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
     const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;
     const unsub=window.lateEdition.onEvent(applyRealEvent);
@@ -1092,7 +1149,7 @@
     finally{ if(unsub)unsub(); realBusy=false; if(!pendingClarify){ realActive=null; for(const s of staff){ s.status='idle'; s.doing=''; } } renderRoster(); } }
   // The user's answer to the Chief → resume the paused edition and finish it.
   async function answerChief(answer){ if(realBusy||!pendingClarify) return; const editionId=pendingClarify.editionId; pendingClarify=null; realBusy=true; clearClarifyUi();
-    chief.status='working'; chief.doing='ON IT'; charLog(chief,'do',`Answer taken: "${answer}" — running the floor.`); bubbleOnly(chief,'Right — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE';
+    await learnBilling(); chief.status='working'; chief.doing='ON IT'; charLog(chief,'do',`Answer taken: "${answer}" — running the floor.`); bubbleOnly(chief,'Right — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE';
     const openBtn=document.getElementById('appOpen'); if(openBtn) openBtn.hidden=true; renderRoster();
     const unsub=window.lateEdition.onEvent(applyRealEvent);
     try{ const r=await window.lateEdition.answerClarification(editionId, answer, researchOpts()); applyRunResult(r); }
@@ -1296,16 +1353,27 @@
 
   // Diagnostic surface for headless checks (LE_DEBUG). App mode only, read-only snapshots —
   // the floor's internals live in this closure, so there's no other way to assert on them.
-  if(window.lateEdition) window.__leFloor = () => ({
-    tick, cam: Math.round(cam), banter: state.banter, follow: !state.panMode,
-    quipping: staff.filter(s=>s.sayT>0).map(s=>s.label),
-    people: (people||[]).map(p=>({ id:CAST[p.ci].id, x:Math.round(p.px*10)/10, st:p.st, seated:p.seated })),
-  });
+  if(window.lateEdition){
+    window.__leFloor = () => ({
+      tick, cam: Math.round(cam), banter: state.banter, follow: !state.panMode,
+      quipping: staff.filter(s=>s.sayT>0).map(s=>s.label),
+      people: (people||[]).map(p=>({ id:CAST[p.ci].id, x:Math.round(p.px*10)/10, st:p.st, seated:p.seated })),
+    });
+    // Lets a headless run drive the real event handlers and read what they produced,
+    // without a person watching the window. Read-only apart from applyEvent.
+    window.__leProbe = {
+      applyEvent: applyRealEvent,
+      resetUsage: resetLiveUsage,
+      usageText: () => (document.getElementById('appUsage')||{}).textContent||'',
+      desks: () => staff.map(s=>({ role:s.role, label:s.label, spent:s.spent,
+        lines:(s.log||[]).length, kinds:[...new Set((s.log||[]).map(e=>e.kind))] })),
+    };
+  }
   if(window.lateEdition){ document.body.classList.add('real');
     // Open on the Chief's office, not the far-left wall. The office sits on the back wall, which
     // draws at BP parallax — so the camera value that centres it is (x - VW/2)/BP, not x - VW/2.
     cam=state.panX=Math.max(0, Math.min(WORLD-VW, (WINDOW_XB-VW/2)/BP));
-    buildAppChrome(); buildSetup(); buildStartupModal(); }
+    buildAppChrome(); buildSetup(); buildStartupModal(); learnBilling(); }
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);
 })();

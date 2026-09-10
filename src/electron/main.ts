@@ -163,6 +163,40 @@ function createWindow(): void {
           });
         })()`),
       );
+      // LE_DEBUG_RUN=1 files a whole edition on the offline stand-in and checks that the
+      // live readout climbed and the desks filled their consoles. It forces `fake`, so it
+      // never spends anyone's plan allowance.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG run:',
+          await js(`(async () => {
+            const seen = [];
+            const off = window.lateEdition.onEvent(ev => {
+              seen.push(ev.stage + '/' + ev.event);
+              window.__leProbe.applyEvent(ev);
+            });
+            window.__leProbe.resetUsage();
+            // Sample the readout on every spend event, not on a timer — an offline run
+            // finishes in well under a second, so a timer only ever catches one state.
+            const readouts = [];
+            const off2 = window.lateEdition.onEvent(ev => {
+              if (ev.stage === 'usage') readouts.push(window.__leProbe.usageText());
+            });
+            const r = await window.lateEdition.run('the price of tea', { provider: 'fake', research: 0 });
+            off(); off2();
+            const seenTokens = readouts.filter(t => /\\d/.test(t));
+            const climbed = new Set(seenTokens).size;
+            const desks = window.__leProbe.desks().filter(d => d.lines > 0);
+            return JSON.stringify({
+              ok: r.ok, spendEvents: seen.filter(s => s === 'usage/spent').length,
+              chatterEvents: seen.filter(s => s.endsWith('/chatter')).length,
+              readoutStates: climbed, midRunReadout: seenTokens[0] || '(never showed a figure)',
+              finalReadout: window.__leProbe.usageText(),
+              desksWithConsole: desks.map(d => d.role + ':' + d.lines + '[' + d.kinds.join(',') + ']'),
+            });
+          })()`),
+        );
+      }
     } catch (e) {
       console.log('LE_DEBUG error:', e instanceof Error ? e.message : e);
     }

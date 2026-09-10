@@ -88,6 +88,13 @@ export function recordUsage(
   providerId: string,
   role: string,
   usage?: { inputTokens?: number; outputTokens?: number; costUsd?: number },
+  /**
+   * When given, the spend is also announced as it happens. Without this the app could
+   * only ever learn the token count once, when the whole edition came back — which is
+   * why the counter sat still all run and then jumped to the final figure.
+   */
+  log?: { emit(stage: string, event: string, detail?: Record<string, unknown>): void },
+  model?: string,
 ): void {
   if (!usage) return;
   draft.tokenUsage.push({
@@ -96,6 +103,18 @@ export function recordUsage(
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
     costUsd: usage.costUsd,
+  });
+  const spent = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
+  log?.emit('usage', 'spent', {
+    role,
+    provider: providerId,
+    model,
+    tokens: spent,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    costUsd: usage.costUsd,
+    total: sumTokens(draft),
+    totalCostUsd: sumCostUsd(draft),
   });
 }
 
