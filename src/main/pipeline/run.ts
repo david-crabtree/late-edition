@@ -78,6 +78,13 @@ export interface RunOptions {
   verifyAnswer?: boolean;
   /** Switch the picture desk on: a shot list, caption and alt text per story. Off by default. */
   photoDesk?: boolean;
+  /**
+   * Run one watched beat off what the field desk already found, rather than fetching the
+   * wire again. The signals come from the beat's spike, so no source is re-polled (the
+   * diff state is already consumed) and no researcher runs — the digging happened when
+   * the original edition was filed.
+   */
+  watchBeat?: { beatId: string; beatName: string; signals: Signal[] };
   /** Live event subscriber — every pipeline event as it happens (for a desktop UI to animate). */
   onEvent?: (ev: LogEvent) => void;
   researcherTimeoutMs?: number;
@@ -119,9 +126,11 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
 
   const draft = opts.resumeId
     ? loadDraft(opts.root, opts.resumeId)
-    : opts.brief
-      ? briefDraft(opts.root, newsroom, opts.brief, now, opts)
-      : newDraft(opts.root, newsroom.config.paper.name, newsroom.config.paper.tagline, now);
+    : opts.watchBeat
+      ? watchDraft(opts.root, newsroom, opts.watchBeat, now, opts)
+      : opts.brief
+        ? briefDraft(opts.root, newsroom, opts.brief, now, opts)
+        : newDraft(opts.root, newsroom.config.paper.name, newsroom.config.paper.tagline, now);
 
   const logFile = join(p.editionDir(draft.id), 'log.jsonl');
   const ctx: PipelineContext = {
@@ -302,6 +311,66 @@ function briefDraft(
         beatName,
         signals: [signal],
         reporterName,
+        reporterProviderId: '',
+        reports: [],
+      },
+    ],
+    briefs: [],
+    editorsLog: [],
+    tokenUsage: [],
+    warnings: [],
+  };
+}
+
+/**
+ * A draft seeded from what the field desk noticed. Starts at ASSIGN, like a brief, because
+ * WIRE has effectively already run — the adapters diffed these pages and the changes are
+ * on the spike. Re-polling here would return nothing, since the seen-state is consumed.
+ */
+function watchDraft(
+  root: string,
+  newsroom: Newsroom,
+  watch: { beatId: string; beatName: string; signals: Signal[] },
+  now: Date,
+  opts: RunOptions,
+): EditionDraft {
+  const date = now.toISOString().slice(0, 10);
+  const { id, number } = nextEditionId(root, date);
+  const hash = shortHash('watch', watch.beatId, date);
+  // A framing signal so the desk knows this is a follow-up on a page it has covered before,
+  // and should report the change rather than re-introduce the subject.
+  const framing: Signal = {
+    id: makeSignalId('watch', hash),
+    sourceId: 'field',
+    sourceType: 'brief',
+    timestamp: now.toISOString(),
+    title: `What changed on "${watch.beatName}"`,
+    body: [
+      'The field desk has been watching these sources since this story last ran.',
+      `${watch.signals.length} of them changed.`,
+      'Report WHAT CHANGED and what it means — do not re-introduce the subject from',
+      'scratch, and do not repeat prior coverage.',
+      opts.priorContext ? `\n\nPrior coverage (newest first):\n${opts.priorContext}` : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
+    hash,
+  };
+  return {
+    id,
+    number,
+    date,
+    paperName: newsroom.config.paper.name,
+    tagline: newsroom.config.paper.tagline,
+    assignmentId: opts.assignmentId,
+    stage: 'ASSIGN',
+    stories: [
+      {
+        slug: slugify(watch.beatName).slice(0, 60) || 'the-beat',
+        beatId: watch.beatId,
+        beatName: watch.beatName,
+        signals: [framing, ...watch.signals],
+        reporterName: 'Ida Stringer',
         reporterProviderId: '',
         reports: [],
       },

@@ -25,6 +25,13 @@ import { type EditionSummary, listEditions } from '../main/store/edition-store.j
 import { clearHalt, isHalted, setHalt } from '../main/store/halt.js';
 import type { LogEvent } from '../main/store/log.js';
 import { paths } from '../main/store/paths.js';
+import {
+  checkWatched,
+  clearSpike,
+  listWatched,
+  unwatch,
+  watchEdition,
+} from '../main/watch/field.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 /**
@@ -431,6 +438,41 @@ function createWindow(): void {
           })()`),
         );
       }
+      // The field desk, end to end through the app: watch a filed story's sources, poll
+      // them (free), and confirm the spike surfaces without anything having run.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG field:',
+          await js(`(async () => {
+            // A research-backed edition, so the story actually has sourced URLs to watch.
+            // (The earlier probe run uses research:0, which leaves nothing to follow.)
+            const filed = await window.lateEdition.run('a watched topic', { provider: 'fake', research: 1 });
+            const target = filed.editionId
+              || (filed.needsDecision ? filed.editionId : null)
+              || ((await window.lateEdition.editions())[0] || {}).id;
+            if (!target) return JSON.stringify({ skipped: 'nothing filed' });
+            if (filed.needsDecision) await window.lateEdition.answerVerify(target, false, { provider: 'fake', research: 1 });
+            const ed = await window.lateEdition.edition(target);
+            const urls = (((ed.stories || [])[0] || {}).sources || []).filter(s => s.url).length;
+            const put = await window.lateEdition.watchEdition(target);
+            const check = await window.lateEdition.checkWatches();
+            const list = await window.lateEdition.watches();
+            // Render it the way the app does on launch, rather than poking the DOM.
+            await window.__leProbe.refreshWatches(true);
+            const el = document.querySelector('.spike');
+            const out = {
+              sourcesWithUrls: urls,
+              watched: put.ok ? put.watched : put.error,
+              checkCostTokens: check.tokens,
+              beatsWatched: list.length,
+              panelShown: !!(el && !el.hidden),
+              panelRows: el ? el.querySelectorAll('.sp').length : 0,
+            };
+            for (const w of list) await window.lateEdition.unwatch(w.id);
+            return JSON.stringify(out);
+          })()`),
+        );
+      }
       // Back issues: the list handler, and the drawer that opens onto it.
       console.log(
         'LE_DEBUG editions:',
@@ -824,6 +866,84 @@ ipcMain.handle('le:rewrite', async (e, editionId: string, shape: CopyShape, slug
       ...(await rewriteStory({ root: newsroomRoot(), editionId, slug, shape, onEvent: send })),
     };
   } catch (err) {
+    return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
+  }
+});
+
+/**
+ * The field desk.
+ *
+ * Watching costs nothing: adapters fetch and diff with no model involved, so a daily check
+ * of every watched page is free. Tokens are only spent by `le:runWatch`, and only when the
+ * user asks for it.
+ */
+
+/** Keep an eye on the pages a finished story came from. */
+ipcMain.handle('le:watchEdition', async (_e, editionId: string, slug?: string) => {
+  try {
+    return { ok: true as const, ...(await watchEdition(newsroomRoot(), editionId, { slug })) };
+  } catch (err) {
+    return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
+  }
+});
+
+/** What the field desk is watching, and what is on the spike. */
+ipcMain.handle('le:watches', () => listWatched(newsroomRoot()));
+
+/** Poll every watched page. Free — no model is involved at any point. */
+ipcMain.handle('le:checkWatches', () => checkWatched(newsroomRoot()));
+
+/** Stop watching a beat, or clear its spike without running anything. */
+ipcMain.handle('le:unwatch', (_e, beatId: string) => unwatch(newsroomRoot(), beatId));
+ipcMain.handle('le:clearSpike', (_e, beatId: string) => {
+  clearSpike(newsroomRoot(), beatId);
+  return true;
+});
+
+/**
+ * Run an edition off what the field desk found. No researcher, no re-polling: the digging
+ * was done when the original story ran, so this should cost a fraction of a fresh edition.
+ */
+ipcMain.handle('le:runWatch', async (e, beatId: string, opts: { shape?: CopyShape } = {}) => {
+  const root = newsroomRoot();
+  const send = (ev: LogEvent) => {
+    if (!e.sender.isDestroyed()) e.sender.send('le:event', ev);
+  };
+  const beat = (await listWatched(root)).find((b) => b.id === beatId);
+  if (!beat) return { ok: false as const, error: 'That beat is no longer being watched.' };
+  if (!beat.pending.length) return { ok: false as const, error: 'Nothing has changed there yet.' };
+  try {
+    const res = await runEdition({
+      root,
+      watchBeat: { beatId: beat.id, beatName: beat.name, signals: beat.pending },
+      research: 0,
+      shape: opts?.shape,
+      clarify: false, // the desk knows what it is following up; there is nothing to ask
+      askToVerify: true,
+      onEvent: send,
+    });
+    clearSpike(root, beatId);
+    return {
+      ok: true as const,
+      editionId: res.editionId,
+      edition: res.edition,
+      warnings: res.warnings,
+      usage: await summarizeUsage(res.edition),
+    };
+  } catch (err) {
+    if (err instanceof VerificationNeededError) {
+      return {
+        ok: false as const,
+        needsDecision: true as const,
+        editionId: err.editionId,
+        slug: err.slug,
+        question: err.question,
+        reason: err.reason,
+      };
+    }
+    if (err instanceof StaffNotConfiguredError) {
+      return { ok: false as const, needsStaffing: true as const, desk: err.deskLabel };
+    }
     return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
   }
 });

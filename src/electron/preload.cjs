@@ -34,6 +34,13 @@ contextBridge.exposeInMainWorld('lateEdition', {
   formats: () => ipcRenderer.invoke('le:formats'),
   /** Write a finished story again in another shape (one writer call, no new reporting). */
   rewrite: (editionId, shape, slug) => ipcRenderer.invoke('le:rewrite', editionId, shape, slug),
+  /** The field desk: watch a story's sources, see what moved, run a follow-up. */
+  watchEdition: (editionId, slug) => ipcRenderer.invoke('le:watchEdition', editionId, slug),
+  watches: () => ipcRenderer.invoke('le:watches'),
+  checkWatches: () => ipcRenderer.invoke('le:checkWatches'),
+  unwatch: (beatId) => ipcRenderer.invoke('le:unwatch', beatId),
+  clearSpike: (beatId) => ipcRenderer.invoke('le:clearSpike', beatId),
+  runWatch: (beatId, opts) => ipcRenderer.invoke('le:runWatch', beatId, opts || {}),
   /** Every edition this newsroom has filed, newest first. */
   editions: () => ipcRenderer.invoke('le:editions'),
   /** One past edition in full, to show it again without rerunning it. */
