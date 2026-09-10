@@ -834,7 +834,7 @@
 
   const SETUP_ROLES=[['researcher','Researcher'],['reporter','Reporter'],['writer','Copywriter'],['editor','Editor / Chief'],['copydesk','Copy desk']];
   const SETUP_KEY={ researcher:'researchers', reporter:'reporters', writer:'writers', editor:'managing_editor', copydesk:'copy_desk' };
-  function buildSetup(){ const LE=window.lateEdition, foot=document.querySelector('.foot'); if(!foot) return;
+  function buildSetup(){ const LE=window.lateEdition, anchor=document.querySelector('.cabinet'); if(!anchor) return;
     const box=document.createElement('div'); box.className='setup';
     box.innerHTML=`<h3>Setup — wire your agents <span class="real-badge">REAL ENGINE</span></h3>
       <p class="sub">Pick which agent runs each desk. Sign in inside each agent's own CLI — we never store your subscription. <b>fake</b> runs offline for a dry run.</p>
@@ -845,7 +845,7 @@
       <div class="roles" id="setupRoles"></div>
       <div class="row" style="margin-top:12px; gap:8px"><button class="chip primary" id="setupSave">Save staff</button><span class="hint" id="setupMsg"></span></div>
       <p class="note">Not signed in? Run the agent's own login once — e.g. <b>claude auth login</b> in a terminal — then hit <b>Recheck</b> and it turns <b>ready</b>. Usage on a signed-in plan counts toward that plan, not billed as API. Default desks are <b>fake</b> (offline) until you set real ones.</p>`;
-    foot.parentNode.insertBefore(box, foot);
+    anchor.parentNode.insertBefore(box, anchor);   // put Setup at the TOP, above the newsroom
     const $=id=>box.querySelector('#'+id);
     if(LE.getRoot) LE.getRoot().then(r=>{ $('setupRoot').textContent=r; });
     $('setupPick').addEventListener('click', async()=>{ if(!LE.pickRoot) return; const r=await LE.pickRoot(); if(r){ $('setupRoot').textContent=r; refreshRoles(); $('setupMsg').textContent='Newsroom folder set.'; } });

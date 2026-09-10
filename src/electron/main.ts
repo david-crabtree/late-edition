@@ -13,6 +13,11 @@ import { paths } from '../main/store/paths.js';
 const here = dirname(fileURLToPath(import.meta.url));
 // The newsroom UI is the code-drawn prototype; the preload turns on "real mode".
 const RENDERER = join(here, '../../docs/prototype/newsroom-screen-test.html');
+// Prefer the built copy (dist/electron/preload.cjs), fall back to source — so a missed
+// postbuild copy can never silently drop the bridge and boot into sim mode.
+const PRELOAD = existsSync(join(here, 'preload.cjs'))
+  ? join(here, 'preload.cjs')
+  : join(here, '../../src/electron/preload.cjs');
 
 // ---- Where the newsroom lives (config, staff, editions + history) ----------
 // The user can point this at any folder from the Setup panel; the choice is persisted.
@@ -52,7 +57,7 @@ function createWindow(): void {
     backgroundColor: '#0a0d12',
     title: 'Late Edition',
     webPreferences: {
-      preload: join(here, 'preload.cjs'), // CommonJS preload — Electron loads it reliably
+      preload: PRELOAD, // CommonJS preload — Electron loads it reliably
       contextIsolation: true,
       sandbox: false,
       nodeIntegration: false,
