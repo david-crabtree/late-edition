@@ -10,6 +10,8 @@ export interface PipelineContext {
   forceProvider?: string;
   /** Override researcher passes for every story (0 disables). Undefined = per-beat/brief default. */
   research?: number;
+  /** When true (default), the Chief may pause a vague brief to ask the user for clarification. */
+  clarify: boolean;
   researcherTimeoutMs: number;
   reporterTimeoutMs: number;
   editorTimeoutMs: number;

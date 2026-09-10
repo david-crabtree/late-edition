@@ -4,6 +4,7 @@ import { loadNewsroom } from '../main/config/newsroom.js';
 import { scaffoldNewsroom } from '../main/config/scaffold.js';
 import type { DistributionConfig } from '../main/config/types.js';
 import { distributeEdition } from '../main/distribute/run.js';
+import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { detectAll, getProvider } from '../main/providers/registry.js';
 import type { BillingMode } from '../main/providers/types.js';
@@ -38,6 +39,8 @@ Options:
   --cap <tokens>         Hard token budget for the edition; work is curtailed once hit.
   --research <n>         Researcher passes per story before reporters write (0 disables).
                          Default: 0 for source-backed beats, 1 for a --brief topic.
+  --answer "<text>"      Answer a Chief's clarification question when resuming a brief.
+  --no-clarify           Skip the clarity check; run a --brief topic even if it's vague.
   --distribute           After printing, send to configured channels (opt-in).
   --dry-run              With --distribute/distribute: preview sends without sending.
   --once                 With watch: poll a single time and exit.
@@ -125,6 +128,8 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
   const brief = typeof flags.brief === 'string' ? flags.brief : undefined;
   const tokenCap = typeof flags.cap === 'string' ? Number(flags.cap) : undefined;
   const research = typeof flags.research === 'string' ? Number(flags.research) : undefined;
+  const clarificationAnswer = typeof flags.answer === 'string' ? flags.answer : undefined;
+  const clarify = flags['no-clarify'] === true ? false : undefined;
   const nr = typeof flags.newsroom === 'string' ? flags.newsroom : '.';
 
   if (isHalted(root)) {
@@ -143,11 +148,28 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
   );
   let result: Awaited<ReturnType<typeof runEdition>>;
   try {
-    result = await runEdition({ root, forceProvider, resumeId, brief, tokenCap, research });
+    result = await runEdition({
+      root,
+      forceProvider,
+      resumeId,
+      brief,
+      tokenCap,
+      research,
+      clarify,
+      clarificationAnswer,
+    });
   } catch (err) {
     if (err instanceof PipelineHaltError) {
       console.log(
         `\n⏸  Halted — the newsroom went idle mid-run. Work in progress is saved.\nClear the stop switch and resume when ready:\n  late-edition halt --clear --newsroom ${nr}\n${err.editionId ? `  late-edition run --resume ${err.editionId} --newsroom ${nr}\n` : ''}`,
+      );
+      return 0;
+    }
+    if (err instanceof ClarificationNeededError) {
+      console.log('\n❓ The Chief needs clarification before running this brief:\n');
+      err.questions.forEach((q, i) => console.log(`   ${i + 1}. ${q}`));
+      console.log(
+        `\nAnswer and resume:\n  late-edition run --resume ${err.editionId} --answer "your answer" --newsroom ${nr}\n(or re-run with --no-clarify to skip the check.)\n`,
       );
       return 0;
     }

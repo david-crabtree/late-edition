@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Signal } from '../core/signal.js';
-import type { CopyCheck, EditorCall, FiledReport, ResearchDossier } from '../pipeline/contracts.js';
+import type {
+  CopyCheck,
+  EditorCall,
+  FiledReport,
+  ResearchDossier,
+  TriageResult,
+} from '../pipeline/contracts.js';
 import type { AgentEvent, AgentJob, AgentProvider, Detection } from './types.js';
 
 /**
@@ -54,6 +60,8 @@ function readSignals(workingDir: string): Signal[] {
 
 function render(job: AgentJob, signals: Signal[]): string {
   switch (job.role) {
+    case 'triage':
+      return JSON.stringify(fakeTriage(signals, job), null, 2);
     case 'researcher':
       return JSON.stringify(fakeDossier(signals, job), null, 2);
     case 'reporter':
@@ -67,6 +75,22 @@ function render(job: AgentJob, signals: Signal[]): string {
     default:
       return 'Fake provider: nothing to say.';
   }
+}
+
+function fakeTriage(signals: Signal[], job: AgentJob): TriageResult {
+  // Deterministic: treat a brief as vague only if it ends in a question mark or literally
+  // contains "vague"/"unclear". Everything else runs, so normal briefs never pause offline.
+  const topic = (signals[0]?.title ?? job.userPrompt).trim();
+  const vague = /\bvague\b|\bunclear\b|\?\s*$/i.test(topic);
+  return vague
+    ? {
+        clear: false,
+        questions: [
+          `What specifically about "${topic.replace(/\?\s*$/, '')}" should the desk chase?`,
+          'Any particular angle, region, or timeframe?',
+        ],
+      }
+    : { clear: true };
 }
 
 function fakeDossier(signals: Signal[], job: AgentJob): ResearchDossier {

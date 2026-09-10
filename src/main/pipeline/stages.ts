@@ -17,6 +17,7 @@ import {
   resolveWriter,
   runJob,
 } from './agents.js';
+import { ClarificationNeededError } from './clarify.js';
 import type { PipelineContext } from './context.js';
 import { mapLimit } from './context.js';
 import type {
@@ -25,6 +26,7 @@ import type {
   FiledReport,
   ResearchDossier,
   ResearchFinding,
+  TriageResult,
 } from './contracts.js';
 import {
   type EditionDraft,
@@ -107,6 +109,80 @@ export async function stageAssign(draft: EditionDraft, ctx: PipelineContext): Pr
     ctx.log.emit('ASSIGN', 'assigned', { story: story.slug, reporter: reporter.providerId });
   }
   ctx.log.emit('ASSIGN', 'stage_done', { stories: draft.stories.length });
+}
+
+/**
+ * TRIAGE — for a free-text brief, the Chief decides whether it's clear enough to run before
+ * any research is spent. If it's too vague, the run pauses (ClarificationNeededError) with
+ * questions for the user; answering resumes it. Source-backed beats and cleared/answered
+ * briefs pass straight through.
+ */
+export async function stageTriage(draft: EditionDraft, ctx: PipelineContext): Promise<void> {
+  ctx.log.emit('TRIAGE', 'stage_start');
+  const briefStory = draft.stories.find((s) => s.signals[0]?.sourceType === 'brief');
+  const briefSignal = briefStory?.signals[0];
+  if (!ctx.clarify || !briefStory || !briefSignal) {
+    ctx.log.emit('TRIAGE', 'skipped', {});
+    return;
+  }
+  // On a resume the user has answered — fold the reply into the brief and carry on.
+  if (draft.clarification?.answer) {
+    briefSignal.body += `\n\nUser clarification: ${draft.clarification.answer}`;
+    ctx.log.emit('TRIAGE', 'clarified', { chars: draft.clarification.answer.length });
+    return;
+  }
+  const template = await loadPrompt(ctx.root, 'triage');
+  const resolved = resolveEditor(ctx.newsroom, ctx.forceProvider);
+  try {
+    const outcome = await runJob<TriageResult>({
+      role: 'triage',
+      resolved,
+      systemPrompt: renderTemplate(template, { paperName: draft.paperName }),
+      userPrompt: briefSignal.title,
+      signals: briefStory.signals,
+      timeoutMs: ctx.editorTimeoutMs,
+      wantJson: true,
+    });
+    recordUsage(draft, outcome.providerId, 'triage', outcome.usage);
+    const result = outcome.data;
+    const questions = Array.isArray(result?.questions)
+      ? result.questions.filter((q) => typeof q === 'string' && q.trim()).slice(0, 3)
+      : [];
+    if (result?.clear === false && questions.length > 0) {
+      draft.clarification = { questions };
+      writeStoryFile(
+        ctx.root,
+        draft.id,
+        briefStory.slug,
+        'clarification.md',
+        clarificationMarkdown(briefSignal.title, questions),
+      );
+      ctx.log.emit('TRIAGE', 'needs_clarification', { questions: questions.length });
+      throw new ClarificationNeededError(draft.id, questions);
+    }
+    // Clear (or a malformed reply we won't block on). Fold any tightened framing in.
+    if (result?.refinedBrief) briefSignal.body += `\n\nChief's framing: ${result.refinedBrief}`;
+    ctx.log.emit('TRIAGE', 'clear', {});
+  } catch (err) {
+    if (err instanceof ClarificationNeededError) throw err;
+    // A triage failure must not block the paper — proceed, and note it honestly.
+    const msg = err instanceof Error ? err.message : String(err);
+    draft.warnings.push(`Triage failed on the brief; ran without a clarity check: ${msg}`);
+    ctx.log.emit('TRIAGE', 'error', { error: msg });
+  }
+}
+
+function clarificationMarkdown(topic: string, questions: string[]): string {
+  return [
+    '# Awaiting clarification',
+    '',
+    `The Chief needs answers before running: "${topic}"`,
+    '',
+    ...questions.map((q, i) => `${i + 1}. ${q}`),
+    '',
+    'Answer and resume with:',
+    '`late-edition run --resume <editionId> --answer "your answer"`',
+  ].join('\n');
 }
 
 /** How many researcher passes a story gets: a `--research` override, else beat config,

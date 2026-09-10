@@ -29,6 +29,16 @@ export interface ResearchDossier {
   notes?: string;
 }
 
+/** The Chief's read on whether a brief is clear enough to run, before spending on research. */
+export interface TriageResult {
+  /** True if the brief is actionable as-is; false means the desk needs answers first. */
+  clear: boolean;
+  /** 1-3 crisp questions for the user when `clear` is false. */
+  questions?: string[];
+  /** Optionally, a tightened restatement of the brief the desk will run with. */
+  refinedBrief?: string;
+}
+
 /** A single filed report from one reporter on one story. */
 export interface FiledReport {
   /** Persona name or provider label of the reporter. */

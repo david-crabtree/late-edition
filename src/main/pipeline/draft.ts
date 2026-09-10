@@ -6,6 +6,7 @@ import type { CopyCheck, EditorCall, FiledReport } from './contracts.js';
 export const STAGES = [
   'WIRE',
   'ASSIGN',
+  'TRIAGE',
   'RESEARCH',
   'REPORT',
   'ANGLES',
@@ -54,6 +55,8 @@ export interface EditionDraft {
   briefs: Brief[];
   /** True for a tripwire-fired Late Extra bulletin. */
   lateExtra?: boolean;
+  /** Set when the Chief asked for clarification on a vague brief; `answer` resumes the run. */
+  clarification?: { questions: string[]; answer?: string };
   weatherLine?: string;
   editorsLog: string[];
   tokenUsage: TokenUsage[];

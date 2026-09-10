@@ -82,12 +82,16 @@ An **edition** is one newspaper. It's produced by an explicit, resumable pipelin
 writes plain files so a crashed run resumes and everything is greppable:
 
 ```
-WIRE → ASSIGN → RESEARCH → REPORT → ANGLES → CALL → WRITE → CHECK → PROOF → PRESS → DONE
+WIRE → ASSIGN → TRIAGE → RESEARCH → REPORT → ANGLES → CALL → WRITE → CHECK → PROOF → PRESS → DONE
 ```
 
 - **WIRE** — source adapters (pure fetch/diff, no LLM) emit `Signal`s.
 - **ASSIGN** — one provisional story per beat that has new signals; resolve which provider runs
   each role.
+- **TRIAGE** — for a free-text `--brief`, the Chief judges whether it's clear enough to run
+  *before* spending on research. Too vague → the run pauses (idle, resumable) and surfaces 1-3
+  questions; `run --resume <id> --answer "…"` folds the reply into the brief and continues.
+  Biased to proceed; skip with `--no-clarify`. Source-backed beats pass straight through.
 - **RESEARCH** — researcher agent(s) dig up sourced findings on the story's topic; each finding
   becomes a `Signal` the reporters can cite (so nothing unsourced reaches the paper). On by
   default for a `--brief` topic, opt-in per beat (`research: N`) otherwise. This is the tier that
@@ -408,9 +412,9 @@ Each line is one commit; see `git log` for the exact SHAs.
 - ✅ **Auth-aware cost framing** (commit `e8dfaa4`) — `Detection.billing` (subscription|api|free);
   a plan login is reassured ("counts toward your subscription usage, not billed"; USD only as a
   notional parenthetical), an API key gets a hard spend warning. `detect` labels each desk.
-- **Clarification requests** — agents (researcher/editor) should be able to ask the user for
-  clarification when a brief is too vague, instead of guessing: return a "needs clarification"
-  result, pause the run, surface the question, resume with an answer.
+- ✅ **Clarification requests** (this session) — a **TRIAGE** stage: the Chief pauses a vague
+  `--brief` and asks 1-3 questions (`ClarificationNeededError`, run idles & resumable); answer
+  with `run --resume <id> --answer "…"`, or skip with `--no-clarify`. See the pipeline diagram.
 - **Cadence control + per-newsroom history** — a "run the story" trigger with history/context saved
   to a local folder per newsroom (context the agents carry across runs). The autonomy unit:
   reporters holding multiple standing assignments on a cadence (extends `watch`).

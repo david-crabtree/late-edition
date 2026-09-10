@@ -10,6 +10,7 @@ import { nextEditionId, writeEdition } from '../store/edition-store.js';
 import { PipelineHaltError, isHalted } from '../store/halt.js';
 import { EditionLog } from '../store/log.js';
 import { paths } from '../store/paths.js';
+import { ClarificationNeededError } from './clarify.js';
 import type { PipelineContext } from './context.js';
 import {
   type EditionDraft,
@@ -28,6 +29,7 @@ import {
   stageProof,
   stageReport,
   stageResearch,
+  stageTriage,
   stageWire,
   stageWrite,
 } from './stages.js';
@@ -45,6 +47,10 @@ export interface RunOptions {
   tokenCap?: number;
   /** Override researcher passes for every story (0 disables research; overrides beat config). */
   research?: number;
+  /** Let the Chief pause a vague brief to ask for clarification (default true). */
+  clarify?: boolean;
+  /** The user's answer to a prior clarification request (used when resuming). */
+  clarificationAnswer?: string;
   researcherTimeoutMs?: number;
   reporterTimeoutMs?: number;
   editorTimeoutMs?: number;
@@ -66,6 +72,7 @@ const STAGE_RUNNERS: Record<
 > = {
   WIRE: stageWire,
   ASSIGN: stageAssign,
+  TRIAGE: stageTriage,
   RESEARCH: stageResearch,
   REPORT: stageReport,
   ANGLES: stageAngles,
@@ -93,6 +100,7 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     root: opts.root,
     forceProvider: opts.forceProvider,
     research: opts.research,
+    clarify: opts.clarify !== false,
     researcherTimeoutMs: opts.researcherTimeoutMs ?? 180_000,
     reporterTimeoutMs: opts.reporterTimeoutMs ?? 120_000,
     editorTimeoutMs: opts.editorTimeoutMs ?? 120_000,
@@ -104,6 +112,15 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     now,
   };
   if (opts.brief) ctx.log.emit('ASSIGN', 'brief', { topic: opts.brief });
+
+  // A resume that carries an answer to an earlier clarification request records it so
+  // TRIAGE folds it into the brief and proceeds instead of asking again.
+  if (opts.clarificationAnswer) {
+    draft.clarification = {
+      questions: draft.clarification?.questions ?? [],
+      answer: opts.clarificationAnswer,
+    };
+  }
 
   const persist = () => saveDraft(opts.root, draft);
   persist();
@@ -132,10 +149,14 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     try {
       await STAGE_RUNNERS[stage](draft, ctx);
     } catch (err) {
-      persist(); // keep the stage so `resume` can retry (or continue after a halt)
+      persist(); // keep the stage so `resume` can retry (or continue after a halt/clarify)
       if (err instanceof PipelineHaltError) {
         ctx.log.emit(stage, 'halted', {});
         throw new PipelineHaltError(draft.id); // carry the edition id up for a clean resume hint
+      }
+      if (err instanceof ClarificationNeededError) {
+        ctx.log.emit(stage, 'awaiting_clarification', { questions: err.questions.length });
+        throw err;
       }
       ctx.log.emit(stage, 'fatal', { error: err instanceof Error ? err.message : String(err) });
       throw err;

@@ -100,8 +100,9 @@ export async function runWatchOnce(opts: WatchOptions): Promise<WatchResult> {
     newsroom,
     root: opts.root,
     forceProvider: opts.forceProvider,
-    // A Late Extra is a fast, reactive bulletin — it deliberately skips the RESEARCH stage,
-    // so this timeout is only here to satisfy the shared context type.
+    // A Late Extra is a fast, reactive bulletin — it deliberately skips RESEARCH and never
+    // pauses to ask for clarification, so these only satisfy the shared context type.
+    clarify: false,
     researcherTimeoutMs: opts.reporterTimeoutMs ?? 120_000,
     reporterTimeoutMs: opts.reporterTimeoutMs ?? 120_000,
     editorTimeoutMs: opts.editorTimeoutMs ?? 120_000,
