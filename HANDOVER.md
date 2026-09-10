@@ -77,12 +77,16 @@ An **edition** is one newspaper. It's produced by an explicit, resumable pipelin
 writes plain files so a crashed run resumes and everything is greppable:
 
 ```
-WIRE → ASSIGN → REPORT → ANGLES → CALL → WRITE → CHECK → PROOF → PRESS → DONE
+WIRE → ASSIGN → RESEARCH → REPORT → ANGLES → CALL → WRITE → CHECK → PROOF → PRESS → DONE
 ```
 
 - **WIRE** — source adapters (pure fetch/diff, no LLM) emit `Signal`s.
 - **ASSIGN** — one provisional story per beat that has new signals; resolve which provider runs
   each role.
+- **RESEARCH** — researcher agent(s) dig up sourced findings on the story's topic; each finding
+  becomes a `Signal` the reporters can cite (so nothing unsourced reaches the paper). On by
+  default for a `--brief` topic, opt-in per beat (`research: N`) otherwise. This is the tier that
+  makes a bare topic into a genuinely reported story instead of model-memory prose.
 - **REPORT** — one *or more* reporters investigate each story and file JSON reports (facts tied
   to signal ids, a proposed angle, confidence, urgency).
 - **ANGLES** — collect the independent angle memos; detect disagreement.
@@ -321,6 +325,20 @@ It has grown from a single-desk bust into a **whole newsroom floor**:
 
 ### 6.6 Progress log (newest first)
 Each line is one commit; see `git log` for the exact SHAs.
+- **The researcher tier — the "not paper thin" pass** (this session): added a **RESEARCH**
+  stage between ASSIGN and REPORT so the org is now the full four tiers David wants —
+  **researchers → reporters → copywriters (rewrite desk) → editors (managing editor + copy
+  desk)**, each still on its own provider. A researcher files a `ResearchDossier` of sourced
+  findings; **each finding becomes a `Signal`** (`sourceType: 'research'`, id `research:<hash>`),
+  so the copy-desk citation check, morgue and renderer work unchanged and no unsourced URL can
+  reach the paper. Research is on by default for a `--brief` topic (a bare topic needs digging),
+  opt-in per beat (`research: N`), and tunable per run (`--research <n>`, 0 disables); findings
+  are capped (`maxFindings`, default 8) and the researcher desk defaults to a cheaper model.
+  **No invented CLI flags** — researchers browse via their own agentic CLI; providers that can't
+  browse (`fake`, one-shot `directapi`, most `ollama`) still run but warn that findings may be
+  model-memory only. All validated on `--provider fake`; `npm run check` green (54 tests). Still
+  **never run with a real web-capable CLI** (none installed) — that's the outstanding proof.
+  Next autonomy unit: reporters on a cadence holding multiple standing assignments (extends `watch`).
 - **The product turn — brief-the-Chief, budgets, and the real-engine bridge** (`2590a7a`→`07b312e`):
   **the product's shape is now settled: a newsroom you brief like a publisher** — you tell the
   Chief a topic (a competitor, a rumour, "leaked GTA 6 build"), staff-with-personalities research

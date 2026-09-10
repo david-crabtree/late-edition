@@ -35,6 +35,14 @@ export function resolveEditor(newsroom: Newsroom, force?: string): ResolvedRole 
   return resolve(newsroom.staff.managingEditor, force);
 }
 
+export function resolveResearcher(
+  newsroom: Newsroom,
+  beatId: string,
+  force?: string,
+): ResolvedRole {
+  return resolve(newsroom.staff.researchers[beatId] ?? newsroom.staff.researchers.default, force);
+}
+
 export function resolveReporter(newsroom: Newsroom, beatId: string, force?: string): ResolvedRole {
   return resolve(newsroom.staff.reporters[beatId] ?? newsroom.staff.reporters.default, force);
 }

@@ -6,6 +6,7 @@ import type { CopyCheck, EditorCall, FiledReport } from './contracts.js';
 export const STAGES = [
   'WIRE',
   'ASSIGN',
+  'RESEARCH',
   'REPORT',
   'ANGLES',
   'CALL',

@@ -4,6 +4,31 @@
  * Keeping them in one place means the test double and the live path never drift.
  */
 
+/**
+ * One sourced item a researcher dug up on a story's topic. Each finding becomes a
+ * {@link Signal} the reporters can cite — so a URL a researcher never actually found
+ * cannot end up in the paper (the copy desk verifies every citation resolves).
+ */
+export interface ResearchFinding {
+  /** Short headline for the item found. */
+  title: string;
+  /** One- or two-sentence summary of what the source says, in plain text. */
+  summary: string;
+  /** The source URL. Findings without a usable URL are dropped as unverifiable. */
+  url?: string;
+  /** Best-effort publication date (ISO-8601), if the source gave one. */
+  published?: string;
+  /** How relevant to the brief the researcher judges this, 0..1. */
+  relevance?: number;
+}
+
+/** What a researcher files after a pass: the sourced findings plus a coverage note. */
+export interface ResearchDossier {
+  findings: ResearchFinding[];
+  /** What was and wasn't found — gaps, dead ends, what a second pass should chase. */
+  notes?: string;
+}
+
 /** A single filed report from one reporter on one story. */
 export interface FiledReport {
   /** Persona name or provider label of the reporter. */

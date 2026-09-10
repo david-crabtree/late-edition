@@ -199,3 +199,40 @@ Reversed part of D1.7: `init` no longer copies the prompt templates into each ne
 (they went stale when the built-in defaults improved). Instead it writes a
 `newsroom/prompts/README.md` explaining that a `<role>.md` dropped there overrides the
 built-in. Newsrooms now track the latest prompts automatically and stay customisable.
+
+## Researcher tier (the "not paper thin" pass)
+
+### DR.1 — A RESEARCH stage between ASSIGN and REPORT
+The original chain topped out at reporters, who only saw pre-scraped `Signal`s — so a
+`--brief "<topic>"` run had exactly one signal (the topic string) and the reporter wrote
+from model memory. That's the paper-thin failure mode. Added a **RESEARCH** stage: one or
+more researcher agents dig up sourced findings on the story's topic *before* the reporters
+write. This makes the org the four tiers we actually want — **researchers → reporters →
+copywriters (rewrite desk) → editors (managing editor + copy desk)** — with each tier still
+mapped to its own provider in `staff.yaml`.
+
+### DR.2 — Findings ARE signals (reuse, don't fork the pipeline)
+A researcher returns a `ResearchDossier` (`findings[]` with `title`/`summary`/`url`/…). Each
+finding is converted to a normal `Signal` (`sourceType: 'research'`, id
+`research:<hash>`) and folded into the story's signals + the wire archive. Consequence: the
+copy-desk citation check, the morgue, and the paper renderer all work **unchanged** — a URL
+a researcher never actually found can't reach the paper, because the deterministic copy desk
+already verifies every `[sourceId:hash]` citation resolves to a real signal. This was the
+big lever: one contract + a converter instead of a parallel "research" code path.
+
+### DR.3 — No invented CLI flags for web tools; lean on the agent + warn
+`docs/providers-research.md` verifies **no** web-tool/permission flags for any CLI, and the
+repo rule is "never invent flags". So the engine does **not** hard-code `--allowedTools`
+etc. Researchers run on an agentic CLI that browses natively (the prompt tells them to use
+their web tools and return real URLs); providers whose `capabilities.webSearch` is false
+(`fake`, one-shot `directapi`, most `ollama`) still run but the stage pushes a warning that
+findings may be model-memory only. Wiring a verified per-CLI web flag later is a one-file,
+per-provider change.
+
+### DR.4 — Efficiency defaults (research is the token-hungry tier)
+Research is **off by default for source-backed beats** (opt in with `research: N` per beat)
+and **on (1 pass) by default for a `--brief` topic**, since a bare topic needs digging.
+`--research <n>` overrides per run (0 disables entirely). Findings are capped per story
+(`maxFindings`, default 8) to bound downstream tokens, and the scaffold points the
+researcher desk at a *cheaper* model. Research spend counts toward the existing `--cap`
+token budget and is attributed to a `researcher` role in the reel ledger.

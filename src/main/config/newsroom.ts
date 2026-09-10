@@ -108,6 +108,7 @@ function role(raw: unknown, file: string, label: string): RoleAssignment {
 
 function normalizeStaff(raw: unknown, file: string): StaffConfig {
   const r = asRecord(raw, file);
+  const researchersRaw = asRecord(r.researchers ?? {}, file);
   const reportersRaw = asRecord(r.reporters ?? {}, file);
   const writersRaw = asRecord(r.writers ?? {}, file);
 
@@ -116,6 +117,15 @@ function normalizeStaff(raw: unknown, file: string): StaffConfig {
   };
   for (const [k, v] of Object.entries(reportersRaw)) {
     if (k !== 'default') reporters[k] = role(v, file, `reporters.${k}`);
+  }
+
+  // Researchers fall back to the reporter assignment when a newsroom doesn't name them,
+  // so an existing config keeps working and simply reports without a separate dig.
+  const researchers: StaffConfig['researchers'] = {
+    default: role(researchersRaw.default ?? reporters.default, file, 'researchers.default'),
+  };
+  for (const [k, v] of Object.entries(researchersRaw)) {
+    if (k !== 'default') researchers[k] = role(v, file, `researchers.${k}`);
   }
 
   const writers: StaffConfig['writers'] = {
@@ -131,6 +141,7 @@ function normalizeStaff(raw: unknown, file: string): StaffConfig {
       file,
       'managing_editor',
     ),
+    researchers,
     reporters,
     writers,
     copyDesk: role(r.copy_desk ?? r.copyDesk ?? { provider: 'fake' }, file, 'copy_desk'),
@@ -174,6 +185,8 @@ function normalizeBeat(raw: unknown, file: string, fallbackId: string): BeatConf
     name,
     reporter: str(r.reporter),
     angles: num(r.angles) ?? 1,
+    research: r.research === true ? 1 : (num(r.research) ?? 0),
+    maxFindings: num(r.max_findings ?? r.maxFindings),
     mixProviders: Boolean(r.mix_providers ?? r.mixProviders ?? false),
     urgencyThreshold: num(r.urgency_threshold ?? r.urgencyThreshold),
     tripwires: normalizeTripwires(r.tripwires, file),

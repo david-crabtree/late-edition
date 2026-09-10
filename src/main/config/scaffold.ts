@@ -77,6 +77,13 @@ const STAFF_YAML = `# Which provider runs each desk. Everything defaults to the 
 
 managing_editor: { provider: fake }   # ideally your strongest model, e.g. claude
 
+# The desk that gathers sourced intel before reporters write. Point it at a web-capable
+# agent (e.g. claude) so it can actually browse; ideally a *cheaper* model, since research
+# is the token-hungry tier. Falls back to your reporter if you leave it out. Turn research
+# on per beat with \`research: 1\` (or run \`... --brief "<topic>" \` — a brief digs by default).
+researchers:
+  default: { provider: fake }         # e.g. { provider: claude, model: haiku }
+
 reporters:
   default: { provider: fake }         # cheaper models; e.g. { provider: codex }
   # the_codebase: { provider: claude }

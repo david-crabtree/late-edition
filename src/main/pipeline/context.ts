@@ -8,6 +8,9 @@ export interface PipelineContext {
   root: string;
   /** When set, forces this provider for every role (e.g. `fake`). */
   forceProvider?: string;
+  /** Override researcher passes for every story (0 disables). Undefined = per-beat/brief default. */
+  research?: number;
+  researcherTimeoutMs: number;
   reporterTimeoutMs: number;
   editorTimeoutMs: number;
   writerTimeoutMs: number;

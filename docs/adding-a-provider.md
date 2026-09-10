@@ -77,3 +77,14 @@ In a newsroom's `staff.yaml`:
 reporters:
   default: { provider: mytool, model: some-model }
 ```
+
+## 5. The `researcher` role (web browsing)
+
+`job.role` can be `researcher` — the tier that gathers sourced findings before reporters
+write. Researchers are the one role expected to browse the web. If your CLI has a web/search
+tool, branch on `job.role === 'researcher'` in `run()` to enable it (once you've **verified**
+the exact flag against the tool's docs — never invent one). Set `capabilities.webSearch`
+accordingly: when it's `false`, the RESEARCH stage still runs your provider but warns the user
+that findings may come from model memory rather than live sources. Point a newsroom's
+`researchers:` desk at your provider in `staff.yaml`, ideally on a cheaper model — research is
+the token-hungry tier.

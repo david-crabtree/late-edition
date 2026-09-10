@@ -1,6 +1,7 @@
 import { runSource } from '../adapters/run.js';
+import type { BeatConfig } from '../config/types.js';
 import type { Correction, Edition, SourceRef, Story } from '../core/edition.js';
-import type { Signal } from '../core/signal.js';
+import { type Signal, makeSignalId, shortHash } from '../core/signal.js';
 import { writeStoryFile } from '../store/edition-store.js';
 import { relatedCoverage, scanMorgue, terms } from '../store/morgue.js';
 import { paths } from '../store/paths.js';
@@ -11,12 +12,19 @@ import {
   resolveEditor,
   resolveReporter,
   resolveReporterPool,
+  resolveResearcher,
   resolveWriter,
   runJob,
 } from './agents.js';
 import type { PipelineContext } from './context.js';
 import { mapLimit } from './context.js';
-import type { CopyCheck, EditorCall, FiledReport } from './contracts.js';
+import type {
+  CopyCheck,
+  EditorCall,
+  FiledReport,
+  ResearchDossier,
+  ResearchFinding,
+} from './contracts.js';
 import {
   type EditionDraft,
   type StoryDraft,
@@ -98,6 +106,159 @@ export async function stageAssign(draft: EditionDraft, ctx: PipelineContext): Pr
     ctx.log.emit('ASSIGN', 'assigned', { story: story.slug, reporter: reporter.providerId });
   }
   ctx.log.emit('ASSIGN', 'stage_done', { stories: draft.stories.length });
+}
+
+/** How many researcher passes a story gets: a `--research` override, else beat config,
+ *  and a free-text brief always gets at least one pass (a bare topic needs digging). */
+function researchPassesFor(story: StoryDraft, beat: BeatConfig | undefined, ctx: PipelineContext) {
+  if (ctx.research !== undefined) return Math.max(0, ctx.research);
+  const configured = beat?.research ?? 0;
+  const fromBrief = story.signals[0]?.sourceType === 'brief';
+  return fromBrief ? Math.max(1, configured) : configured;
+}
+
+interface ResearchTask {
+  story: StoryDraft;
+  pass: number;
+  passes: number;
+}
+
+/**
+ * RESEARCH — the researcher desk digs up sourced findings on each story's topic before
+ * the reporters write. Every finding becomes a `Signal`, so a URL a researcher never
+ * actually found can't reach the paper (the copy desk verifies each citation resolves),
+ * and the morgue/rendering pick research sources up with no special-casing.
+ */
+export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): Promise<void> {
+  ctx.log.emit('RESEARCH', 'stage_start');
+  const template = await loadPrompt(ctx.root, 'researcher');
+
+  const tasks: ResearchTask[] = [];
+  for (const story of draft.stories) {
+    const beat = ctx.newsroom.beats.find((b) => b.id === story.beatId);
+    const passes = researchPassesFor(story, beat, ctx);
+    for (let pass = 0; pass < passes; pass++) tasks.push({ story, pass, passes });
+  }
+  if (tasks.length === 0) {
+    ctx.log.emit('RESEARCH', 'stage_done', { researched: 0 });
+    return;
+  }
+
+  const collected = await mapLimit(tasks, ctx.concurrency, async (t) => {
+    const resolved = resolveResearcher(ctx.newsroom, t.story.beatId, ctx.forceProvider);
+    if (!resolved.provider.capabilities.webSearch) {
+      draft.warnings.push(
+        `Researcher (${resolved.providerId}) can't browse the web — findings on "${t.story.slug}" may be from model memory only, not live sources.`,
+      );
+    }
+    const topic = t.story.signals[0]?.title ?? t.story.beatName;
+    const beat = ctx.newsroom.beats.find((b) => b.id === t.story.beatId);
+    const systemPrompt = renderTemplate(template, {
+      paperName: draft.paperName,
+      beatName: t.story.beatName,
+      style: ctx.newsroom.style,
+      topic,
+      maxFindings: String(beat?.maxFindings ?? DEFAULT_MAX_FINDINGS),
+    });
+    ctx.log.emit('researcher', 'leave_desk', { story: t.story.slug, pass: t.pass + 1 });
+    try {
+      const outcome = await runJob<ResearchDossier>({
+        role: 'researcher',
+        resolved,
+        systemPrompt,
+        userPrompt: formatSignals(t.story.signals),
+        signals: t.story.signals,
+        timeoutMs: ctx.researcherTimeoutMs,
+        wantJson: true,
+      });
+      recordUsage(draft, outcome.providerId, 'researcher', outcome.usage);
+      const findings = normalizeFindings(outcome.data);
+      ctx.log.emit('researcher', 'filed', { story: t.story.slug, findings: findings.length });
+      return { story: t.story, findings };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      draft.warnings.push(
+        `Researcher (${resolved.providerId}) failed on "${t.story.slug}": ${msg}`,
+      );
+      ctx.log.emit('researcher', 'error', { story: t.story.slug, error: msg });
+      return { story: t.story, findings: [] as ResearchFinding[] };
+    }
+  });
+
+  // Fold findings into each story's signals: dedupe against what's there and each other,
+  // cap per story to bound downstream tokens, and archive them to the wire like any signal.
+  for (const story of draft.stories) {
+    const beat = ctx.newsroom.beats.find((b) => b.id === story.beatId);
+    const cap = beat?.maxFindings ?? DEFAULT_MAX_FINDINGS;
+    const found = collected.filter((c) => c.story === story).flatMap((c) => c.findings);
+    const seen = new Set(story.signals.map((s) => s.id));
+    const added: Signal[] = [];
+    for (const signal of found.map((f) => findingToSignal(f, ctx.now))) {
+      if (seen.has(signal.id)) continue;
+      seen.add(signal.id);
+      added.push(signal);
+      if (added.length >= cap) break;
+    }
+    if (added.length === 0) continue;
+    story.signals.push(...added);
+    appendToWire(ctx.root, added);
+    writeStoryFile(ctx.root, draft.id, story.slug, 'research.md', dossierMarkdown(found, added));
+    ctx.log.emit('researcher', 'merged', { story: story.slug, added: added.length });
+  }
+  ctx.log.emit('RESEARCH', 'stage_done', { researched: tasks.length });
+}
+
+const DEFAULT_MAX_FINDINGS = 8;
+
+/** Coerce whatever the researcher returned into clean findings with a real URL. */
+export function normalizeFindings(data: ResearchDossier | undefined): ResearchFinding[] {
+  const raw = Array.isArray(data?.findings) ? data.findings : [];
+  const out: ResearchFinding[] = [];
+  for (const f of raw) {
+    const title = typeof f?.title === 'string' ? f.title.trim() : '';
+    const url = typeof f?.url === 'string' ? f.url.trim() : '';
+    // A finding with no usable source URL is exactly the fabrication risk we're guarding
+    // against — drop it rather than let an unsourced claim into the paper.
+    if (!title || !/^https?:\/\//i.test(url)) continue;
+    out.push({
+      title,
+      summary: typeof f.summary === 'string' ? f.summary.trim() : '',
+      url,
+      published: typeof f.published === 'string' ? f.published : undefined,
+      relevance: clamp01(f.relevance, 0.5),
+    });
+  }
+  return out;
+}
+
+/** Turn one sourced finding into a normal Signal the rest of the pipeline can cite. */
+export function findingToSignal(f: ResearchFinding, now: Date): Signal {
+  const hash = shortHash('research', f.url, f.title);
+  return {
+    id: makeSignalId('research', hash),
+    sourceId: 'research',
+    sourceType: 'research',
+    timestamp: f.published ?? now.toISOString(),
+    title: f.title,
+    body: f.summary,
+    url: f.url,
+    hash,
+    meta: { relevance: f.relevance },
+  };
+}
+
+function dossierMarkdown(found: ResearchFinding[], added: Signal[]): string {
+  const kept = new Set(added.map((s) => s.url));
+  return [
+    '# Research dossier',
+    '',
+    `${found.length} finding(s) filed; ${added.length} kept as citable sources.`,
+    '',
+    ...added.map((s) => `- **${s.title}** [${s.id}]\n  ${s.body}\n  ${s.url ?? ''}`.trimEnd()),
+    found.length > added.length
+      ? `\n_${found.length - kept.size} finding(s) were duplicates or over the cap._`
+      : '',
+  ].join('\n');
 }
 
 interface ReportTask {

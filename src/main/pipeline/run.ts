@@ -19,6 +19,7 @@ import {
   stageCheck,
   stageProof,
   stageReport,
+  stageResearch,
   stageWire,
   stageWrite,
 } from './stages.js';
@@ -34,6 +35,9 @@ export interface RunOptions {
   brief?: string;
   /** Hard cap on total tokens for this edition (overrides config). */
   tokenCap?: number;
+  /** Override researcher passes for every story (0 disables research; overrides beat config). */
+  research?: number;
+  researcherTimeoutMs?: number;
   reporterTimeoutMs?: number;
   editorTimeoutMs?: number;
   writerTimeoutMs?: number;
@@ -54,6 +58,7 @@ const STAGE_RUNNERS: Record<
 > = {
   WIRE: stageWire,
   ASSIGN: stageAssign,
+  RESEARCH: stageResearch,
   REPORT: stageReport,
   ANGLES: stageAngles,
   CALL: stageCall,
@@ -79,6 +84,8 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     newsroom,
     root: opts.root,
     forceProvider: opts.forceProvider,
+    research: opts.research,
+    researcherTimeoutMs: opts.researcherTimeoutMs ?? 180_000,
     reporterTimeoutMs: opts.reporterTimeoutMs ?? 120_000,
     editorTimeoutMs: opts.editorTimeoutMs ?? 120_000,
     writerTimeoutMs: opts.writerTimeoutMs ?? 120_000,

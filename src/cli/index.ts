@@ -33,6 +33,8 @@ Options:
   --brief "<topic>"      Brief the Chief: put this topic on the front page (seeds one
                          story and runs ASSIGN → PRESS; no sources needed).
   --cap <tokens>         Hard token budget for the edition; work is curtailed once hit.
+  --research <n>         Researcher passes per story before reporters write (0 disables).
+                         Default: 0 for source-backed beats, 1 for a --brief topic.
   --distribute           After printing, send to configured channels (opt-in).
   --dry-run              With --distribute/distribute: preview sends without sending.
   --once                 With watch: poll a single time and exit.
@@ -111,13 +113,16 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
   const resumeId = typeof flags.resume === 'string' ? flags.resume : undefined;
   const brief = typeof flags.brief === 'string' ? flags.brief : undefined;
   const tokenCap = typeof flags.cap === 'string' ? Number(flags.cap) : undefined;
+  const research = typeof flags.research === 'string' ? Number(flags.research) : undefined;
 
   console.log(
     `Running an edition from ${root}${forceProvider ? ` (provider: ${forceProvider})` : ''}${
       brief ? `\n  Brief for the Chief: "${brief}"` : ''
-    }${tokenCap ? `\n  Token cap: ${tokenCap}` : ''}…\n`,
+    }${tokenCap ? `\n  Token cap: ${tokenCap}` : ''}${
+      research !== undefined ? `\n  Research passes: ${research}` : ''
+    }…\n`,
   );
-  const result = await runEdition({ root, forceProvider, resumeId, brief, tokenCap });
+  const result = await runEdition({ root, forceProvider, resumeId, brief, tokenCap, research });
 
   const spent = result.edition.tokenUsage.reduce(
     (n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0),

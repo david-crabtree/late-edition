@@ -45,6 +45,17 @@ export interface RoleAssignment {
 
 export interface StaffConfig {
   managingEditor: RoleAssignment;
+  /**
+   * The desk(s) that gather sourced intel before the reporters write. Falls back to the
+   * reporter assignment when unset. Point this at a web-capable agent (e.g. claude) —
+   * ideally a cheaper model, since research is the token-hungry tier.
+   */
+  researchers: {
+    /** Fallback for beats without a specific researcher assignment. */
+    default: RoleAssignment;
+    /** Per-beat overrides, keyed by beat id. */
+    [beatId: string]: RoleAssignment;
+  };
   reporters: {
     /** Fallback for beats without a specific reporter assignment. */
     default: RoleAssignment;
@@ -66,6 +77,14 @@ export interface BeatConfig {
   reporter?: string;
   /** How many independent angles to commission per story. Default 1. */
   angles?: number;
+  /**
+   * How many researcher passes to run before the reporters, gathering sourced findings.
+   * 0 (the default for source-backed beats) skips research and reports straight from the
+   * wire. A free-text `--brief` topic defaults to 1 pass, since a bare topic needs digging.
+   */
+  research?: number;
+  /** Cap on findings kept per story from research, to bound downstream tokens. Default 8. */
+  maxFindings?: number;
   /** Prefer different providers across angles for the same story. */
   mixProviders?: boolean;
   /** Per-beat override of the stop-the-press urgency threshold (0-1). */
