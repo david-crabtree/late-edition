@@ -71,27 +71,39 @@ distribution:
     #   base_url: "https://your-host.example/editions"   # optional; omit for local file links
 `;
 
-const STAFF_YAML = `# Which provider runs each desk. Everything defaults to the offline \`fake\` provider
-# so a fresh newsroom runs with no tokens and no CLIs. Switch a desk to a real
-# provider once \`late-edition detect\` shows it as ready, e.g. { provider: claude }.
+const STAFF_YAML = `# Which provider (and model) runs each desk. Everything defaults to the offline \`fake\`
+# provider so a fresh newsroom runs with no tokens and no CLIs. Switch desks to a real
+# provider once \`late-edition detect\` shows it as ready.
+#
+# COST: research is by far the most expensive tier (it browses the web), and the managing
+# editor sets the whole paper's judgement — so the cheap-but-effective recipe is to tier the
+# models: a strong model for the editor, mid for reporters/writers, and a CHEAP model for the
+# token-hungry researcher and the strict-but-mechanical copy desk. Configure the models here
+# and run WITHOUT \`--provider\` (that flag forces one provider AND drops per-desk models).
+#
+# Ready-to-use single-subscription example (uncomment, needs \`claude\` ready):
+#   managing_editor: { provider: claude, model: opus }
+#   researchers: { default: { provider: claude, model: haiku } }
+#   reporters:   { default: { provider: claude, model: sonnet } }
+#   writers:     { default: { provider: claude, model: sonnet } }
+#   copy_desk:   { provider: claude, model: haiku }
 
-managing_editor: { provider: fake }   # ideally your strongest model, e.g. claude
+managing_editor: { provider: fake }   # your strongest model — this desk makes the call
 
-# The desk that gathers sourced intel before reporters write. Point it at a web-capable
-# agent (e.g. claude) so it can actually browse; ideally a *cheaper* model, since research
-# is the token-hungry tier. Falls back to your reporter if you leave it out. Turn research
-# on per beat with \`research: 1\` (or run \`... --brief "<topic>" \` — a brief digs by default).
+# The desk that gathers sourced intel before reporters write. Point it at a web-capable agent
+# so it can actually browse; keep it on a CHEAP model — this is the token-hungry tier. Falls
+# back to your reporter if omitted. On per beat with \`research: 1\`; a \`--brief\` topic digs
+# by default. Bound the dig with \`max_findings\` on a beat (default 6).
 researchers:
   default: { provider: fake }         # e.g. { provider: claude, model: haiku }
 
 reporters:
-  default: { provider: fake }         # cheaper models; e.g. { provider: codex }
-  # the_codebase: { provider: claude }
+  default: { provider: fake }         # mid model; e.g. { provider: claude, model: sonnet }
 
 writers:
-  default: { provider: fake }         # e.g. { provider: claude }
+  default: { provider: fake }         # mid model; e.g. { provider: claude, model: sonnet }
 
-copy_desk: { provider: fake }         # cheap + strict; e.g. { provider: ollama, model: llama3.2 }
+copy_desk: { provider: fake }         # cheap + strict; e.g. { provider: claude, model: haiku }
 `;
 
 const STYLE_MD = `# House style — "Noir"

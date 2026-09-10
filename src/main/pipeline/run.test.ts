@@ -48,11 +48,11 @@ describe('runEdition (fake provider, offline)', () => {
     expect(html).toContain('<!doctype html>');
     expect(html).toContain('The Daily Bit');
 
-    // Every story's cited sources appear in the rendered paper (traceability).
+    // Every story's cited sources appear in the rendered paper's Sources list (traceability).
     for (const story of result.edition.stories) {
       expect(story.sources.length).toBeGreaterThan(0);
       for (const ref of story.sources) {
-        expect(md).toContain(ref.signalId);
+        expect(md).toContain(ref.title);
       }
     }
 

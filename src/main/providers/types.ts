@@ -48,7 +48,7 @@ export interface AgentJob {
 export type AgentEvent =
   | { type: 'start'; provider: string; model?: string }
   | { type: 'text'; text: string }
-  | { type: 'usage'; inputTokens?: number; outputTokens?: number }
+  | { type: 'usage'; inputTokens?: number; outputTokens?: number; costUsd?: number }
   | { type: 'done'; output: string }
   | { type: 'error'; error: string };
 
@@ -64,16 +64,23 @@ export interface AgentProvider {
 }
 
 /** Convenience: drain a provider run to its final text output. */
+export interface AgentUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  /** Provider-reported cost of the call in USD, when the CLI surfaces it. */
+  costUsd?: number;
+}
+
 export async function runToText(
   provider: AgentProvider,
   job: AgentJob,
-): Promise<{ output: string; usage?: { inputTokens?: number; outputTokens?: number } }> {
+): Promise<{ output: string; usage?: AgentUsage }> {
   let output = '';
-  let usage: { inputTokens?: number; outputTokens?: number } | undefined;
+  let usage: AgentUsage | undefined;
   for await (const ev of provider.run(job)) {
     if (ev.type === 'done') output = ev.output;
     else if (ev.type === 'usage')
-      usage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens };
+      usage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens, costUsd: ev.costUsd };
     else if (ev.type === 'error') throw new Error(`[${provider.id}] ${ev.error}`);
   }
   return { output, usage };

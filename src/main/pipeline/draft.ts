@@ -82,7 +82,7 @@ export function recordUsage(
   draft: EditionDraft,
   providerId: string,
   role: string,
-  usage?: { inputTokens?: number; outputTokens?: number },
+  usage?: { inputTokens?: number; outputTokens?: number; costUsd?: number },
 ): void {
   if (!usage) return;
   draft.tokenUsage.push({
@@ -90,12 +90,18 @@ export function recordUsage(
     role,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
+    costUsd: usage.costUsd,
   });
 }
 
 /** Total tokens (input + output) recorded so far this edition. */
 export function sumTokens(draft: EditionDraft): number {
   return draft.tokenUsage.reduce((n, u) => n + (u.inputTokens ?? 0) + (u.outputTokens ?? 0), 0);
+}
+
+/** Total provider-reported cost (USD) recorded so far this edition. */
+export function sumCostUsd(draft: EditionDraft): number {
+  return draft.tokenUsage.reduce((n, u) => n + (u.costUsd ?? 0), 0);
 }
 
 /** A URL/file-safe slug for a beat/story. */

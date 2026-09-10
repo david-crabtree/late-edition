@@ -83,7 +83,7 @@ export interface BeatConfig {
    * wire. A free-text `--brief` topic defaults to 1 pass, since a bare topic needs digging.
    */
   research?: number;
-  /** Cap on findings kept per story from research, to bound downstream tokens. Default 8. */
+  /** Cap on findings kept per story from research, to bound downstream tokens. Default 6. */
   maxFindings?: number;
   /** Prefer different providers across angles for the same story. */
   mixProviders?: boolean;

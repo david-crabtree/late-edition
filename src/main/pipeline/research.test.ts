@@ -81,8 +81,9 @@ describe('a --brief run researches by default (fake provider, offline)', () => {
     const researchRefs = (story?.sources ?? []).filter((r) => r.signalId.startsWith('research:'));
     expect(researchRefs.length).toBeGreaterThan(0);
 
+    // The finished paper cites the researched sources by URL (not the raw signal id).
     const md = readFileSync(join(result.editionDir, 'edition.md'), 'utf8');
-    for (const ref of researchRefs) expect(md).toContain(ref.signalId);
+    for (const ref of researchRefs) expect(md).toContain(String(ref.url));
 
     // Token accounting attributes spend to the researcher tier.
     expect(result.edition.tokenUsage.some((u) => u.role === 'researcher')).toBe(true);

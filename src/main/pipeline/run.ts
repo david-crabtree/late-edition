@@ -10,7 +10,14 @@ import { nextEditionId, writeEdition } from '../store/edition-store.js';
 import { EditionLog } from '../store/log.js';
 import { paths } from '../store/paths.js';
 import type { PipelineContext } from './context.js';
-import { type EditionDraft, type Stage, nextStage, slugify, sumTokens } from './draft.js';
+import {
+  type EditionDraft,
+  type Stage,
+  nextStage,
+  slugify,
+  sumCostUsd,
+  sumTokens,
+} from './draft.js';
 import {
   assembleEdition,
   stageAngles,
@@ -162,9 +169,13 @@ function newDraft(
 function briefDraft(root: string, newsroom: Newsroom, topic: string, now: Date): EditionDraft {
   const date = now.toISOString().slice(0, 10);
   const { id, number } = nextEditionId(root, date);
+  // A brief is topic-agnostic: use a synthetic `brief` beat so it never inherits an
+  // arbitrary configured beat's angles/research/name (which would run extra reporters and
+  // mislabel the beat in every agent prompt). Staff resolve via their `default` desk, or a
+  // `brief:` override if the newsroom defines one. The byline persona is still borrowed.
   const beat = newsroom.beats[0];
-  const beatId = beat?.id ?? 'brief';
-  const beatName = beat?.name ?? 'The Newsdesk';
+  const beatId = 'brief';
+  const beatName = 'The Newsdesk';
   const reporterName = beat?.reporter ?? 'The Newsdesk';
   const hash = shortHash('brief', topic, date);
   const signal: Signal = {
@@ -214,8 +225,10 @@ function writeReel(root: string, draft: EditionDraft, edition: Edition, cap?: nu
     /* no log to project */
   }
   const byRole: Record<string, number> = {};
+  const costByRole: Record<string, number> = {};
   for (const u of draft.tokenUsage) {
     byRole[u.role] = (byRole[u.role] ?? 0) + (u.inputTokens ?? 0) + (u.outputTokens ?? 0);
+    if (u.costUsd) costByRole[u.role] = (costByRole[u.role] ?? 0) + u.costUsd;
   }
   const reel = {
     edition: draft.id,
@@ -230,6 +243,7 @@ function writeReel(root: string, draft: EditionDraft, edition: Edition, cap?: nu
       stopThePress: s.stopThePress ?? false,
     })),
     tokens: { total: sumTokens(draft), cap: cap ?? null, byRole },
+    cost: { total: sumCostUsd(draft), byRole: costByRole },
     warnings: draft.warnings,
     events,
   };

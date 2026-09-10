@@ -134,6 +134,24 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
       tokenCap ? ` / ${tokenCap} cap` : ''
     }.`,
   );
+  if (spent > 0) {
+    const tok = new Map<string, number>();
+    const cost = new Map<string, number>();
+    let totalCost = 0;
+    for (const u of result.edition.tokenUsage) {
+      tok.set(u.role, (tok.get(u.role) ?? 0) + (u.inputTokens ?? 0) + (u.outputTokens ?? 0));
+      cost.set(u.role, (cost.get(u.role) ?? 0) + (u.costUsd ?? 0));
+      totalCost += u.costUsd ?? 0;
+    }
+    // Highest-spend role first — research usually dominates, which is the tuning signal.
+    const roles = [...tok.entries()].sort((a, b) => b[1] - a[1]);
+    const fmt = ([r, t]: [string, number]) => {
+      const c = cost.get(r) ?? 0;
+      return `${r} ${t}${c > 0 ? ` ($${c.toFixed(3)})` : ''}`;
+    };
+    console.log(`  By role: ${roles.map(fmt).join(' · ')}`);
+    if (totalCost > 0) console.log(`  Edition cost: $${totalCost.toFixed(2)}`);
+  }
   console.log(`  Reel for the animation → ${result.editionDir}/reel.json`);
   if (result.edition.weatherLine) console.log(`  Weather line: ${result.edition.weatherLine}`);
   if (result.warnings.length) {

@@ -46,12 +46,14 @@ export interface Correction {
   reporter?: string;
 }
 
-/** Per-role, per-provider token accounting for one edition. */
+/** Per-role, per-provider token (and cost) accounting for one edition. */
 export interface TokenUsage {
   provider: string;
   role: string;
   inputTokens?: number;
   outputTokens?: number;
+  /** Provider-reported cost of the call in USD, when available. */
+  costUsd?: number;
 }
 
 /** One complete paper. Serialized to `edition.json`. */

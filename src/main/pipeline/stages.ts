@@ -208,7 +208,7 @@ export async function stageResearch(draft: EditionDraft, ctx: PipelineContext): 
   ctx.log.emit('RESEARCH', 'stage_done', { researched: tasks.length });
 }
 
-const DEFAULT_MAX_FINDINGS = 8;
+const DEFAULT_MAX_FINDINGS = 6;
 
 /** Coerce whatever the researcher returned into clean findings with a real URL. */
 export function normalizeFindings(data: ResearchDossier | undefined): ResearchFinding[] {
@@ -767,7 +767,10 @@ function placementRank(p: string): number {
 }
 
 function sourceRefs(signals: Signal[]): SourceRef[] {
-  return signals.map((s) => ({ signalId: s.id, title: s.title, url: s.url }));
+  // The editor's `brief:` instruction is not a source — keep it out of the paper's citations.
+  return signals
+    .filter((s) => s.sourceType !== 'brief')
+    .map((s) => ({ signalId: s.id, title: s.title, url: s.url }));
 }
 
 function reportsForEditor(story: StoryDraft): string {

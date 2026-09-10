@@ -1,22 +1,27 @@
 import { CliNotInstalledError, probe, runCli } from './cli.js';
-import type { AgentEvent, AgentJob, AgentProvider, Detection } from './types.js';
+import type { AgentEvent, AgentJob, AgentProvider, AgentUsage, Detection } from './types.js';
 import { composePrompt, jsonField } from './util.js';
 
 /** Web tools handed to a researcher job (verified names from `claude --help`). */
 const RESEARCH_TOOLS = ['WebSearch', 'WebFetch'];
 
-/** Pull `{ inputTokens, outputTokens }` out of the Claude Code JSON envelope's `usage`. */
-function parseUsage(stdout: string): { inputTokens?: number; outputTokens?: number } | undefined {
+/** Pull token usage and the CLI-reported USD cost out of the Claude Code JSON envelope. */
+function parseUsage(stdout: string): AgentUsage | undefined {
   try {
-    const obj = JSON.parse(stdout) as { usage?: Record<string, unknown> };
-    const u = obj.usage;
-    if (!u) return undefined;
+    const obj = JSON.parse(stdout) as { usage?: Record<string, unknown>; total_cost_usd?: unknown };
+    const u = obj.usage ?? {};
     const inputTokens =
       (Number(u.input_tokens) || 0) +
       (Number(u.cache_read_input_tokens) || 0) +
       (Number(u.cache_creation_input_tokens) || 0);
     const outputTokens = Number(u.output_tokens) || 0;
-    return { inputTokens: inputTokens || undefined, outputTokens: outputTokens || undefined };
+    const costUsd = Number(obj.total_cost_usd) || undefined;
+    if (!inputTokens && !outputTokens && costUsd === undefined) return undefined;
+    return {
+      inputTokens: inputTokens || undefined,
+      outputTokens: outputTokens || undefined,
+      costUsd,
+    };
   } catch {
     return undefined;
   }

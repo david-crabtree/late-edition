@@ -109,10 +109,14 @@ House style:
 {{style}}
 
 Write the finished story as Markdown prose: 2-4 tight paragraphs. Lead with the angle the
-editor chose ("{{chosenAngle}}"). Every factual claim must trace to a cited signal id from
-the report — keep the [signalId] citations inline where you use a fact. Do not invent
-facts. Do not add a headline (the desk sets that). Personas and voice must never change the
-facts.
+editor chose ("{{chosenAngle}}"). Every factual claim must trace to a source.
+
+CITATIONS — follow exactly: cite by writing the source's id verbatim in square brackets,
+copied character-for-character from the MATERIALS, e.g. [research:1a2b3c4d5e6f]. Group
+several as [research:aaa..., research:bbb...]. Do NOT renumber them, and do NOT invent
+markers like [#1], [1], [ref], footnotes or superscripts — only the literal ids from the
+MATERIALS resolve, anything else is dropped as unverified. Do not invent facts. Do not add a
+headline (the desk sets that). Personas and voice must never change the facts.
 
 ${INJECTION_GUARD}
 

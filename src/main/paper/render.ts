@@ -1,4 +1,51 @@
-import type { Edition, Story } from '../core/edition.js';
+import type { Edition, SourceRef, Story } from '../core/edition.js';
+
+/** Matches an inline citation token — `[sourceId:hash]` or a comma-separated group. */
+const CITE_RE = /\[((?:[a-z0-9_]+:[0-9a-f]{6,})(?:\s*,\s*[a-z0-9_]+:[0-9a-f]{6,})*)\]/gi;
+
+/**
+ * A stray citation-like token a weaker model sometimes invents instead of a real id —
+ * `[#3]`, `[ref]`, `[citation needed]`. These resolve to nothing, so scrub them from the
+ * prose after real citations are converted, rather than let them render as an artifact.
+ */
+const STRAY_CITE = /\[#[^\]\n]{0,60}\]|\[(?:ref|citation needed|source)\]/gi;
+
+/**
+ * Number a story's sources for reader-facing display: cited-in-body sources first (in the
+ * order they appear), then any uncited ones. Citations to ids not in the source list
+ * (e.g. the editor's `brief:` instruction, which isn't a real source) map to nothing and
+ * are dropped from the prose.
+ */
+function orderedSources(s: Story): { list: SourceRef[]; numberOf: Map<string, number> } {
+  const numberOf = new Map<string, number>();
+  const list: SourceRef[] = [];
+  const byId = new Map(s.sources.map((r) => [r.signalId, r]));
+  const add = (id: string) => {
+    if (numberOf.has(id)) return;
+    const ref = byId.get(id);
+    if (!ref) return;
+    numberOf.set(id, list.length + 1);
+    list.push(ref);
+  };
+  for (const m of s.body.matchAll(CITE_RE)) {
+    for (const id of (m[1] ?? '').split(',')) add(id.trim());
+  }
+  for (const r of s.sources) add(r.signalId);
+  return { list, numberOf };
+}
+
+/** Map an inline citation token to the footnote numbers of the sources it names. */
+function citeNumbers(ids: string, numberOf: Map<string, number>): number[] {
+  return ids
+    .split(',')
+    .map((id) => numberOf.get(id.trim()))
+    .filter((n): n is number => typeof n === 'number');
+}
+
+/** Tidy spacing left behind when a citation token is removed or moved to a superscript. */
+function tidy(text: string): string {
+  return text.replace(/[ \t]+([.,;:)])/g, '$1').replace(/[ \t]{2,}/g, ' ');
+}
 
 /** Render an edition as readable Markdown (the `edition.md` artefact). */
 export function renderMarkdown(ed: Edition): string {
@@ -67,10 +114,19 @@ function storyMarkdown(s: Story): string {
     : [`### ${s.headline}`];
   if (s.standfirst) lines.push(`*${s.standfirst}*`);
   lines.push(`\nBy ${s.byline}\n`);
-  lines.push(s.body);
-  if (s.sources.length) {
-    const refs = s.sources.map((r) => `[${r.signalId}]${r.url ? `(${r.url})` : ''}`).join(', ');
-    lines.push(`\n**Sources:** ${refs}`);
+  const { list, numberOf } = orderedSources(s);
+  const body = tidy(
+    s.body
+      .replace(CITE_RE, (_m, ids: string) => {
+        const nums = citeNumbers(ids, numberOf);
+        return nums.length ? `[${nums.join(',')}]` : '';
+      })
+      .replace(STRAY_CITE, ''),
+  );
+  lines.push(body);
+  if (list.length) {
+    lines.push('\n**Sources:**');
+    list.forEach((r, i) => lines.push(`${i + 1}. ${r.title}${r.url ? ` — ${r.url}` : ''}`));
   }
   if (s.morgue?.length) {
     const past = s.morgue.map((m) => `${m.headline} (${m.editionId})`).join('; ');
@@ -172,10 +228,14 @@ export function renderHtml(ed: Edition): string {
 }
 
 function storyHtml(s: Story): string {
-  const sources = s.sources.length
-    ? `<p class="sources"><strong>Sources:</strong> ${s.sources
-        .map((r) => (r.url ? `<a href="${esc(r.url)}">${esc(r.signalId)}</a>` : esc(r.signalId)))
-        .join(', ')}</p>`
+  const { list, numberOf } = orderedSources(s);
+  const sources = list.length
+    ? `<div class="sources"><strong>Sources</strong><ol>${list
+        .map(
+          (r, i) =>
+            `<li id="src-${i + 1}">${r.url ? `<a href="${esc(r.url)}">${esc(r.title)}</a>` : esc(r.title)}</li>`,
+        )
+        .join('')}</ol></div>`
     : '';
   const note = s.rationale ? `<p class="editor-note">Editor's note: ${esc(s.rationale)}</p>` : '';
   const morgue = s.morgue?.length
@@ -189,17 +249,28 @@ function storyHtml(s: Story): string {
     <h3>${esc(s.headline)}</h3>
     ${s.standfirst ? `<p class="standfirst">${esc(s.standfirst)}</p>` : ''}
     <p class="byline">By ${esc(s.byline)}</p>
-    <div class="body">${paragraphs(s.body)}</div>
+    <div class="body">${paragraphs(s.body, numberOf)}</div>
     ${sources}
     ${morgue}
     ${note}
   </article>`;
 }
 
-function paragraphs(body: string): string {
+function paragraphs(body: string, numberOf: Map<string, number>): string {
   return body
     .split(/\n{2,}/)
-    .map((p) => `<p>${esc(p.trim()).replace(/\n/g, '<br>')}</p>`)
+    .map((p) => {
+      // Escape first (citation tokens survive escaping intact), then turn each into a
+      // superscript that links to the numbered source; unknown ids drop out of the prose.
+      const withCites = esc(p.trim())
+        .replace(CITE_RE, (_m, ids: string) => {
+          const nums = citeNumbers(ids, numberOf);
+          if (!nums.length) return '';
+          return `<sup class="cite">${nums.map((n) => `<a href="#src-${n}">${n}</a>`).join(',')}</sup>`;
+        })
+        .replace(STRAY_CITE, '');
+      return `<p>${tidy(withCites).replace(/\n/g, '<br>')}</p>`;
+    })
     .join('');
 }
 
@@ -229,8 +300,14 @@ section > h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .18e
 .byline { text-transform: uppercase; letter-spacing: .1em; font-size: .68rem; color: #6a6250; margin: 0 0 .6rem; }
 .body { columns: 1; }
 .body p { margin: 0 0 .8rem; line-height: 1.5; text-align: justify; }
-.sources { font-size: .74rem; color: #574f3f; }
+.sources { font-size: .74rem; color: #574f3f; margin: .6rem 0; }
+.sources ol { margin: .3rem 0 0; padding-left: 1.4rem; }
+.sources li { margin: .15rem 0; }
 .sources a { color: #7a2d1d; }
+sup.cite { font-size: .62em; line-height: 0; }
+sup.cite a { text-decoration: none; color: #7a2d1d; font-weight: 700; }
+sup.cite a::before { content: "["; }
+sup.cite a::after { content: "]"; }
 .morgue { font-size: .74rem; color: #574f3f; font-style: italic; }
 .morgue .ed { color: #8a8270; font-style: normal; }
 .editor-note { font-size: .8rem; font-style: italic; border-left: 3px solid #7a2d1d; padding-left: .6rem; color: #40382a; }
