@@ -92,8 +92,8 @@ function createWindow(): void {
     // Sized to the content, not the frame, so the newsroom stage lands at the proportions
     // David tuned the art to. The window chrome is added on top by the OS.
     useContentSize: true,
-    width: 1010,
-    height: 775,
+    width: 995,
+    height: 914,
     minWidth: 820,
     minHeight: 600,
     backgroundColor: '#0a0d12',
