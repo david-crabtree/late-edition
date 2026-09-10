@@ -498,6 +498,39 @@ function createWindow(): void {
           })()`),
         );
       }
+      // Ida has to ASK, where you'll see it. The offer used to be a button at the bottom
+      // of the front page, under the body and the sources, and David never found it.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG offer:',
+          await js(`(async () => {
+            for (const w of await window.lateEdition.watches()) await window.lateEdition.unwatch(w.id);
+            await window.__leProbe.refreshWatches(false);
+            let r = await window.lateEdition.run('a followable topic', { provider: 'fake', research: 1 });
+            if (r.needsDecision) r = await window.lateEdition.answerVerify(r.editionId, false, { provider: 'fake', research: 1 });
+            window.__leProbe.applyResult(r);
+            await new Promise(x => setTimeout(x, 300));
+            const box = document.getElementById('watchOffer');
+            const bar = document.querySelector('.appbar');
+            const out = {
+              filed: !!r.ok,
+              asks: !!(box && !box.hidden),
+              // It has to be near the top of the flow, not buried in the paper.
+              rightUnderTheControls: !!(box && bar && box.previousElementSibling === bar),
+              question: box ? box.querySelector('.of-q').textContent.trim() : null,
+              hasYes: !!(box && box.querySelector('#ofYes')),
+              hasNo: !!(box && box.querySelector('#ofNo')),
+              saysItsFree: box ? /costs nothing/i.test(box.textContent) : false,
+            };
+            box.querySelector('#ofYes').click();
+            for (let i = 0; i < 40 && !/On it/.test(box.textContent); i++) await new Promise(x => setTimeout(x, 100));
+            out.confirms = /On it/.test(box.textContent);
+            out.caseOpened = (await window.lateEdition.watches()).length;
+            for (const w of await window.lateEdition.watches()) await window.lateEdition.unwatch(w.id);
+            return JSON.stringify(out);
+          })()`),
+        );
+      }
       // The field desk, end to end through the app: watch a filed story's sources, poll
       // them (free), and confirm the spike surfaces without anything having run.
       if (process.env.LE_DEBUG_RUN) {

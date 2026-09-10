@@ -238,6 +238,20 @@
   .haltbar[hidden]{ display:none; }
   .haltbar b{ color:#f0a48c; }
   .haltbar .chip{ margin-left:auto; }
+  /* Ida asking. Green-ish rather than the Chief's amber: this is an offer you can wave
+     away, not a run waiting on you. */
+  .offer{ margin:10px 0 4px; background:#101610; border:1px solid #3f5a3a; border-left:3px solid #6a9a55;
+          border-radius:6px; padding:11px 13px; }
+  .offer[hidden]{ display:none; }
+  .offer .of-who{ font-family:var(--pixel); font-size:.46rem; letter-spacing:.06em; text-transform:uppercase; color:#8fbf72; }
+  .offer .of-q{ font-size:.98rem; color:var(--bone); margin-top:6px; line-height:1.35; }
+  .offer .of-why{ font-size:.74rem; color:var(--bone-dim); margin-top:6px; line-height:1.55; }
+  .offer .of-why b{ color:#a8cf90; }
+  .offer .of-why a{ color:#8fbf72; cursor:pointer; text-decoration:underline; margin-left:5px; }
+  .offer .of-hosts{ display:block; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.7rem; color:#7a8a6a; margin:4px 0; }
+  .offer .of-acts{ display:flex; gap:7px; flex-wrap:wrap; margin-top:10px; }
+  .offer .of-acts .chip.primary{ background:#6a9a55; border-color:#6a9a55; color:#0c120a; }
+  .offer .of-acts .chip.primary:hover:not([disabled]){ background:#7db065; border-color:#7db065; }
   .casefile{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .casefile[hidden]{ display:none; }
   .casefile .cf-card{ width:min(700px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
@@ -1521,6 +1535,61 @@
         const i=ida(); if(i) charLog(i,'act',`Took the beat: ${r.name}`);
         await refreshWatches(false); }
       else { b.disabled=false; b.textContent=(r&&r.error)||'Could not watch those'; } }); }
+  // ---- Ida asks, out loud ---------------------------------------------------------------
+  // The offer used to be a button at the bottom of the front page, under the body, the
+  // sources and the also-inside list. Nobody scrolls that far. She comes and asks instead,
+  // in the same place the Chief asks his questions, and takes yes or no for an answer.
+  const declinedWatch=new Set();
+  function offerToWatch(edition, editionId){
+    if(!editionId || declinedWatch.has(editionId)) return;
+    if(!window.lateEdition.watchEdition || !apiOk('le:watchEdition')) return;
+    if(!fieldOn) return;                       // she's off shift; don't ask
+    const st=(edition&&edition.stories&&edition.stories[0])||null;
+    const urls=st?(st.sources||[]).filter(s=>s.url):[];
+    if(!urls.length) return;
+    // Nothing to offer if this story's pages are already on a case.
+    const already=watchList.some(w=>w.sources.some(s=>urls.some(u=>u.url===s.url)));
+    if(already) return;
+
+    const i=ida();
+    if(i){ askChief(i); focusOn(i); selectLog(i);
+      bubbleOnly(i, 'Want me to stay on this one?');
+      charLog(i,'ask',`I can keep an eye on the ${urls.length} page${urls.length>1?'s':''} behind this story.`); }
+
+    let box=document.getElementById('watchOffer');
+    if(!box){ box=document.createElement('div'); box.className='offer'; box.id='watchOffer';
+      const anchor=document.querySelector('.appbar'); if(anchor) anchor.after(box); else document.body.appendChild(box); }
+    const hosts=[...new Set(urls.map(s=>{ try{ return new URL(s.url).hostname.replace(/^www\./,''); }catch(_){ return null; } }).filter(Boolean))];
+    box.innerHTML=`<div class="of-who">Ida Stringer · field desk</div>
+      <div class="of-q">Want me to stay on this one?</div>
+      <div class="of-why">I'll check the ${urls.length} page${urls.length>1?'s':''} this story came from
+        each time you open the app, and tell you if anything moves.
+        ${hosts.length?`<span class="of-hosts">${hosts.slice(0,4).map(h=>fpEsc(h)).join(' · ')}${hosts.length>4?` · +${hosts.length-4} more`:''}</span>`:''}
+        <b>Watching costs nothing</b> — no model reads them until you ask for a follow-up.</div>
+      <div class="of-acts">
+        <button class="chip primary" id="ofYes">Yes — stay on it</button>
+        <button class="chip" id="ofNo">No thanks</button>
+      </div>`;
+    box.hidden=false;
+    box.querySelector('#ofYes').addEventListener('click', async()=>{
+      const y=box.querySelector('#ofYes'); y.disabled=true; y.textContent='Taking the case…';
+      const r=await window.lateEdition.watchEdition(editionId);
+      if(r&&r.ok){
+        box.innerHTML=`<div class="of-who">Ida Stringer · field desk</div>
+          <div class="of-q">On it — ${r.watched} page${r.watched>1?'s':''} on the case.</div>
+          <div class="of-why">I'll have anything that moves waiting when you next open up.
+            <a id="ofCases">See the case file</a></div>`;
+        const c=box.querySelector('#ofCases');
+        if(c) c.addEventListener('click',()=>{ box.hidden=true; openCaseFile(); });
+        setTimeout(()=>{ box.hidden=true; }, 9000);
+        if(i) charLog(i,'act',`Took the case: ${r.name}`);
+        await refreshWatches(false);
+      } else { y.disabled=false; y.textContent=(r&&r.error)||'Could not take it'; } });
+    box.querySelector('#ofNo').addEventListener('click',()=>{
+      declinedWatch.add(editionId); box.hidden=true;
+      if(i) charLog(i,'act','Left it. Say the word if you change your mind.'); });
+    box.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  const clearWatchOffer=()=>{ const b=document.getElementById('watchOffer'); if(b) b.hidden=true; };
   // ---- The case file -------------------------------------------------------------------
   // Every story Ida is following is a case: the pages it came from, what they've done, and
   // whether it's worth staying on. The strip under the appbar is only the nudge; this is
@@ -1784,6 +1853,7 @@
       fpRenderEdition(r.edition);
       const ed=roleAgent('editor'); if(ed) charLog(ed,'act',`Page one: ${st?st.headline:'(quiet day)'}`);
       applyUsage(r.usage); mScene.textContent='REAL EDITION FILED'; logEvent(`Real edition ${r.editionId||''} filed`);
+      offerToWatch(r.edition, r.editionId);
       if(openBtn) openBtn.hidden=false; return; }
     if(r&&r.needsClarification){ askClarification(r.editionId, r.questions||[]); return; }
     if(r&&r.needsDecision){ askDecision(r); return; }
@@ -1847,7 +1917,7 @@
     box.scrollIntoView({behavior:'smooth',block:'nearest'}); }
   function clearClarifyUi(){ const bb=document.getElementById('briefBtn'); if(bb) bb.textContent='Send to the Chief ▸'; briefInput.placeholder="What's the front page? Enter to send · Shift+Enter for a new line";
     const box=document.getElementById('clarifyBox'); if(box) box.hidden=true; }
-  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; watching=null; pendingClarify=null; pendingDecision=null; clearClarifyUi(); clearDecisionUi(); clearStaffingUi(); setFollow(true);
+  async function realRun(brief){ if(realBusy) return; realBusy=true; frontpage.hidden=true; realActive=null; watching=null; pendingClarify=null; pendingDecision=null; clearClarifyUi(); clearDecisionUi(); clearStaffingUi(); clearWatchOffer(); setFollow(true);
     for(const s of staff){ s.status='idle'; s.doing=''; s.spent=0; } resetLiveUsage(); await learnBilling(); chief.status='working'; chief.doing='BRIEFING';
     charLog(chief,'do',`Briefing the desk: "${brief}"`); bubbleOnly(chief,'Front page — two sources.'); selectLog(chief); mScene.textContent='THE FLOOR IS WORKING · LIVE'; renderRoster();
     const stopBtn=document.getElementById('appStop'), openBtn=document.getElementById('appOpen'); if(stopBtn) stopBtn.hidden=false; if(openBtn) openBtn.hidden=true;
