@@ -1,4 +1,4 @@
-<title>Newsroom Screen Test</title>
+<title>Late Edition — The Daily Bit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Special+Elite&family=Press+Start+2P&display=swap">
@@ -342,18 +342,18 @@
   // ---- The newsroom: one desk per character, camera on whoever's cast -----
   function drawNewsroom(){
     const appMode=!!window.lateEdition;
+    if(appMode) updatePeople();
     for(let i=0;i<DESKX.length;i++){ const c=CAST[i], x=DESKX[i], walkingAway=(courier.active&&courier.whoCi===i);
       deskPool(x);
       if(appMode){
-        // App mode: you sit at your desk only while working — otherwise you're up on your feet,
-        // standing in FRONT of the desk (drawn last so the props don't hide you).
-        const isWorking = realActive && realActive.ci===i && !walkingAway;
-        if(isWorking) drawSeated(c,x);
-        drawDeskProps(c,x, isWorking?'type':'idle');
+        // App mode: you're at your desk (seated) only while working or taking a sit-down break —
+        // otherwise you're up and about on the floor (drawn by drawPeople after the desks).
+        const p=people[i], seatedHere=!!(p&&p.seated), working=realActive&&realActive.ci===i&&seatedHere;
+        if(seatedHere) drawSeated(c,x);
+        drawDeskProps(c,x, working?'type':'idle');
         R(x-48,DTOP,96,16,'#3b2a1a'); R(x-48,DTOP,96,1,'#5a4028');
         R(x-15,FLOOR-5,30,4,'#20242c'); R(x-15,FLOOR-5,30,1,'#3a4450'); nameplate(c,x,FLOOR-3);
-        if(isWorking) drawSeatedHands(c,x);
-        else if(!walkingAway) drawStand(c,x,FLOOR);
+        if(working) drawSeatedHands(c,x);
       } else {
         const active=(i===state.castIdx), seatHere=(active?(state.mode==='desk'):true) && !walkingAway;
         if(seatHere){ if(active) drawSeated(c,x); else drawIdleSitter(c,x); }
@@ -363,7 +363,8 @@
         if(seatHere&&active) drawSeatedHands(c,x);
       }
     }
-    if(!appMode && state.mode==='roam') drawRoamer(CAST[state.castIdx]);   // the active character up and walking (sim)
+    if(appMode) drawPeople();                                              // everyone up and about, on the floor
+    else if(state.mode==='roam') drawRoamer(CAST[state.castIdx]);          // the active character up and walking (sim)
     updateParticles(smoke); }
   function deskPool(x){ const pool=g.createRadialGradient(x,DTOP-46,4,x,DTOP-46,150); pool.addColorStop(0,'rgba(232,176,75,.15)'); pool.addColorStop(.6,'rgba(232,176,75,.04)'); pool.addColorStop(1,'rgba(232,176,75,0)'); g.fillStyle=pool; g.fillRect(x-170,0,340,DTOP+40); }
   function nameplate(c,cx,y){ const name=(c.name||'').toUpperCase().slice(0,15); g.fillStyle='#c9b06a'; g.font='6px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(name,cx,y); g.textAlign='left'; g.textBaseline='alphabetic'; }
@@ -570,14 +571,16 @@
     R(bx-1,by-1,bw+2,bh+2,'#0b0b0b'); R(bx,by,bw,bh,'#efe9d8'); R(bx,by,bw,1,'#fff'); R(bx,by+bh-1,bw,1,'#c7c1af'); R(cx-2,by+bh,3,2,'#efe9d8'); P(cx-1,by+bh+2,'#0b0b0b');
     g.fillStyle='#1a1a1a'; g.textAlign='center'; g.textBaseline='top'; lines.forEach((l,i)=>g.fillText(l,tx,by+padY+i*lh)); g.textAlign='left'; g.textBaseline='alphabetic'; }
   const TICK_TXT='  LATE EDITION WIRE  ///  PRESS ROOM QUIET, TOO QUIET  ///  COMPETING TAKES ON PAGE ONE  ///  COFFEE POT EMPTY AGAIN  ///  ';
-  function tickerStrip(){ const txt = events.length? ('   '+events.join('     ///     ')+'     ///  '):TICK_TXT; R(0,VH-9,VW,9,'#12100c'); R(0,VH-9,VW,1,'#3a2e1b'); g.fillStyle='#e8b04b'; g.font='6px "Press Start 2P",monospace'; g.textBaseline='middle'; const tw=g.measureText(txt).width,x=-((tick*2)%tw); g.fillText(txt,x,VH-4); g.fillText(txt,x+tw,VH-4); g.textBaseline='alphabetic'; }
-  function stopOverlay(){ g.fillStyle='rgba(6,6,10,.4)'; g.fillRect(0,0,VW,VH); const down=(tick%16)<8; g.font='8px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; R(40,VH-40,VW-80,20,'#7a1a10'); R(40,VH-40,VW-80,1,'#c2412d'); g.fillStyle='#f4e7c8'; g.fillText('STOP THE PRESS',VW/2,VH-30); if(down&&tick%16===0){ g.fillStyle='rgba(194,65,45,.2)'; g.fillRect(0,0,VW,VH); } g.textAlign='left'; g.textBaseline='alphabetic'; const gr=g.createRadialGradient(VW/2,VH/2,40,VW/2,VH/2,180); gr.addColorStop(0,'rgba(194,65,45,0)'); gr.addColorStop(1,'rgba(194,65,45,.26)'); g.fillStyle=gr; g.fillRect(0,0,VW,VH); }
+  const TICK_APP='   THE DAILY BIT   ///   brief the Chief to run an edition   ///   your agents, your paper   ///  ';
+  function tickerStrip(){ const txt = events.length? ('   '+events.join('     ///     ')+'     ///  '):(window.lateEdition?TICK_APP:TICK_TXT); R(0,VH-9,VW,9,'#12100c'); R(0,VH-9,VW,1,'#3a2e1b'); g.fillStyle='#e8b04b'; g.font='6px "Press Start 2P",monospace'; g.textBaseline='middle'; const tw=g.measureText(txt).width,x=-((tick*2)%tw); g.fillText(txt,x,VH-4); g.fillText(txt,x+tw,VH-4); g.textBaseline='alphabetic'; }
+  function stopOverlay(banner){ g.fillStyle='rgba(6,6,10,.4)'; g.fillRect(0,0,VW,VH); const down=(tick%16)<8; g.font='8px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; R(40,VH-40,VW-80,20,'#7a1a10'); R(40,VH-40,VW-80,1,'#c2412d'); g.fillStyle='#f4e7c8'; g.fillText(banner||'STOP THE PRESS',VW/2,VH-30); if(down&&tick%16===0){ g.fillStyle='rgba(194,65,45,.2)'; g.fillRect(0,0,VW,VH); } g.textAlign='left'; g.textBaseline='alphabetic'; const gr=g.createRadialGradient(VW/2,VH/2,40,VW/2,VH/2,180); gr.addColorStop(0,'rgba(194,65,45,0)'); gr.addColorStop(1,'rgba(194,65,45,.26)'); g.fillStyle=gr; g.fillRect(0,0,VW,VH); }
 
   function render(){ const sky=g.createLinearGradient(0,0,0,VH); sky.addColorStop(0,'#101826'); sky.addColorStop(1,'#0a0d13'); g.fillStyle=sky; g.fillRect(0,0,VW,VH);
     layerFar(cam*0.25); layerBack(cam*BP); layerMain(cam); layerFore(cam*1.15);
     for(const s of staff){ if(s.sayT>0){ const sx=s.ci>=0?deskX(s.ci)-cam:WINDOW_XB-cam*BP; if(sx>-60&&sx<VW+60) bubble(sx, FLOOR-56, s.say); } }
     if(state.mode==='desk'&&state.banter&&bubbleText && !staff.some(s=>s.ci===state.castIdx&&s.sayT>0)) bubble(AC()-cam, FLOOR-56, bubbleText);
-    if(state.mode==='desk'&&state.scene==='stop') stopOverlay(); }
+    if(window.lateEdition && haltViz) stopOverlay('ALL STOP · AGENTS IDLED');
+    else if(state.mode==='desk'&&state.scene==='stop') stopOverlay(); }
   function newBanter(){ const c=CAST[state.castIdx]; bubbleText = state.scene==='stop'?'STOP THE PRESS!':c.lines[(Math.random()*c.lines.length)|0]; }
 
   function frame(now){ const dt=now-last; last=now; acc+=dt; const step=1000/12;
@@ -590,7 +593,9 @@
         } else if(state.panMode){ if(input.left)state.panX-=12; if(input.right)state.panX+=12; state.panX=Math.max(0,Math.min(WORLD-VW,state.panX)); player.vx=0; }
         else { let vx=0; if(input.left)vx-=7; if(input.right)vx+=7; player.vx=vx; if(vx!==0){ state.facing=vx>0?1:-1; player.x=Math.max(30,Math.min(WORLD-30,player.x+vx)); } }
       } else player.vx=0;
-      { let tgt; if(state.camFrozen) tgt=state.camVal; else if(state.panMode) tgt=state.panX; else if(director.t>0&&director.at) tgt=(director.at.ci>=0?deskX(director.at.ci):WINDOW_XB)-VW/2; else tgt=(state.mode==='desk'?AC():player.x)-VW/2; tgt=Math.max(0,Math.min(WORLD-VW,tgt)); cam+=(tgt-cam)*0.14; if(Math.abs(tgt-cam)<0.6)cam=tgt; }
+      { let tgt; if(state.camFrozen) tgt=state.camVal; else if(state.panMode) tgt=state.panX;
+        else if(window.lateEdition && !director.t && realActive && realActive.ci>=0 && people && people[realActive.ci]) tgt=people[realActive.ci].px-VW/2;   // app: drift with whoever's on the story (watch them walk in + settle)
+        else if(director.t>0&&director.at) tgt=(director.at.ci>=0?deskX(director.at.ci):WINDOW_XB)-VW/2; else tgt=(state.mode==='desk'?AC():player.x)-VW/2; tgt=Math.max(0,Math.min(WORLD-VW,tgt)); cam+=(tgt-cam)*0.14; if(Math.abs(tgt-cam)<0.6)cam=tgt; }
       if(!reduce&&tick%2===0){ for(const wx of [40,700]) rain.push({win:wx,x:(Math.random()*60)|0,y:0,life:16}); }
       for(let i=rain.length-1;i>=0;i--){ rain[i].y+=3; if(rain[i].y>58) rain.splice(i,1); }
       bubbleTimer--; if(bubbleTimer<=0){ if(state.mode==='desk') newBanter(); bubbleTimer=44; }
@@ -619,7 +624,7 @@
   // ---- Controls -----------------------------------------------------------
   const mScene=document.getElementById('mScene'); const sceneLabel={roam:'ROAMING · ← → TO WALK',idle:'AT THE DESK · SMOKE',type:'TYPING',coffee:'COFFEE BREAK',phone:'THE PHONE',stop:'STOP THE PRESS'};
   function clearGoto(){ state.goto=null; state.phase='none'; state.meeting=false; state.camFrozen=false; director.t=0; }
-  function setScene(s){ clearGoto(); state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } if(s==='roam'){ state.mode='roam'; state.scene='roam'; } else { state.mode='desk'; state.scene=s; player.x=AC(); bubbleTimer=1; } document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===s))); mScene.textContent='SCENE — '+(sceneLabel[s]||s); }
+  function setScene(s){ clearGoto(); state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } if(s==='roam'){ state.mode='roam'; state.scene='roam'; } else { state.mode='desk'; state.scene=s; player.x=AC(); bubbleTimer=1; } document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene===s))); if(!window.lateEdition) mScene.textContent='SCENE — '+(sceneLabel[s]||s); }
   document.getElementById('scenes').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(!b||!b.dataset.scene) return; setScene(b.dataset.scene); });
   function goToDoor(backX,label,meeting){ state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam')));
     state.camFrozen=true; state.camVal=cam; state.goto=(backX+9)+state.camVal*(1-BP); state.phase='walk'; state.meeting=meeting; state.goneTotal=meeting?70:24; mScene.textContent=label; }
@@ -637,7 +642,7 @@
   function selectCast(i){ state.castIdx=i; player.x=deskX(i); state.facing=1; state.panMode=false; { const pb=document.getElementById('panBtn'); if(pb) pb.setAttribute('aria-pressed','false'); } selectLog(staff.find(s=>s.ci===i)); renderRoster(); }
   const banterBtn=document.getElementById('banterBtn'); banterBtn.addEventListener('click',()=>{ state.banter=!state.banter; banterBtn.setAttribute('aria-pressed',String(state.banter)); });
   const panBtn=document.getElementById('panBtn');
-  function setPan(on){ state.panMode=on; panBtn.setAttribute('aria-pressed',String(on)); if(on){ clearGoto(); state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam'))); state.panX=cam; mScene.textContent='FREE PAN · ← → TO LOOK'; } else mScene.textContent='ROAMING · ← → TO WALK'; }
+  function setPan(on){ state.panMode=on; panBtn.setAttribute('aria-pressed',String(on)); if(on){ clearGoto(); state.mode='roam'; state.scene='roam'; document.querySelectorAll('#scenes .chip[data-scene]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scene==='roam'))); state.panX=cam; mScene.textContent= window.lateEdition?'Look around · ← → to pan':'FREE PAN · ← → TO LOOK'; } else mScene.textContent= window.lateEdition?'Ready — brief the Chief.':'ROAMING · ← → TO WALK'; }
   panBtn.addEventListener('click',()=>setPan(!state.panMode));
   function portrait(canvas,c){ const pg=canvas.getContext('2d'); pg.imageSmoothingEnabled=false; const t=document.createElement('canvas'); t.width=22;t.height=22; const o=t.getContext('2d'); const p=c.pal,cx=11,y=3,rr=(x,yy,w,h,col)=>{o.fillStyle=col;o.fillRect(x,yy,w,h);};
     rr(0,0,22,22,'#0a0d12'); rr(cx-6,y,12,11,p.hair); rr(cx-5,y+2,10,9,p.skin); rr(cx-5,y+2,10,2,'#eec79a'); rr(cx-3,y+9,6,1,p.skinSh); o.fillStyle='#111'; o.fillRect(cx-3,y+5,1,1); o.fillRect(cx+2,y+5,1,1); rr(cx-2,y+8,4,1,'#7a4a34');
@@ -745,9 +750,8 @@
   function researcherLine(st){ const L=['Pulling the filings…',`Primary source on ${st.short}?`,'Cross-checking the record.','Found the paper trail.']; return L[(tick+st.id)%L.length]; }
   function writerLine(st){ const L=['Finding the lede…','Tightening the copy.',`Three grafs on ${st.short}.`,'Killing the adjectives.']; return L[(tick+st.id)%L.length]; }
   function aliveBeat(){
-    if(window.lateEdition){ if(realBusy) return;   // app mode: occasional quips as bubbles (not logged), rare courier — keeps it alive without noise
+    if(window.lateEdition){ if(realBusy) return;   // app mode: occasional quips as bubbles (not logged) — the people system carries the movement/handoffs
       if(Math.random()<0.09){ const q=staff.filter(s=>s.ci>=0 && s.status==='idle' && s.sayT<=0); if(q.length){ const s=q[(Math.random()*q.length)|0]; bubbleOnly(s, CAST[s.ci].lines[(Math.random()*CAST[s.ci].lines.length)|0]); } }
-      if(Math.random()<0.05 && !courier.active) startCourier();
       return; }
     const idle=staff.filter(s=>s.ci>=0 && s.status==='idle' && s.sayT<=0);
     if(idle.length>=2 && Math.random()<0.35){ const a=idle.splice((Math.random()*idle.length)|0,1)[0], b=idle[(Math.random()*idle.length)|0];   // a two-way exchange across the room
@@ -851,16 +855,41 @@
     if(s==='editor'&&e==='call') return ['act',`Made the call — ${d.placement||''}${d.competingTakes?' (competing takes)':''}`];
     return null; }
   const STAGE2DO={ RESEARCH:['research','Researching the topic'], REPORT:['reporter','Reporting'], WRITE:['copywriter','Rewriting the copy'], CHECK:['copydesk','Checking the copy'], CALL:['editor','Making the call'], TRIAGE:['chief','Sizing up the brief'], ASSIGN:['chief','Assigning the desk'] };
-  let realActive=null, lastEditionId=null;
+  let realActive=null, lastEditionId=null, haltViz=false;
+  // ---- The alive floor (app mode): staff wander, take idle beats (smoke/coffee), sit sometimes,
+  // walk to their desk to work, and carry the page to the next agent to hand it off in person. ----
+  const AMIN=90, AMAX=WORLD-90;
+  const people = window.lateEdition ? CAST.map((c,i)=>({ ci:i, px:DESKX[i]+(i%2?46:-46), tx:DESKX[i], face:1, st:'idle', beat:'none', t:30+((i*53)%150), seated:false, carry:false, walking:false })) : null;
+  function approach(p,tx,sp){ const d=tx-p.px; if(Math.abs(d)>2.2){ p.px+=Math.max(-sp,Math.min(sp,d)); p.face=d<0?-1:1; return false; } p.px=tx; return true; }
+  const wander=p=>{ p.st='walk'; p.tx=AMIN+Math.random()*(AMAX-AMIN); };
+  const idleBeat=p=>{ const r=Math.random(); p.beat=r<0.34?'smoke':r<0.66?'coffee':'none'; p.st='idle'; p.t=90+((Math.random()*110)|0); };
+  function updatePeople(){ if(!people||reduce) return;
+    for(const p of people){ const dx=DESKX[p.ci], bx=p.px;
+      if(realActive && realActive.ci===p.ci) p.st='work';
+      else if(p.st==='work'){ p.beat='none'; wander(p); }
+      if(p.st==='work'){ p.seated=approach(p,dx,2.4); }
+      else if(p.st==='handoff'){ p.seated=false; if(approach(p,p.tx,2.7)){ if(--p.t<=0){ p.carry=false; wander(p); } } }
+      else if(p.st==='sit'){ if(approach(p,dx,1.7)){ p.seated=true; if(--p.t<=0){ p.seated=false; wander(p); } } else p.seated=false; }
+      else if(p.st==='walk'){ p.seated=false; if(approach(p,p.tx,1.4)) idleBeat(p); }
+      else { p.seated=false; if(p.beat==='smoke'&&tick%16===0) smoke.push({x:p.px-3,y:FLOOR-30,life:46,rise:0.15,c:'#9aa3a8'});
+        if(--p.t<=0){ const r=Math.random(); if(r<0.6) wander(p); else if(r<0.8){ p.st='sit'; p.t=120+((Math.random()*120)|0); } else idleBeat(p); } }
+      p.walking = Math.abs(p.px-bx)>0.25;
+    } }
+  function drawPeople(){ if(!people) return;
+    for(const p of people){ if(p.seated) continue; const c=CAST[p.ci];
+      if(p.walking) drawWalk(c,p.px|0,FLOOR,p.face); else drawStand(c,p.px|0,FLOOR);
+      if(p.beat==='coffee'&&p.st==='idle') drawMug(p.px+(p.face>0?4:-11), FLOOR-27);
+      if(p.carry||p.st==='handoff'){ const hx=p.px+(p.face>0?4:-10); R(hx,FLOOR-24,7,5,'#e8e2d0'); R(hx,FLOOR-24,7,1,'#fbf6e6'); R(hx+1,FLOOR-22,5,1,'#b9b39c'); }
+    } }
   function bubbleOnly(s,text){ if(!s) return; s.say=text; s.sayT=78; }        // a bubble of what they're DOING (no quip in the log)
   function setWorking(s,doing){ if(!s) return; const from=realActive;
     if(from&&from!==s){ from.status='idle'; from.doing=''; }
     s.status='working'; s.doing=doing; realActive=s;
-    // Animate the hand-off toward the new worker: the Chief walks the brief out of the office,
-    // then each finishing worker carries it to the next desk (they walk to each other).
-    if(s.ci>=0 && !courier.active){
-      if(!from || from===chief) handoff(WINDOW_XB, deskX(s.ci), -1);
-      else if(from.ci>=0) handoff(deskX(from.ci), deskX(s.ci), from.ci);
+    // Hand-off in person: the Chief walks the brief out of the office; then each finishing worker
+    // carries the page over to the next desk (they walk to each other).
+    if(people && s.ci>=0){
+      if(from && from.ci>=0){ const fp=people[from.ci]; if(fp){ fp.st='handoff'; fp.tx=deskX(s.ci)-34; fp.carry=true; fp.t=42; } }
+      else if(!courier.active){ handoff(WINDOW_XB, deskX(s.ci), -1); }
     } }
   function applyRealEvent(ev){ if(!ev||!ev.stage) return;
     const m=STAGE2DO[ev.stage];
@@ -907,8 +936,8 @@
       if(controlsCol){ const pan=document.getElementById('panBtn'); if(pan){ pan.textContent='⤢ Look around'; bar.insertBefore(pan, bar.querySelector('.grow')); } controlsCol.style.display='none'; }
     }
     const $=id=>document.getElementById(id);
-    $('appStop').addEventListener('click', async()=>{ await window.lateEdition.halt(); $('appStop').hidden=true; $('appResume').hidden=false; mScene.textContent='HALTED — agents idled. Resume to continue.'; });
-    $('appResume').addEventListener('click', async()=>{ await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
+    $('appStop').addEventListener('click', async()=>{ haltViz=true; await window.lateEdition.halt(); $('appStop').hidden=true; $('appResume').hidden=false; mScene.textContent='ALL STOP — agents idled. Resume to continue.'; });
+    $('appResume').addEventListener('click', async()=>{ haltViz=false; await window.lateEdition.resume(); $('appResume').hidden=true; $('appStop').hidden=false; mScene.textContent='Resumed.'; });
     $('appOpen').addEventListener('click', ()=>{ if(lastEditionId) window.lateEdition.openPaper(lastEditionId); });
     $('appSettings').addEventListener('click', ()=>{ const s=document.querySelector('.setup'); if(s){ s.hidden=!s.hidden; if(!s.hidden) s.scrollIntoView({behavior:'smooth',block:'start'}); } });
   }
