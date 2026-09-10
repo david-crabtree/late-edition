@@ -82,7 +82,7 @@
   .clog-body .think{ color:#c2b48f; font-style:italic; } .clog-body .think::before{ content:'“'; } .clog-body .think::after{ content:'”'; }
   .clog-body .sys{ color:#6a6250; border-bottom:1px dashed #2c2519; padding-bottom:5px; margin-bottom:5px; font-family:var(--pixel); font-size:.56rem; letter-spacing:.03em; }
   @media (max-width:720px){ .clog-hint{ display:none; } }
-  .setup{ margin-top:10px; background:#0c0f14; border:1px solid #3a2e1b; border-radius:6px; padding:12px 14px; }
+  .setup{ margin-top:10px; margin-bottom:16px; background:#0c0f14; border:1px solid #3a2e1b; border-radius:6px; padding:12px 14px; }
   .setup h3{ font-family:var(--display); text-transform:uppercase; letter-spacing:.03em; font-size:.9rem; margin:0 0 3px; color:var(--amber); }
   .setup .sub{ font-size:.72rem; color:var(--bone-dim); margin:0 0 10px; }
   .setup .prov{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
@@ -183,9 +183,9 @@
         <button class="chip primary" id="briefBtn">Send to the Chief ▸</button>
       </div>
       <div class="row" id="examples" style="margin-top:8px">
-        <button class="chip ex">rumours of a leaked GTA 6 build</button>
-        <button class="chip ex">a rival studio's quiet layoffs</button>
-        <button class="chip ex">who's really funding the new console</button>
+        <button class="chip ex">what changed in my market this week</button>
+        <button class="chip ex">a competitor's quiet price change</button>
+        <button class="chip ex">the story buried in this week's filings</button>
       </div>
       <div class="row" style="margin-top:10px; gap:10px 12px; align-items:center; flex-wrap:wrap">
         <label class="hint" for="budgetRange">Budget / staffer</label>
@@ -541,7 +541,7 @@
     R(fx-4,hipY,4,9,p.suitDk); R(fx+1,hipY,4,9,p.suit); R(fx-4,fy-2,5,2,'#1a120a'); R(fx+1,fy-2,5,2,'#1a120a');
     R(fx-8,shY,16,hipY-shY+2,p.suit); R(fx-8,shY,16,2,p.suitDk); R(fx-2,shY,4,8,p.shirt); R(fx-1,shY+1,2,7,p.tie);
     R(fx-9,shY+2,3,8,p.suitDk); R(fx+6,shY+2,3,8,p.suit); R(fx-9,shY+9,3,2,p.skin); R(fx+6,shY+9,3,2,p.skin);
-    const h=headFront(c,fx,headTop,(tick%70)<3,false); puff(c,h.mouthX,h.mouthY); }
+    const h=headFront(c,fx,headTop,(tick%70)<3,false); puff(c,h.mouthX,h.mouthY); return h; }
   function drawWalk(c,fx,fy,d){ const p=c.pal,f=tick%4,stride=[3,0,-3,0][f],sw=[3,0,-3,0][f],up=(f===1||f===3)?1:0; const hipY=fy-9,shY=fy-21-up,headTop=fy-32-up;
     R(fx-1+d*stride,hipY,4,9,p.suitDk); R(fx-1-d*stride,hipY,4,9,p.suit); R(fx-2+d*stride+(d>0?2:-2),fy-2,5,2,'#1a120a'); R(fx-2-d*stride+(d>0?-2:2),fy-2,5,2,'#1a120a');
     R(fx-4,shY,10,hipY-shY+2,p.suit); R(fx-4,shY,10,2,p.suitDk); R(fx-1+d*sw,shY+3,3,7,p.suitDk); R(fx-1+d*sw,shY+9,3,2,p.skin); headSide(c,fx,headTop,d); }
@@ -876,23 +876,36 @@
   function approach(p,tx,sp){ const d=tx-p.px; if(Math.abs(d)>2.2){ p.px+=Math.max(-sp,Math.min(sp,d)); p.face=d<0?-1:1; return false; } p.px=tx; return true; }
   const wander=p=>{ p.st='walk'; p.tx=AMIN+Math.random()*(AMAX-AMIN); };
   const idleBeat=p=>{ const r=Math.random(); p.beat=r<0.34?'smoke':r<0.66?'coffee':'none'; p.st='idle'; p.t=90+((Math.random()*110)|0); };
+  // A staffer with a question walks over to the Chief's office door, puts it to them, then heads back.
+  const visitChief=p=>{ p.st='chief'; p.tx=OFFICE_XB+18; p.query=true; p.beat='none'; p.t=64+((Math.random()*50)|0); };
   function updatePeople(){ if(!people||reduce) return;
     for(const p of people){ const dx=DESKX[p.ci], bx=p.px;
-      if(realActive && realActive.ci===p.ci) p.st='work';
+      if(realActive && realActive.ci===p.ci){ if(p.st!=='work'){ p.st='work'; p.query=false; } }
       else if(p.st==='work'){ p.beat='none'; wander(p); }
       if(p.st==='work'){ p.seated=approach(p,dx,2.4); }
       else if(p.st==='handoff'){ p.seated=false; if(approach(p,p.tx,2.7)){ if(--p.t<=0){ p.carry=false; wander(p); } } }
+      else if(p.st==='chief'){ p.seated=false; if(approach(p,p.tx,2.0)){ p.face=p.px<WINDOW_XB?1:-1; officeBlipT=Math.max(officeBlipT,4); if(--p.t<=0){ p.query=false; wander(p); } } }
       else if(p.st==='sit'){ if(approach(p,dx,1.7)){ p.seated=true; if(--p.t<=0){ p.seated=false; wander(p); } } else p.seated=false; }
       else if(p.st==='walk'){ p.seated=false; if(approach(p,p.tx,1.4)) idleBeat(p); }
-      else { p.seated=false; if(p.beat==='smoke'&&tick%16===0) smoke.push({x:p.px-3,y:FLOOR-30,life:46,rise:0.15,c:'#9aa3a8'});
-        if(--p.t<=0){ const r=Math.random(); if(r<0.6) wander(p); else if(r<0.8){ p.st='sit'; p.t=120+((Math.random()*120)|0); } else idleBeat(p); } }
+      else { p.seated=false;
+        if(--p.t<=0){ const r=Math.random(); if(r<0.55) wander(p); else if(r<0.72){ p.st='sit'; p.t=120+((Math.random()*120)|0); } else if(r<0.82) visitChief(p); else idleBeat(p); } }
       p.walking = Math.abs(p.px-bx)>0.25;
     } }
+  // Send a specific staffer to consult the Chief (drives the "I've got a query" walk on demand).
+  function askChief(s){ if(!people||!s||s.ci<0) return; const p=people[s.ci]; if(p && p.st!=='work') visitChief(p); }
   function drawPeople(){ if(!people) return;
-    for(const p of people){ if(p.seated) continue; const c=CAST[p.ci];
-      if(p.walking) drawWalk(c,p.px|0,FLOOR,p.face); else drawStand(c,p.px|0,FLOOR);
-      if(p.beat==='coffee'&&p.st==='idle') drawMug(p.px+(p.face>0?4:-11), FLOOR-27);
-      if(p.carry||p.st==='handoff'){ const hx=p.px+(p.face>0?4:-10); R(hx,FLOOR-24,7,5,'#e8e2d0'); R(hx,FLOOR-24,7,1,'#fbf6e6'); R(hx+1,FLOOR-22,5,1,'#b9b39c'); }
+    for(const p of people){ if(p.seated) continue; const c=CAST[p.ci], px=p.px|0; let h=null;
+      if(p.walking) drawWalk(c,px,FLOOR,p.face); else h=drawStand(c,px,FLOOR);
+      if(!p.walking && p.st==='idle'){
+        if(p.beat==='smoke' && h){ const dir=p.face>0?1:-1, mx=h.mouthX, my=h.mouthY;   // a real cigarette at the lips, ember lit, smoke off the tip
+          R(dir>0?mx+1:mx-5, my, 5, 1, '#e8e2d0'); const tip=dir>0?mx+6:mx-6; P(tip, my, '#ff7a2a');
+          if(tick%16===0) smoke.push({x:tip, y:my-1, life:46, rise:0.15, c:'#9aa3a8'}); }
+        else if(p.beat==='coffee'){ const dir=p.face>0?1:-1, mx=px+(dir>0?1:-9), my=FLOOR-29;   // arm raised to hold the cup (no more floating mug)
+          R(mx+2, my+4, 3, 7, c.pal.skin); drawMug(mx, my); } }
+      if(p.st==='chief' && p.query && Math.abs(p.px-p.tx)<3){ const bx=px, by=FLOOR-46;   // "?" while putting a query to the Chief
+        R(bx-5,by,11,9,'#12161c'); R(bx-5,by,11,1,'#2a323c'); R(bx-2,by+9,3,2,'#12161c');
+        g.fillStyle='#e8b04b'; g.font='7px "Press Start 2P",monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('?',bx,by+5); g.textAlign='left'; g.textBaseline='alphabetic'; }
+      if(p.carry||p.st==='handoff'){ const hx=px+(p.face>0?4:-10); R(hx,FLOOR-24,7,5,'#e8e2d0'); R(hx,FLOOR-24,7,1,'#fbf6e6'); R(hx+1,FLOOR-22,5,1,'#b9b39c'); }
     } }
   function bubbleOnly(s,text){ if(!s) return; s.say=text; s.sayT=78; }        // a bubble of what they're DOING (no quip in the log)
   function setWorking(s,doing){ if(!s) return; const from=realActive;
@@ -939,11 +952,11 @@
     const bar=document.createElement('div'); bar.className='appbar';
     bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><span class="grow"></span><button class="chip" id="appSettings">⚙ Settings</button>`;
     if(cab) cab.parentNode.insertBefore(bar, cab.nextSibling);
+    const ex=document.getElementById('examples'); if(ex) ex.style.display='none';   // demo brief chips are a sim aid, not app chrome
     // Reorder for the app: brief right under the stage, budget becomes a staff card, controls hidden.
     const deck=document.querySelector('.deck');
     if(deck && deck.children.length>=2){ const briefCol=deck.children[1], controlsCol=deck.children[2];
       if(briefCol) bar.after(briefCol);
-      const ex=document.getElementById('examples'); if(ex) ex.style.display='none';
       const budgetRow=document.getElementById('budgetRange') && document.getElementById('budgetRange').closest('.row');
       if(budgetRow){ const card=document.createElement('div'); card.className='sc budgetcard'; card.appendChild(budgetRow); const st=document.getElementById('staff'); if(st) st.appendChild(card); }
       if(controlsCol){ const pan=document.getElementById('panBtn'); if(pan){ pan.textContent='⤢ Look around'; bar.insertBefore(pan, bar.querySelector('.grow')); } controlsCol.style.display='none'; }
