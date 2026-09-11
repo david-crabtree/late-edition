@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadNewsroom } from '../config/newsroom.js';
 import type { Edition, SourceRef, Story } from '../core/edition.js';
-import { type CopyShape, citationStyle, getFormat, shapeDirective } from '../core/formats.js';
+import { type CopyShape, citationStyle, getOutlet, shapeDirective } from '../core/formats.js';
 import { EditionLog, type LogEvent } from '../store/log.js';
 import { paths } from '../store/paths.js';
 import { resolveWriter } from './agents.js';
@@ -15,7 +15,7 @@ export interface RewriteOptions {
   editionId: string;
   /** Which story. Defaults to the lead. */
   slug?: string;
-  /** Format, tone and length to write it in. */
+  /** Which outlet to write it as, and how long it should run. */
   shape: CopyShape;
   forceProvider?: string;
   onEvent?: (ev: LogEvent) => void;
@@ -115,7 +115,7 @@ export async function rewriteStory(opts: RewriteOptions): Promise<RewriteResult>
 
   const newsroom = await loadNewsroom(opts.root);
   const log = new EditionLog(join(dir, 'log.jsonl'), opts.onEvent);
-  const fmt = getFormat(opts.shape.format);
+  const fmt = getOutlet(opts.shape.outlet);
   log.emit('REWRITE', 'stage_start', { story: story.slug, format: fmt.id });
 
   const template = await loadPrompt(opts.root, 'writer');

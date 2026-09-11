@@ -4,6 +4,14 @@ import { loadNewsroom } from '../main/config/newsroom.js';
 import { scaffoldNewsroom } from '../main/config/scaffold.js';
 import type { DistributionConfig } from '../main/config/types.js';
 import type { Edition } from '../main/core/edition.js';
+import {
+  type CopyShape,
+  LENGTHS,
+  OUTLETS,
+  type OutletId,
+  type OutputLength,
+  getOutlet,
+} from '../main/core/formats.js';
 import { distributeEdition } from '../main/distribute/run.js';
 import { runAssignment, runDueAssignments } from '../main/pipeline/assignment.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
@@ -31,6 +39,7 @@ Commands:
   assignment <sub>       Standing assignments on a cadence: list | run <id> | tick.
   halt                   Stop all agent calls: idle the newsroom (--clear to resume).
   search <query>         Search the morgue (archive of past editions).
+  styles                 List the outlets --style can write an edition as.
   help                   Show this help.
   version                Print the version.
 
@@ -45,6 +54,10 @@ Options:
                          Default: 0 for source-backed beats, 1 for a --brief topic.
   --answer "<text>"      Answer a Chief's clarification question when resuming a brief.
   --no-clarify           Skip the clarity check; run a --brief topic even if it's vague.
+  --style <outlet>       Which paper to write it as. Changes what the desk leads on, how
+                         the headline is cut and how it reads — never the reporting.
+                         Run 'late-edition styles' for the list. Default: newspaper.
+  --length <size>        short | standard | long, relative to that outlet's natural shape.
   --distribute           After printing, send to configured channels (opt-in).
   --dry-run              With --distribute/distribute: preview sends without sending.
   --once                 With watch: poll a single time and exit.
@@ -56,6 +69,8 @@ Examples:
   late-edition detect
   late-edition init ./my-newsroom
   late-edition run --newsroom ./my-newsroom --provider fake
+  late-edition run --newsroom ./my-newsroom --brief "our pricing" --style moon
+  late-edition run --newsroom ./my-newsroom --brief "our pricing" --style linkedin --length short
   late-edition run --newsroom ./my-newsroom --provider fake --distribute --dry-run
   late-edition distribute 2026-09-09-001 --newsroom ./my-newsroom
   late-edition watch --once --newsroom ./my-newsroom --provider fake
@@ -161,6 +176,31 @@ async function printUsage(edition: Edition): Promise<void> {
   }
 }
 
+/**
+ * The outlets `--style` accepts. Printed rather than documented, because the list is
+ * meant to grow and a help screen that goes stale is worse than no help screen.
+ */
+function cmdStyles(): number {
+  const GROUP: Record<string, string> = {
+    paper: 'Papers',
+    online: 'Online',
+    social: 'Social posts',
+    plain: 'No voice at all',
+  };
+  console.log('\nWhat an edition can be written as. Pick one with --style <id>.');
+  console.log('It changes what the desk leads on and how it reads. It never changes the');
+  console.log('reporting, the sources, or what gets cited.\n');
+  for (const kind of Object.keys(GROUP)) {
+    const group = OUTLETS.filter((o) => o.kind === kind);
+    if (!group.length) continue;
+    console.log(`  ${GROUP[kind]}`);
+    for (const o of group) console.log(`    ${o.id.padEnd(12)} ${o.label} — ${o.hint}`);
+    console.log('');
+  }
+  console.log(`Lengths (--length): ${Object.keys(LENGTHS).join(', ')}\n`);
+  return 0;
+}
+
 async function cmdRun(flags: Record<string, string | boolean>): Promise<number> {
   const root = resolve(typeof flags.newsroom === 'string' ? flags.newsroom : '.');
   const forceProvider = typeof flags.provider === 'string' ? flags.provider : undefined;
@@ -171,6 +211,25 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
   const clarificationAnswer = typeof flags.answer === 'string' ? flags.answer : undefined;
   const clarify = flags['no-clarify'] === true ? false : undefined;
   const nr = typeof flags.newsroom === 'string' ? flags.newsroom : '.';
+  // Which paper this edition is written as. An unknown id would silently fall back to the
+  // house paper, which is exactly the kind of quiet no-op that wastes a real run.
+  const styleFlag = typeof flags.style === 'string' ? flags.style : undefined;
+  if (styleFlag && !OUTLETS.some((o) => o.id === styleFlag)) {
+    console.error(`Unknown --style "${styleFlag}". Run \`late-edition styles\` to see the list.\n`);
+    return 1;
+  }
+  const lengthFlag = typeof flags.length === 'string' ? flags.length : undefined;
+  if (lengthFlag && !(lengthFlag in LENGTHS)) {
+    console.error(`Unknown --length "${lengthFlag}". Use short, standard or long.\n`);
+    return 1;
+  }
+  const shape: CopyShape | undefined =
+    styleFlag || lengthFlag
+      ? {
+          outlet: styleFlag as OutletId | undefined,
+          length: lengthFlag as OutputLength | undefined,
+        }
+      : undefined;
 
   if (isHalted(root)) {
     console.log(
@@ -184,7 +243,7 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
       brief ? `\n  Brief for the Chief: "${brief}"` : ''
     }${tokenCap ? `\n  Token cap: ${tokenCap}` : ''}${
       research !== undefined ? `\n  Research passes: ${research}` : ''
-    }…\n`,
+    }${styleFlag ? `\n  Written as: ${getOutlet(styleFlag).label}` : ''}…\n`,
   );
   let result: Awaited<ReturnType<typeof runEdition>>;
   try {
@@ -197,6 +256,7 @@ async function cmdRun(flags: Record<string, string | boolean>): Promise<number> 
       research,
       clarify,
       clarificationAnswer,
+      shape,
     });
   } catch (err) {
     if (err instanceof PipelineHaltError) {
@@ -488,6 +548,8 @@ async function main(): Promise<number> {
       return cmdHalt(positionals, flags);
     case 'search':
       return cmdSearch(positionals, flags);
+    case 'styles':
+      return cmdStyles();
     default:
       console.error(`Unknown command: ${command}\n`);
       console.log(HELP);

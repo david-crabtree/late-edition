@@ -40,8 +40,10 @@ WIRE → ASSIGN → TRIAGE → RESEARCH → REPORT → ANGLES → CALL → WRITE
   because they disagree in useful ways. A desk that doesn't trust its own reporting can
   stop here and ask.
 - **ANGLES / CALL** are the editor choosing a line, or running Competing Takes when the
-  reporters genuinely disagree rather than silently merging them.
-- **WRITE** turns the chosen angle into copy, in whatever format was asked for. The picture
+  reporters genuinely disagree rather than silently merging them. The masthead reaches this
+  desk, so the headline and the placement are cut the way that paper would cut them. An
+  outlet with no front page skips the layout call entirely.
+- **WRITE** turns the chosen angle into copy, in the voice of the chosen outlet. The picture
   desk runs here too, when it's switched on.
 - **CHECK** is the copy desk verifying every claim resolves to a real cited signal.
   Anything that doesn't is cut and listed under Corrections.
@@ -59,10 +61,20 @@ have tests and they are worth reading before changing prompts or rendering.
 Invented markers like `[#1]` or `[ref]` are scrubbed from the prose by the renderer. This is
 why a story can't cite a source the researcher never found.
 
-**Format changes the voice, never the facts.** `src/main/core/formats.ts` holds the shapes
-(newspaper story, LinkedIn post, Reddit post, blog post, newsletter blurb, plain brief),
-tones and
-lengths. Every one of them carries the citation rules through unchanged.
+**The masthead changes the judgement and the voice, never the facts.**
+`src/main/core/formats.ts` holds the outlets: the house paper plus a red-top, a broadsheet,
+a business daily, an agency wire, a tech site, a blog, a newsletter, LinkedIn, Reddit and a
+plain brief. The mastheads are invented, and written as recognisable *kinds* of paper rather
+than as any real title.
+
+Each one carries a `position` (what it leads on) and a `voice` (how it reads), and they go
+to different desks: `positionDirective` reaches the reporter, the editor, the picture desk
+and the front page; `headlineDirective` reaches the editor; `shapeDirective` reaches the
+writer. That split is the point — a style that reached the writer alone would leave a
+red-top splash under a broadsheet headline. Every outlet carries the citation rules and the
+no-invented-facts rule through unchanged, and each one says so in its own directive.
+
+Research never sees the outlet. The reporting is the same reporting whichever paper runs it.
 
 **A desk with no agent stops the run.** Desks scaffold `unset`. An empty one throws
 `StaffNotConfiguredError` naming the desk, rather than falling back to the offline stand-in

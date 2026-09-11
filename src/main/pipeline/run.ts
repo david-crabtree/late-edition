@@ -59,9 +59,12 @@ export interface RunOptions {
   /** Let the Chief pause a vague brief to ask for clarification (default true). */
   clarify?: boolean;
   /**
-   * What shape the copy comes out in — newspaper story, LinkedIn post, plain brief — plus
-   * tone and length. Unset writes a newspaper story in the newsroom's house style, which is
-   * what every edition did before this existed.
+   * Which paper this edition is written as — the house paper, a red-top, a broadsheet, a
+   * business daily, an agency wire, a tech site, or a post — plus how long it runs. It
+   * reaches the reporter, the editor and the writer, so the angle, the headline and the
+   * voice all move with it. It never reaches the researcher: the reporting is the same
+   * reporting whichever paper runs it. Unset writes the house paper, which is what every
+   * edition did before this existed.
    */
   shape?: CopyShape;
   /** The user's answer to a prior clarification request (used when resuming). */

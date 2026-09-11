@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { scaffoldNewsroom } from '../config/scaffold.js';
-import { FORMATS, shapeDirective } from '../core/formats.js';
+import { OUTLETS, headlineDirective, positionDirective, shapeDirective } from '../core/formats.js';
 import { paths } from '../store/paths.js';
 import { rewriteStory, withSources } from './rewrite.js';
 import { runEdition } from './run.js';
@@ -26,7 +26,7 @@ describe('writing a filed story again in another shape', () => {
       root,
       editionId,
       forceProvider: 'fake',
-      shape: { format: 'linkedin', tone: 'conversational', length: 'short' },
+      shape: { outlet: 'linkedin', length: 'short' },
     });
     expect(out.text.length).toBeGreaterThan(0);
     expect(out.formatLabel).toBe('LinkedIn post');
@@ -41,7 +41,7 @@ describe('writing a filed story again in another shape', () => {
       root,
       editionId,
       forceProvider: 'fake',
-      shape: { format: 'newsletter' },
+      shape: { outlet: 'newsletter' },
     });
     expect(out.text).not.toMatch(/\[[a-z0-9_]+:[0-9a-f]{6,}\]/i);
     expect(out.text).not.toMatch(/\[#\d+\]|\[ref\]/i);
@@ -53,7 +53,7 @@ describe('writing a filed story again in another shape', () => {
       root,
       editionId,
       forceProvider: 'fake',
-      shape: { format: 'reddit' },
+      shape: { outlet: 'reddit' },
     });
     const file = join(paths(root).editionDir(editionId), `rewrite-${out.slug}-reddit.md`);
     expect(readFileSync(file, 'utf8')).toContain(out.text.slice(0, 40));
@@ -66,26 +66,38 @@ describe('writing a filed story again in another shape', () => {
   });
 });
 
-describe('the shape directive handed to the writer', () => {
-  it('names the format, the length and the tone', () => {
-    const d = shapeDirective({ format: 'linkedin', tone: 'analytical', length: 'long' });
+describe('the directives an outlet hands the desks', () => {
+  it('names the paper, its voice and the length for the writer', () => {
+    const d = shapeDirective({ outlet: 'linkedin', length: 'long' });
     expect(d).toContain('LinkedIn post');
+    expect(d).toContain('VOICE');
     expect(d).toContain('LENGTH');
-    expect(d).toContain('TONE');
   });
 
-  // Format and tone are allowed to change the voice. They are never allowed to loosen the
-  // citation contract — that contract is the only reason the output is worth anything.
-  it('holds the citation rules in every format', () => {
-    for (const f of FORMATS) {
-      const d = shapeDirective({ format: f.id });
-      expect(d).toMatch(/may change a fact|citation rules/i);
+  // The point of an outlet is that it reaches the desks that decide what the story IS,
+  // not only the desk that types it. A tone that only changes the body leaves a red-top
+  // splash under a broadsheet headline.
+  it('tells the reporter and the editor which paper they are filing for', () => {
+    for (const o of OUTLETS) {
+      expect(positionDirective({ outlet: o.id })).toContain(o.label);
+      expect(positionDirective({ outlet: o.id })).toContain('WHAT IT LEADS ON');
+      expect(headlineDirective({ outlet: o.id })).toContain('HEADLINES');
     }
   });
 
-  it('falls back to the house newspaper story when nothing is chosen', () => {
-    expect(shapeDirective()).toContain('Newspaper story');
-    expect(shapeDirective({ format: 'nonsense' as never })).toContain('Newspaper story');
+  // An outlet is allowed to change the voice and the judgement. It is never allowed to
+  // loosen the citation contract — that contract is the only reason the output is worth
+  // anything — or to move the bar a fact has to clear.
+  it('holds the citation rules and the facts in every outlet', () => {
+    for (const o of OUTLETS) {
+      expect(shapeDirective({ outlet: o.id })).toMatch(/may change a fact|citation rules/i);
+      expect(positionDirective({ outlet: o.id })).toMatch(/never changes a fact/i);
+    }
+  });
+
+  it('falls back to the house paper when nothing is chosen', () => {
+    expect(shapeDirective()).toContain('The house paper');
+    expect(shapeDirective({ outlet: 'nonsense' as never })).toContain('The house paper');
   });
 });
 
@@ -118,25 +130,28 @@ describe('citation style follows the format', () => {
   // A bracketed footnote number in a LinkedIn post is a tell that a machine wrote it.
   // Social formats get their sources listed at the end instead, with clean prose.
   it('leaves no bracketed markers in a social post', async () => {
-    for (const format of ['linkedin', 'reddit', 'newsletter'] as const) {
-      const out = await rewriteStory({ root, editionId, forceProvider: 'fake', shape: { format } });
+    for (const outlet of ['linkedin', 'reddit', 'newsletter'] as const) {
+      const out = await rewriteStory({ root, editionId, forceProvider: 'fake', shape: { outlet } });
       expect(out.text).not.toMatch(/\[\d+(,\d+)*\]/);
     }
   });
 
   it('keeps numbered markers where the piece reads as a document', () => {
-    for (const id of ['newspaper', 'blog', 'brief'] as const) {
-      expect(FORMATS.find((f) => f.id === id)?.citations).toBe('numbered');
+    for (const id of ['newspaper', 'moon', 'chronicle', 'ledger', 'wire', 'blog'] as const) {
+      expect(OUTLETS.find((o) => o.id === id)?.citations).toBe('numbered');
     }
     for (const id of ['linkedin', 'reddit', 'newsletter'] as const) {
-      expect(FORMATS.find((f) => f.id === id)?.citations).toBe('plain');
+      expect(OUTLETS.find((o) => o.id === id)?.citations).toBe('plain');
     }
   });
 
-  it('offers a blog post, and warns every format off the AI tells', () => {
-    expect(FORMATS.map((f) => f.id)).toContain('blog');
-    for (const f of FORMATS) {
-      expect(shapeDirective({ format: f.id })).toMatch(/read as machine-made/);
+  it('offers papers and posts alike, and warns every one off the AI tells', () => {
+    const ids = OUTLETS.map((o) => o.id);
+    for (const id of ['moon', 'chronicle', 'ledger', 'wire', 'circuit', 'blog', 'linkedin']) {
+      expect(ids).toContain(id);
+    }
+    for (const o of OUTLETS) {
+      expect(shapeDirective({ outlet: o.id })).toMatch(/read as machine-made/);
     }
   });
 });

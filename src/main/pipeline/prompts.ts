@@ -84,6 +84,8 @@ Shape:
 House style (affects voice only, never facts):
 {{style}}
 
+{{position}}
+
 {{persona}}
 
 {{angleDirective}}
@@ -113,6 +115,10 @@ it goes.
 
 House style:
 {{style}}
+
+{{position}}
+
+{{headlineStyle}}
 
 Placement is one of: "page_one" (lead), "below_fold" (worth knowing, not urgent),
 "brief" (a one-liner), "spike" (kill it — not news). Set "competingTakes" true only if
@@ -151,7 +157,7 @@ copied character-for-character from the MATERIALS, e.g. [research:1a2b3c4d5e6f].
 several as [research:aaa..., research:bbb...]. Do NOT renumber them, and do NOT invent
 markers like [#1], [1], [ref], footnotes or superscripts — only the literal ids from the
 MATERIALS resolve, anything else is dropped as unverified. Do not invent facts. Do not add a
-headline (the desk sets that). Personas, tone and format must never change the facts.
+headline (the desk sets that). A persona, a masthead and a voice never change the facts.
 
 ${INJECTION_GUARD}
 
@@ -183,6 +189,8 @@ house style, and alt text for a reader who can't see it.
 House style:
 {{style}}
 
+{{position}}
+
 The caption states only what the story establishes — never a detail no source supports, and
 never a description of an image nobody has taken. Alt text is plain and literal: what would
 be in the frame, in one sentence, no house voice at all. The shot list is 2-4 concrete,
@@ -206,6 +214,8 @@ notes on the judgement calls of the day.
 
 House style:
 {{style}}
+
+{{position}}
 
 ${JSON_GUARD}
 Shape:

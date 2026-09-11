@@ -44,6 +44,13 @@ To customise one, create a file named after the role and it will override the bu
 Templates use \`{{placeholders}}\` such as {{style}}, {{persona}}, {{beatName}} and
 {{angleDirective}}. See the built-in defaults in the source
 (src/main/pipeline/prompts.ts) for the full list and shape.
+
+Two of them carry the masthead you picked for the run, so keep them if you override
+these prompts or your chosen outlet will stop reaching that desk:
+
+    {{position}}       what this outlet leads on (reporter, editor, picture, front page)
+    {{headlineStyle}}  how it cuts a headline and a standfirst (editor)
+    {{shape}}          its voice and length (writer)
 `;
 
 const CONFIG_YAML = `paper:
@@ -156,6 +163,14 @@ doubt, cut it — a short piece that stands up beats a long one that doesn't.
 
 **The hard rule.** Never let voice bend a fact. If it isn't in the sources, it didn't
 happen, however good the sentence would have been.
+
+---
+
+This file is the voice of **the house paper**, and it is what every desk writes to unless
+you pick another masthead. Choosing one ("Write it as…" in the app, \`--style\` on the
+command line) swaps the whole editorial personality for that run: what the desk leads on,
+how the headline is cut, and how it reads. It never changes what was researched, what was
+cited, or what counts as a fact. Run \`late-edition styles\` to see the list.
 `;
 
 const BEAT_WIRE = `id: the_wire

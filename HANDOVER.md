@@ -90,8 +90,11 @@ Break any of these and the output stops being worth anything. All three have tes
 1. **Citations resolve or they die.** An agent cites by writing a source's literal signal id.
    Only real ids become footnotes; invented markers like `[#1]` are scrubbed. This is why a
    story cannot cite a source the researcher never found.
-2. **Format changes the voice, never the facts.** Every format in `core/formats.ts` carries
-   the citation rules and the no-invented-facts rule through unchanged.
+2. **The masthead changes the judgement and the voice, never the facts.** Every outlet in
+   `core/formats.ts` carries the citation rules and the no-invented-facts rule through
+   unchanged, and says so in its own directive. The outlet reaches the reporter, the editor
+   and the writer — but never the researcher, because the reporting is the same reporting
+   whichever paper runs it.
 3. **A desk with no agent stops the run.** Desks scaffold `unset`. An empty one throws
    `StaffNotConfiguredError` naming the desk, rather than silently falling back to the
    offline stand-in and filling the paper with invented copy.

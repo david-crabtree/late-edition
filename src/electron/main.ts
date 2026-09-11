@@ -13,7 +13,7 @@ import {
   PLAN_BILLING_NOTICE,
 } from '../main/core/disclaimer.js';
 import type { Edition } from '../main/core/edition.js';
-import { type CopyShape, FORMATS, LENGTHS, TONES } from '../main/core/formats.js';
+import { type CopyShape, LENGTHS, OUTLETS } from '../main/core/formats.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { sumUsage } from '../main/pipeline/draft.js';
 import { rewriteStory } from '../main/pipeline/rewrite.js';
@@ -484,16 +484,19 @@ function createWindow(): void {
             if (read) read.click();
             await new Promise(r2 => setTimeout(r2, 400));
             const r = await window.lateEdition.rewrite(target,
-              { format: 'linkedin', tone: 'conversational', length: 'standard' },
+              { outlet: 'linkedin', length: 'standard' },
               undefined, { provider: 'fake' });
             const panel = document.getElementById('fpRewrite');
-            const buttons = [...panel.querySelectorAll('[data-fmt]')].map(b => b.dataset.fmt);
+            const sel = panel.querySelector('#rwOutlet');
             return JSON.stringify({
-              formats: opts.formats.map(f => f.id),
+              outlets: opts.outlets.map(o => o.id),
+              grouped: [...sel.querySelectorAll('optgroup')].map(g => g.label),
               ok: r.ok, error: r.error || null, label: r.formatLabel, chars: (r.text || '').length,
               rawIdsLeft: /\\[[a-z0-9_]+:[0-9a-f]{6,}\\]/i.test(r.text || ''),
               sources: (r.sources || []).length,
-              panelBuilt: !!(panel && panel.dataset.built), panelOffers: buttons,
+              panelBuilt: !!(panel && panel.dataset.built),
+              panelOffers: [...sel.options].length,
+              noSeparateToneBox: !panel.querySelector('#rwTone'),
               frontPageOpen: !document.getElementById('frontpage').hidden,
             });
           })()`),
@@ -1043,10 +1046,13 @@ handle(
   },
 );
 
-/** The formats, tones and lengths the copy desk can write in — the picker's options. */
+/**
+ * The outlets the paper can be written as, and the lengths it can run at — the picker's
+ * options. One outlet carries the whole editorial personality (what it leads on, how it
+ * cuts a headline, how it writes), so the interface needs exactly one control for it.
+ */
 handle('le:formats', () => ({
-  formats: FORMATS.map((f) => ({ id: f.id, label: f.label, hint: f.hint })),
-  tones: Object.entries(TONES).map(([id, t]) => ({ id, label: t.label })),
+  outlets: OUTLETS.map((o) => ({ id: o.id, label: o.label, kind: o.kind, hint: o.hint })),
   lengths: Object.entries(LENGTHS).map(([id, l]) => ({ id, label: l.label })),
 }));
 

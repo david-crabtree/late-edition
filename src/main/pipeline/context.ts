@@ -15,7 +15,7 @@ export interface PipelineContext {
   maxFindings?: number;
   /** When true (default), the Chief may pause a vague brief to ask the user for clarification. */
   clarify: boolean;
-  /** Format, tone and length the copy is written in. Unset = a newspaper story in house style. */
+  /** Which outlet the paper is written as, and how long it runs. Unset = the house paper. */
   shape?: CopyShape;
   /**
    * When true, a desk that doesn't trust its reporting stops the run and asks whether to go

@@ -1423,12 +1423,27 @@
   let researchKey='standard';
   let photoDesk=false;   // the picture desk is an extra agent call per story — off unless asked for
   const researchOpts=()=>{ const l=RESEARCH_LEVELS[researchKey]||RESEARCH_LEVELS.standard; return { research:l.research, maxFindings:l.maxFindings, shape:copyShape(), photoDesk }; };
-  // What shape the copy comes out in. The options come from the engine (le:formats) so the
-  // app can never offer a format the writer doesn't know about.
-  let shapeOpts={ formats:[{id:'newspaper',label:'Newspaper story',hint:''}], tones:[{id:'house',label:'House style'}], lengths:[{id:'standard',label:'Standard'}] };
-  const chosen={ format:'newspaper', tone:'house', length:'standard' };
-  const copyShape=()=>({ format:chosen.format, tone:chosen.tone, length:chosen.length });
-  async function loadFormats(){ try{ if(window.lateEdition.formats) shapeOpts=await window.lateEdition.formats(); }catch(_){ } }
+  // Which paper this is. One outlet carries the whole editorial personality - what the desk
+  // leads on, how the headline is cut, how it reads - so there is one control, not three.
+  // The list comes from the engine (le:formats) so the app can never offer a masthead the
+  // desks don't know about.
+  let shapeOpts={ outlets:[{id:'newspaper',label:'The house paper',kind:'paper',hint:''}], lengths:[{id:'standard',label:'Standard'}] };
+  const chosen={ outlet:'newspaper', length:'standard' };
+  const copyShape=()=>({ outlet:chosen.outlet, length:chosen.length });
+  async function loadFormats(){ try{ if(window.lateEdition.formats){ const o=await window.lateEdition.formats(); if(o&&o.outlets) shapeOpts=o; } }catch(_){ } }
+  // Grouped, because eleven flat options in one list is a wall. The engine sends the kind.
+  const OUTLET_GROUPS=[['paper','Papers'],['online','Online'],['social','Social posts'],['plain','Plain']];
+  function outletOptions(cur){
+    let out='';
+    for(const [kind,label] of OUTLET_GROUPS){
+      const group=shapeOpts.outlets.filter(o=>o.kind===kind);
+      if(!group.length) continue;
+      out+='<optgroup label="'+escH(label)+'">'
+        +group.map(o=>OPT(o,cur)).join('')
+        +'</optgroup>'; }
+    // An engine that doesn't send `kind` still has to produce a usable list.
+    return out||shapeOpts.outlets.map(o=>OPT(o,cur)).join(''); }
+  const OPT=(o,cur)=>'<option value="'+o.id+'"'+(o.id===cur?' selected':'')+'>'+escH(o.label)+'</option>';
   // ---- The field desk ---------------------------------------------------------------
   // Ida keeps an eye on the pages a story came from. Polling costs nothing — the adapters
   // fetch and diff with no model involved — so the check runs on open and the result waits
@@ -1678,10 +1693,14 @@
       </div>`;
     const picks=host.querySelector('#rwPicks');
     loadFormats().then(()=>{
-      picks.innerHTML=shapeOpts.formats.filter(f=>f.id!=='newspaper')
-        .map(f=>`<button class="chip" data-fmt="${f.id}" title="${escH(f.hint||'')}">${escH(f.label)}</button>`).join('')
-        +`<select id="rwTone" aria-label="Tone">${shapeOpts.tones.map(o=>`<option value="${o.id}">${escH(o.label)}</option>`).join('')}</select>`
-        +`<select id="rwLen" aria-label="Length">${shapeOpts.lengths.map(o=>`<option value="${o.id}"${o.id==='standard'?' selected':''}>${escH(o.label)}</option>`).join('')}</select>`;
+      // A dropdown and one button, rather than a chip per masthead - eleven chips is a wall.
+      picks.innerHTML='<select id="rwOutlet" aria-label="Write this as">'+outletOptions(null)+'</select>'
+        +'<select id="rwLen" aria-label="Length">'+shapeOpts.lengths.map(o=>'<option value="'+o.id+'"'+(o.id==='standard'?' selected':'')+'>'+escH(o.label)+'</option>').join('')+'</select>'
+        +'<button class="chip primary" data-fmt="go">Write it</button>'
+        +'<span class="rw-note" id="rwHint"></span>';
+      const osel=picks.querySelector('#rwOutlet'), ohint=picks.querySelector('#rwHint');
+      const setOHint=()=>{ const o=shapeOpts.outlets.find(x=>x.id===osel.value); ohint.textContent=(o&&o.hint)||''; };
+      setOHint(); osel.addEventListener('change',setOHint);
       picks.querySelectorAll('[data-fmt]').forEach(b=>b.addEventListener('click',()=>doRewrite(b)));
     });
     host.querySelector('#rwHide').addEventListener('click',()=>{ host.querySelector('#rwOut').hidden=true; });
@@ -1696,12 +1715,12 @@
   async function doRewrite(btn){
     if(rewriteBusy||!lastEditionId) return;
     const host=document.getElementById('fpRewrite');
-    const tone=host.querySelector('#rwTone'), len=host.querySelector('#rwLen');
+    const osel=host.querySelector('#rwOutlet'), len=host.querySelector('#rwLen');
     const was=btn.textContent; rewriteBusy=true; btn.textContent='Writing…';
     host.querySelectorAll('[data-fmt]').forEach(b=>{ b.disabled=true; });
     try{
       const r=await window.lateEdition.rewrite(lastEditionId,
-        { format:btn.dataset.fmt, tone:tone?tone.value:'house', length:len?len.value:'standard' });
+        { outlet:osel?osel.value:'newspaper', length:len?len.value:'standard' });
       if(!r||!r.ok) throw new Error((r&&r.error)||'the desk could not write it');
       const out=host.querySelector('#rwOut');
       host.querySelector('#rwOutLabel').textContent=r.formatLabel+(r.tokens?` · ${fmtK(r.tokens)} tokens`:'');
@@ -1963,11 +1982,13 @@
         const sel=rr.querySelector('#researchLevel'), hint=rr.querySelector('#researchHint');
         const setHint=()=>{ const l=RESEARCH_LEVELS[researchKey]; if(hint) hint.textContent=`~${l.maxFindings} sources${l.research>1?' · 2 passes':''}`; };
         setHint(); sel.addEventListener('change',()=>{ researchKey=sel.value; setHint(); });
-        // Format / tone / length, chosen before the desks are set going. The same three
-        // are offered again on the finished paper, where a rewrite costs one writer call.
+        // Which paper, chosen before the desks are set going. It reaches the reporter and
+        // the editor as well as the writer, so the angle and the headline move with it -
+        // that is the difference between a masthead and a font. The same picker is offered
+        // again on the finished paper, where a rewrite costs one writer call.
         const fr=document.createElement('div'); fr.className='row shaperow';
         fr.innerHTML='<label class="hint" for="fmtSel">Write it as</label><select id="fmtSel"></select>'
-          +'<select id="toneSel" aria-label="Tone"></select><select id="lenSel" aria-label="Length"></select>'
+          +'<select id="lenSel" aria-label="Length"></select>'
           +'<span class="hint" id="fmtHint"></span>';
         card.appendChild(fr);
         // The picture desk. It writes a shot list, caption and alt text — it does NOT make
@@ -1979,12 +2000,11 @@
         pr.querySelector('#photoToggle').addEventListener('change', e=>{ photoDesk=e.target.checked; });
         const fill=(el,items,cur)=>{ el.innerHTML=items.map(o=>`<option value="${o.id}"${o.id===cur?' selected':''}>${escH(o.label)}</option>`).join(''); };
         loadFormats().then(()=>{
-          const f=fr.querySelector('#fmtSel'), tn=fr.querySelector('#toneSel'), ln=fr.querySelector('#lenSel'), fh=fr.querySelector('#fmtHint');
-          fill(f,shapeOpts.formats,chosen.format); fill(tn,shapeOpts.tones,chosen.tone); fill(ln,shapeOpts.lengths,chosen.length);
-          const setFh=()=>{ const o=shapeOpts.formats.find(x=>x.id===chosen.format); fh.textContent=(o&&o.hint)||''; };
+          const f=fr.querySelector('#fmtSel'), ln=fr.querySelector('#lenSel'), fh=fr.querySelector('#fmtHint');
+          f.innerHTML=outletOptions(chosen.outlet); fill(ln,shapeOpts.lengths,chosen.length);
+          const setFh=()=>{ const o=shapeOpts.outlets.find(x=>x.id===chosen.outlet); fh.textContent=(o&&o.hint)||''; };
           setFh();
-          f.addEventListener('change',()=>{ chosen.format=f.value; setFh(); });
-          tn.addEventListener('change',()=>{ chosen.tone=tn.value; });
+          f.addEventListener('change',()=>{ chosen.outlet=f.value; setFh(); });
           ln.addEventListener('change',()=>{ chosen.length=ln.value; });
         }); }
       if(controlsCol) controlsCol.style.display='none';   // the sim's control column — the appbar has the app's own look-around

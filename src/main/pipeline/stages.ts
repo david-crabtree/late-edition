@@ -1,7 +1,13 @@
 import { runSource } from '../adapters/run.js';
 import type { BeatConfig } from '../config/types.js';
 import type { Correction, Edition, SourceRef, Story } from '../core/edition.js';
-import { shapeDirective } from '../core/formats.js';
+import {
+  getOutlet,
+  hasFrontPage,
+  headlineDirective,
+  positionDirective,
+  shapeDirective,
+} from '../core/formats.js';
 import { type Signal, makeSignalId, shortHash } from '../core/signal.js';
 import { writeStoryFile } from '../store/edition-store.js';
 import { assertNotHalted } from '../store/halt.js';
@@ -191,6 +197,7 @@ async function pictureDesk(draft: EditionDraft, ctx: PipelineContext): Promise<v
         systemPrompt: renderTemplate(template, {
           paperName: draft.paperName,
           style: ctx.newsroom.style,
+          position: positionDirective(ctx.shape),
         }),
         userPrompt: `${story.call?.headline ?? story.beatName}\n\n${story.copy ?? ''}`,
         signals: [],
@@ -600,6 +607,7 @@ export async function stageReport(draft: EditionDraft, ctx: PipelineContext): Pr
       paperName: draft.paperName,
       beatName: t.story.beatName,
       style: ctx.newsroom.style,
+      position: positionDirective(ctx.shape),
       persona: personaBlock(ctx, t.story.reporterName),
       angleDirective: angleDirective(t.index, t.total),
     });
@@ -714,6 +722,8 @@ export async function stageCall(draft: EditionDraft, ctx: PipelineContext): Prom
       paperName: draft.paperName,
       beatName: story.beatName,
       style: ctx.newsroom.style,
+      position: positionDirective(ctx.shape),
+      headlineStyle: headlineDirective(ctx.shape),
     });
     const say = chatter(ctx, 'editor', story.slug);
     try {
@@ -767,6 +777,12 @@ export async function stageCall(draft: EditionDraft, ctx: PipelineContext): Prom
 }
 
 async function frontPage(draft: EditionDraft, ctx: PipelineContext): Promise<void> {
+  // A LinkedIn post has no front page, so it gets no weather line and no editor's-log
+  // flourish — and this run saves the editor call that would have written them.
+  if (!hasFrontPage(ctx.shape)) {
+    ctx.log.emit('editor', 'no_front_page', { outlet: getOutlet(ctx.shape?.outlet).id });
+    return;
+  }
   const headlines = draft.stories.map((s) => s.call?.headline ?? s.beatName);
   if (headlines.length === 0) {
     draft.weatherLine = 'A quiet day on the wire. The presses idle.';
@@ -782,6 +798,7 @@ async function frontPage(draft: EditionDraft, ctx: PipelineContext): Promise<voi
       systemPrompt: renderTemplate(template, {
         paperName: draft.paperName,
         style: ctx.newsroom.style,
+        position: positionDirective(ctx.shape),
       }),
       userPrompt: headlines.map((h, i) => `${i + 1}. ${h}`).join('\n'),
       signals: [],
