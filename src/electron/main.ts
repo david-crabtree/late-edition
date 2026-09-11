@@ -22,7 +22,7 @@ import {
 } from '../main/core/disclaimer.js';
 import type { Edition } from '../main/core/edition.js';
 import { type CopyShape, LENGTHS, OUTLETS } from '../main/core/formats.js';
-import { shellQuote } from '../main/core/shell-quote.js';
+import { terminalLaunch } from '../main/core/terminal-launch.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { sumUsage } from '../main/pipeline/draft.js';
 import { rewriteStory } from '../main/pipeline/rewrite.js';
@@ -1145,50 +1145,28 @@ handle('le:openTerminal', (_e, providerId: string, stepIndex: number) => {
   if (!step?.command) return { ok: false, error: 'No command for that step.' };
   const cwd = existsSync(newsroomRoot()) ? newsroomRoot() : homedir();
   try {
-    if (process.platform === 'win32') {
-      // `start` needs a window title first, or it eats the next quoted argument as one.
-      // /k keeps the window open after the command finishes so the output can be read.
-      spawn('cmd.exe', ['/c', 'start', 'Late Edition setup', 'cmd.exe', '/k', step.command], {
-        cwd,
-        detached: true,
-        stdio: 'ignore',
-        windowsVerbatimArguments: false,
-      }).unref();
-    } else if (process.platform === 'darwin') {
-      // Terminal.app starts its own shell, so the working directory has to be written into
-      // the command rather than passed as an option — and the default newsroom lives under
-      // "~/Library/Application Support", which has a space in it. Unquoted, zsh reads that
-      // as two arguments and cd fails before the command it was opened for ever runs.
-      const script = `cd ${shellQuote(cwd)} && ${step.command}`;
-      const escaped = script.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-      spawn(
-        'osascript',
-        [
-          '-e',
-          `tell application "Terminal" to do script "${escaped}"`,
-          '-e',
-          'tell application "Terminal" to activate',
-        ],
-        { detached: true, stdio: 'ignore' },
-      ).unref();
-    } else {
-      // No single terminal exists on Linux; try the usual suspects and report if none took.
-      const tried = ['x-terminal-emulator', 'gnome-terminal', 'konsole', 'xterm'];
-      let opened = false;
-      for (const term of tried) {
-        try {
-          spawn(term, ['-e', 'bash', '-lc', `${step.command}; exec bash`], {
-            cwd,
-            detached: true,
-            stdio: 'ignore',
-          }).unref();
-          opened = true;
-          break;
-        } catch {
-          /* try the next one */
-        }
+    // How to open a terminal on this platform lives in core, where it can be tested against
+    // every command every provider ships rather than only on whichever machine is running.
+    const { attempts, cwd: spawnCwd } = terminalLaunch(process.platform, cwd, step.command);
+    let opened = false;
+    for (const attempt of attempts) {
+      try {
+        spawn(attempt.file, attempt.args, {
+          ...(spawnCwd ? { cwd: spawnCwd } : {}),
+          detached: true,
+          stdio: 'ignore',
+        }).unref();
+        opened = true;
+        break;
+      } catch {
+        /* Linux lists several terminals and most machines have one of them; try the next. */
       }
-      if (!opened) return { ok: false, error: `No terminal found. Tried: ${tried.join(', ')}.` };
+    }
+    if (!opened) {
+      return {
+        ok: false,
+        error: `No terminal found. Tried: ${attempts.map((a) => a.file).join(', ')}.`,
+      };
     }
     return { ok: true, command: step.command, cwd };
   } catch (err) {
