@@ -56,6 +56,18 @@ The repository has no remote yet, which is the cheap moment to do all of this.
       address is the only thing that gets a stranger back to an honest account of what
       they are reading. Set it before the first release, not after.
 
+- [x] **Author identity scrubbed.** Every commit across every ref was authored as one of two
+      real mailboxes, and 102 of them carried an employer domain. A commit cannot have no
+      email — the field is part of the format — so all of them were rewritten to
+      `David Crabtree <david-crabtree@users.noreply.github.com>`, which is a GitHub address
+      that accepts no mail and cannot be scraped. `git config user.email` is pinned to the
+      same value in this repo, so the next commit does not undo it.
+
+      If you want commits to show as yours on your GitHub profile, GitHub's own noreply is
+      the numbered form, `<id>+<user>@users.noreply.github.com`, on your email settings
+      page. Paste it and the rewrite is one command again — it costs nothing while there is
+      still no remote.
+
 - [ ] **Drop the pre-scrub history.** Commit messages have been rewritten to remove AI
       attribution trailers, but the originals are still reachable locally:
 
@@ -106,11 +118,20 @@ hundreds of clean installs, and there is no way to submit a build to speed it up
 Since 2023 Microsoft has required code-signing keys to live on certified hardware, so the
 old cheap "download a .pfx" certificates no longer exist.
 
+**The licence decides this, and the licence is Apache 2.0 with the Commons Clause.** That
+is source-available, not open source: the Commons Clause forbids selling the software, and
+the OSI definition does not allow a restriction on who may use it or for what. Every free
+signing programme worth having is for open source specifically — SignPath Foundation's
+terms require "an OSI-approved Open Source license without commercial dual-licensing for
+all components", which this is not. So the free route is closed by choice, deliberately,
+and **shipping unsigned with published checksums is the decision**. See
+[`decisions.md`](decisions.md).
+
 | Route | Cost | Notes |
 | --- | --- | --- |
-| Ship unsigned | Free | SmartScreen warning; Smart App Control may block. Publish checksums and say plainly what people will see. |
-| **SignPath Foundation** | Free | Free OV-level signing for open source, and Microsoft's own docs point you there. **Start here.** |
-| Certum open source | €25 / €49 / €69 | €25 certificate only if you already have a cryptoCertum card and reader; **€49 cloud version, no hardware**; €69 for the set with the card. |
+| **Ship unsigned** | Free | SmartScreen warning; Smart App Control may block. Publish checksums and say plainly what people will see. **This is the decision.** |
+| SignPath Foundation | Free | Free OV-level signing, but **only for OSI-approved open source**. The Commons Clause rules it out. Reachable only by dropping that clause. |
+| Certum open source | €25 / €49 / €69 | The fallback if the SmartScreen friction proves too costly. €49 cloud version, no hardware. Confirm they accept a source-available licence before paying — their programme is also written for open source. |
 | Microsoft Store (MSIX) | Free | Free, and no warning at all. Worth considering as a second distribution channel. |
 | Azure Artifact Signing | ~$10/mo | Formerly Trusted Signing. **Individual developers are limited to the USA and Canada** — so as a UK individual this route is closed to you. Organisations in the UK/EU are eligible. |
 | OV certificate | $150–300/yr | Microsoft's own advice to an individual outside the US/Canada. |

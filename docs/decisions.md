@@ -4,6 +4,32 @@ A running, honest log of choices made while building Late Edition — including 
 that didn't work. Newest first within each milestone. Keyed to the build plan's `DECIDE`
 markers where relevant.
 
+## Release
+
+### DR.1 — Licence: Apache 2.0 with the Commons Clause, and therefore no free signing
+Apache 2.0 with the Commons Clause License Condition v1.0. Anyone may use it, at home or
+at work, read it, change it and share their changes. Nobody may sell it, host it for a fee,
+or build a paid product on it.
+
+This is **source-available, not open source**: the OSI definition does not permit a
+restriction on who may use the software or for what, and the Commons Clause is exactly
+such a restriction. That is a deliberate trade, and it costs something concrete. Every free
+code-signing programme is written for open source — SignPath Foundation's own terms require
+"an OSI-approved Open Source license without commercial dual-licensing for all components"
+— so choosing this licence closes the free Windows signing route.
+
+Taken knowingly: the protection is worth more than the smoother install. Windows builds ship
+unsigned with published checksums and a README that says plainly what SmartScreen will do.
+Certum's paid cloud certificate stays as a fallback if that friction turns out to cost more
+than it saves.
+
+### DR.2 — Commit identity: a GitHub noreply address
+A git commit cannot have an empty author email; the field is part of the commit format. The
+history carried two real mailboxes, one of them on an employer's domain, across 102 commits.
+All refs were rewritten to `David Crabtree <david-crabtree@users.noreply.github.com>` — an
+address that accepts no mail, cannot be scraped, and belongs to nobody's employer. The
+repo-local `user.email` is pinned to it so the next commit does not reintroduce a real one.
+
 ## Milestone 0 — Skeleton
 
 ### D0.1 — Language & module system: TypeScript, ESM, strict
