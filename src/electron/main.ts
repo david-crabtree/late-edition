@@ -23,6 +23,7 @@ import {
 import type { Edition } from '../main/core/edition.js';
 import { type CopyShape, LENGTHS, OUTLETS } from '../main/core/formats.js';
 import { terminalLaunch } from '../main/core/terminal-launch.js';
+import { applyUserPath } from '../main/core/user-path.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { sumUsage } from '../main/pipeline/draft.js';
 import { rewriteStory } from '../main/pipeline/rewrite.js';
@@ -117,6 +118,21 @@ function newsroomRoot(): string {
   }
   const chosen = readAppConfig().root;
   return ensureNewsroom(chosen || join(app.getPath('userData'), 'newsroom'));
+}
+
+/**
+ * Repair the PATH before anything looks for an agent with it.
+ *
+ * An app opened from Finder or the Dock on macOS inherits roughly
+ * `/usr/bin:/bin:/usr/sbin:/sbin` — not `~/.local/bin`, where Claude Code installs itself,
+ * and not Homebrew. Without this, somebody installs an agent, signs in, watches it answer
+ * in their own terminal, and Setup still says "not installed" with nothing to explain why.
+ *
+ * Runs once, at startup, before any detection.
+ */
+const pathFix = applyUserPath();
+if (pathFix.added.length) {
+  console.log(`PATH: added ${pathFix.added.join(', ')}`);
 }
 
 let win: BrowserWindow | null = null;
@@ -1206,6 +1222,9 @@ handle('le:about', () => {
   }
   return {
     ...build,
+    // What the app had to add to find anything. Blank on Windows and on a Mac launched
+    // from a terminal; the interesting case is a Mac opened from the Dock.
+    pathAdded: pathFix.added,
     electron: process.versions.electron,
     platform: process.platform,
     copyright: COPYRIGHT,

@@ -49,15 +49,26 @@ describe('opening a terminal at a setup command', () => {
     expect(claudeInstall('darwin')).not.toBe(claudeInstall('win32'));
   });
 
-  it.each(COMMANDS)('%s: "%s" survives macOS', (_id, command) => {
+  /**
+   * Peel the AppleScript layer back off, to the shell command Terminal would actually run.
+   * Searching the raw string for the command is not good enough: several of these contain
+   * double quotes, correctly escaped on the way in, so a substring match fails on exactly
+   * the commands most likely to break.
+   */
+  const shellCommandFor = (command: string) => {
     const { attempts, cwd } = terminalLaunch('darwin', SPACEY, command);
-    const script = attempts[0]?.args[1] ?? '';
-    // The directory is written into the command, not passed to spawn.
-    expect(cwd).toBeUndefined();
-    expect(script).toContain(command);
-    // Quoted as one argument. Unquoted, cd stopped at ".../Library/Application".
-    expect(script).toContain(`cd '${SPACEY}'`);
-    expect(script).not.toContain(`cd ${SPACEY}`);
+    expect(cwd).toBeUndefined(); // written into the command, not passed to spawn
+    return String(attempts[0]?.args[1])
+      .replace(/^tell application "Terminal" to do script "/, '')
+      .replace(/"$/, '')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\');
+  };
+
+  it.each(COMMANDS)('%s: "%s" survives macOS', (_id, command) => {
+    // Exactly the command, after a cd quoted as one argument. Unquoted, cd stopped at
+    // ".../Library/Application" and the command never ran at all.
+    expect(shellCommandFor(command)).toBe(`cd '${SPACEY}' && ${command}`);
   });
 
   // Install commands differ by platform, so Windows is checked against its own.
@@ -83,14 +94,7 @@ describe('opening a terminal at a setup command', () => {
   // The macOS script is the only one assembled by hand, so it is the only one where the
   // quoting can be wrong. Hand it to a real shell and see what the cd actually receives.
   it.skipIf(process.platform === 'win32')('the macOS cd lands in the right directory', () => {
-    const { attempts } = terminalLaunch('darwin', SPACEY, 'claude auth login');
-    // Unescape the AppleScript layer to get back the shell command Terminal would run.
-    const shell = String(attempts[0]?.args[1])
-      .replace(/^tell application "Terminal" to do script "/, '')
-      .replace(/"$/, '')
-      .replace(/\\"/g, '"')
-      .replace(/\\\\/g, '\\');
-    const cdOnly = shell.split(' && ')[0] ?? '';
+    const cdOnly = shellCommandFor('claude auth login').split(' && ')[0] ?? '';
     const out = execFileSync('sh', ['-c', `printf %s ${cdOnly.replace(/^cd /, '')}`], {
       encoding: 'utf8',
     });

@@ -60,6 +60,14 @@ export const claudeProvider: AgentProvider = {
       note: 'There is no installer to download — this command fetches and installs it. On a Mac, `brew install --cask claude-code` works too if you use Homebrew. The page is the full instructions, including Windows PowerShell and Linux package managers.',
     },
     {
+      text: 'Put it where your shell can find it',
+      commands: {
+        darwin: `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc`,
+        linux: `echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc`,
+      },
+      note: 'The installer puts Claude Code in ~/.local/bin, which is often not on the PATH — so the next step would fail with "command not found". Its own output tells you this and it is easy to miss. Skip this if `claude --version` already answers. Windows installs do this for you.',
+    },
+    {
       text: 'Sign in, so it can talk to Anthropic on your behalf',
       command: 'claude auth login',
       note: 'Opens your browser. Signing in to claude.ai on its own does nothing for this — the CLI keeps its own login, and Late Edition never sees either.',
