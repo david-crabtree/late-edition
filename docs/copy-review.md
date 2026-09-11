@@ -12,7 +12,7 @@ Sorted by what would be most embarrassing to get wrong.
 | Where | Claim | Why it needs you |
 | --- | --- | --- |
 | `README.md` Download table | macOS `.dmg`, Linux AppImage and `.deb` | **Neither has ever been built.** The release workflow produces them on tag. Do not publish the README before a release exists with those files in it. |
-| `README.md`, `docs/faq.md` | The macOS right-click and `xattr` instructions | Written from how unsigned apps behave, not from opening one. You have a Mac — do it once and correct this if it is wrong. |
+| ~~`README.md`, `docs/faq.md`~~ | ~~The macOS right-click instructions~~ | **Corrected 11 Sep 2026, and they were wrong.** Apple removed control-click → Open in macOS Sequoia; the refusal now needs `xattr -cr` or System Settings → Privacy & Security → Open Anyway. Found by opening a real build on an M1, which is exactly what this row was for. |
 | `README.md` badges | Release, downloads, Discord, Sponsor | All four **404 until the repo, the server and the Sponsors account exist.** A README full of broken badges is the first thing anyone sees. |
 | `README.md`, `llms.txt` | Repository and Discussions links | The `late-edition` org does not exist yet. |
 | `README.md`, `docs/faq.md` | Windows SmartScreen and Smart App Control behaviour | Taken from Microsoft's documented behaviour, not from a clean Windows 11 machine downloading our actual file. Worth one test before launch. |

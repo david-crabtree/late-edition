@@ -190,7 +190,7 @@ a link to the release page. Nothing ever restarts itself.
 | | Configured | Actually built | Auto update | First launch |
 | --- | --- | --- | --- | --- |
 | Windows | NSIS installer + portable, x64 | **Yes**, both produced | Downloads, then asks | Unsigned. SmartScreen warns; Smart App Control may block outright. |
-| macOS | dmg + zip, x64 + arm64 | **Not yet** — the release workflow builds it on a Mac runner | Told, never installed | Ad-hoc signed by `scripts/after-sign.mjs`, not notarised. Right click, Open, Open. David has a Mac and opens the first build before release. |
+| macOS | dmg + zip, x64 + arm64 | **Yes** — built on the Mac runner, v0.1.0, opened on an M1 | Told, never installed | Ad-hoc signed by `scripts/after-sign.mjs`, not notarised. Refused on first launch; cleared with `xattr -cr` or System Settings → Privacy & Security → Open Anyway. **Control-click → Open no longer works, Apple removed it in Sequoia.** |
 | Linux | AppImage + deb | **Not yet** — same workflow | Downloads, then asks | Unverified. |
 
 macOS is a v1 target. It cannot be packaged from the Windows machine this is built on, so

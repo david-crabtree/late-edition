@@ -55,16 +55,27 @@ case building from source is the way round it.
 Every release publishes `SHA256SUMS.txt`. Since nothing is signed, that checksum is the only
 way to tell a real download from a tampered one.
 
-### macOS says the app is damaged, or won't open it.
+### macOS won't open it — "Apple cannot check it for malicious software".
 
-First launch needs right-click, **Open**, then **Open** again. Or:
+Expected. The builds are ad-hoc signed, which stops Apple Silicon refusing outright, but
+they are not notarised. Notarisation needs a paid Apple developer account and this is a
+free project.
+
+One line in Terminal clears it for good:
 
 ```
 xattr -cr "/Applications/Late Edition.app"
 ```
 
-The builds are ad-hoc signed, which stops Apple Silicon refusing outright, but they are not
-notarised. Notarisation needs a paid Apple developer account and this is a free project.
+That removes the quarantine flag your browser attached to the download, so Gatekeeper stops
+checking it. Point it at wherever the app is if it is not in Applications yet.
+
+Without a terminal: try to open the app, then go to System Settings → Privacy & Security,
+scroll to Security, and click **Open Anyway** on the line about Late Edition. That button
+only appears for about an hour after the refusal.
+
+**Control-clicking and choosing Open does not work any more.** Apple removed that bypass in
+macOS Sequoia, and most instructions you will find online still tell you to do it.
 
 **Building it yourself avoids all of this.** The Gatekeeper prompt comes from a quarantine
 flag your browser attaches to downloads, so an app built on your own machine just opens.

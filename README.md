@@ -31,8 +31,11 @@ isn't, so here is exactly what you will see:
 
 - **Windows** shows a blue "Windows protected your PC" panel. Click **More info**, then
   **Run anyway**. On Windows 11, Smart App Control may block it outright rather than warn.
-- **macOS** is ad-hoc signed but not notarised. First launch: right-click, **Open**, then
-  **Open** again. Or `xattr -cr "/Applications/Late Edition.app"`.
+- **macOS** is ad-hoc signed but not notarised, so the first launch is refused with
+  "Apple cannot check it for malicious software". The one-line fix, in Terminal:
+  `xattr -cr "/Applications/Late Edition.app"`. Without a terminal: System Settings →
+  Privacy & Security → **Open Anyway**, which appears for about an hour after you try.
+  (Control-clicking and choosing Open no longer works — Apple removed that on Sequoia.)
 - **Linux**: `chmod +x` the AppImage and run it.
 
 Every release publishes `SHA256SUMS.txt`. Nothing being signed, that checksum is the only way
