@@ -69,6 +69,9 @@ export const claudeProvider: AgentProvider = {
     jsonOutput: true,
     streaming: true,
     models: ['haiku', 'sonnet', 'opus'],
+    modelSyntax: {
+      hint: 'An alias — haiku, sonnet or opus — or a full model id. Blank takes its default.',
+    },
     // Cheap on the token-hungry and the mechanical desks, strong where the call is made.
     recommend: {
       triage: 'sonnet',

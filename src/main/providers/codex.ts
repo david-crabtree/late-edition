@@ -32,6 +32,7 @@ export const codexProvider: AgentProvider = {
     jsonOutput: false,
     streaming: true,
     models: ['gpt-5-codex', 'gpt-5', 'gpt-5-mini'],
+    modelSyntax: { hint: 'A model name on its own, e.g. gpt-5. Blank takes its default.' },
     recommend: {
       triage: 'gpt-5-mini',
       researcher: 'gpt-5-mini',

@@ -26,6 +26,9 @@ export const geminiProvider: AgentProvider = {
     jsonOutput: true,
     streaming: true,
     models: ['gemini-2.5-flash', 'gemini-2.5-pro'],
+    modelSyntax: {
+      hint: 'A model name on its own, e.g. gemini-2.5-pro. Blank takes its default.',
+    },
     recommend: {
       triage: 'gemini-2.5-flash',
       researcher: 'gemini-2.5-flash',

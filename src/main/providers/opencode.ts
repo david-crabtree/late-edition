@@ -17,7 +17,20 @@ export const opencodeProvider: AgentProvider = {
     { text: 'Install OpenCode', url: 'https://opencode.ai' },
     { text: 'Sign in to whichever provider you want it to use', command: 'opencode auth login' },
   ],
-  capabilities: { webSearch: false, fileAccess: true, jsonOutput: false, streaming: true },
+  capabilities: {
+    webSearch: false,
+    fileAccess: true,
+    jsonOutput: false,
+    streaming: true,
+    // The one agent here whose model names carry a slash, and the reason this hint exists.
+    modelSyntax: {
+      hint: 'provider/model — the slash matters. For example anthropic/claude-sonnet-4-5.',
+      pattern: '^[^/\\s]+/[^/\\s]+$',
+      whenWrong:
+        'OpenCode needs the provider and the model with a slash between them, like ' +
+        'anthropic/claude-sonnet-4-5. A bare model name will not resolve.',
+    },
+  },
 
   async detect(): Promise<Detection> {
     const p = await probe('opencode', ['--version']);

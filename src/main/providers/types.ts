@@ -14,6 +14,23 @@ export type AgentRole =
   | 'photo';
 
 /** What a provider can do, surfaced on the "staff available" screen. */
+/**
+ * How this agent's model names are written.
+ *
+ * The model box takes free text and hands whatever is in it straight to the agent's own
+ * command line, and every agent wants a different shape: an alias for one, a full id for
+ * another, and `provider/model` — slash and all — for OpenCode. Nothing said so, so the
+ * only way to find out you were wrong was a failed desk.
+ */
+export interface ModelSyntax {
+  /** One line on the shape, shown under the box. Say it the way you would to a person. */
+  hint: string;
+  /** A pattern the name must match, where the shape is strict enough to be worth checking. */
+  pattern?: string;
+  /** What to tell them when it does not match. */
+  whenWrong?: string;
+}
+
 export interface AgentCapabilities {
   /** Can the agent browse the web on its own? */
   webSearch: boolean;
@@ -25,6 +42,8 @@ export interface AgentCapabilities {
   streaming: boolean;
   /** Known model ids, if enumerable. Offered in Setup's model picker; free text still wins. */
   models?: string[];
+  /** How this agent's model names are written. Shown under the model box in Setup. */
+  modelSyntax?: ModelSyntax;
   /**
    * Which of this provider's models suits each desk, cheap where it's grunt work and strong
    * where judgement matters. Setup shows this as the recommendation, so it has to follow the
@@ -49,6 +68,13 @@ export type BillingMode = 'subscription' | 'api' | 'free' | 'unknown';
 export interface Detection {
   installed: boolean;
   authenticated: boolean;
+  /**
+   * The models THIS install actually has, where the agent can be asked. Beats the static
+   * list in `capabilities.models`, which is a guess written when the file was: Ollama only
+   * has the models you pulled, and typing the name of one you did not is a run that fails
+   * at the desk after the earlier desks have already spent.
+   */
+  models?: string[];
   /** Version string if we could read one. */
   version?: string;
   /** Human-readable reason when unavailable, and/or install guidance. */

@@ -59,3 +59,54 @@ describe('the setup steps for each agent', () => {
     }
   });
 });
+
+/**
+ * The model box takes free text and hands it straight to the agent's own command line,
+ * and every agent wants a different shape — an alias for one, a bare id for another, and
+ * `provider/model` for OpenCode. Nothing said so, so the only way to find out you had it
+ * wrong was a desk failing mid-edition, after the desks before it had already spent.
+ */
+describe('what goes in the model box', () => {
+  const real = () => listProviders().filter((p) => p.maturity !== 'internal');
+
+  it('is described for every agent a person could pick', () => {
+    for (const p of real()) {
+      const syn = p.capabilities.modelSyntax;
+      expect(syn, `${p.id} says nothing about its model names`).toBeTruthy();
+      expect((syn?.hint ?? '').length).toBeGreaterThan(20);
+    }
+  });
+
+  it('carries a usable pattern and a reason wherever it claims a strict shape', () => {
+    for (const p of real()) {
+      const syn = p.capabilities.modelSyntax;
+      if (!syn?.pattern) continue;
+      expect(() => new RegExp(syn.pattern as string), `${p.id}: bad pattern`).not.toThrow();
+      expect(syn.whenWrong, `${p.id}: a pattern with nothing to say`).toBeTruthy();
+    }
+  });
+
+  // The slash in OpenCode's names is the thing nobody guesses.
+  it('knows OpenCode wants provider/model', () => {
+    const oc = listProviders().find((p) => p.id === 'opencode');
+    const re = new RegExp(oc?.capabilities.modelSyntax?.pattern ?? '');
+    expect(re.test('anthropic/claude-sonnet-4-5')).toBe(true);
+    expect(re.test('claude-sonnet-4-5')).toBe(false);
+    expect(re.test('')).toBe(false);
+  });
+
+  // Our own lists have to pass our own check, or the box argues with its own suggestions.
+  it('offers nothing that its own check would reject', () => {
+    for (const p of real()) {
+      const pattern = p.capabilities.modelSyntax?.pattern;
+      if (!pattern) continue;
+      const re = new RegExp(pattern);
+      for (const m of p.capabilities.models ?? []) {
+        expect(re.test(m), `${p.id} lists "${m}" but its own pattern rejects it`).toBe(true);
+      }
+      for (const [desk, m] of Object.entries(p.capabilities.recommend ?? {})) {
+        if (m) expect(re.test(m), `${p.id} recommends "${m}" for ${desk}`).toBe(true);
+      }
+    }
+  });
+});

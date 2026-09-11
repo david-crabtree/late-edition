@@ -53,7 +53,15 @@ export const directApiProvider: AgentProvider = {
       note: 'Only needed to point at something other than the default endpoint.',
     },
   ],
-  capabilities: { webSearch: false, fileAccess: false, jsonOutput: true, streaming: false },
+  capabilities: {
+    webSearch: false,
+    fileAccess: false,
+    jsonOutput: true,
+    streaming: false,
+    modelSyntax: {
+      hint: 'Whatever model id your endpoint expects. Blank falls back to LATE_EDITION_API_MODEL.',
+    },
+  },
 
   async detect(): Promise<Detection> {
     const { key, format, url } = cfg();

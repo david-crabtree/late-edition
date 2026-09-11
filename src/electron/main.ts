@@ -604,6 +604,49 @@ function createWindow(): void {
           })()`),
         );
       }
+      // The model box hands whatever is typed straight to the agent's command line, and
+      // each agent wants a different shape. Nothing said so, and nothing checked.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG modelbox:',
+          await js(`(async () => {
+            document.querySelector('.setup').hidden = false;
+            for (let i = 0; i < 40 && !document.querySelector('select[data-role="reporter"]'); i++)
+              await new Promise(x => setTimeout(x, 100));
+            const sel = document.querySelector('select[data-role="reporter"]');
+            const mdl = document.querySelector('input[data-role="reporter"]');
+            const wrap = mdl.parentElement;
+            const shape = () => (wrap.querySelector('.mdl-shape') || {}).textContent || '';
+            const warn = () => { const c = wrap.querySelector('.mdl-check');
+              return c && !c.hidden ? c.textContent : ''; };
+            const pick = async (id) => { sel.value = id;
+              sel.dispatchEvent(new Event('change')); await new Promise(x => setTimeout(x, 120)); };
+            const type = async (v) => { mdl.value = v;
+              mdl.dispatchEvent(new Event('input')); await new Promise(x => setTimeout(x, 60)); };
+
+            await pick('claude');
+            const out = { claudeSaysTheShape: shape() };
+            await type('opus'); out.claudeKnownIsQuiet = warn() === '';
+            await type('sonnet-9'); out.claudeUnknownIsARemark = /may still be right/i.test(warn());
+
+            await pick('opencode');
+            out.opencodeSaysTheSlash = /slash/i.test(shape());
+            await type('claude-sonnet-4-5'); out.opencodeBareNameIsFlagged = /slash/i.test(warn());
+            await type('anthropic/claude-sonnet-4-5'); out.opencodeWithSlashIsAccepted = warn() === '';
+
+            await pick('ollama');
+            out.ollamaSaysWhereToLook = /ollama list/i.test(shape());
+            // Whatever this machine's Ollama actually has, not a list written into the build.
+            const det = await window.lateEdition.detect();
+            const oll = det.find(d => d.id === 'ollama');
+            out.ollamaModelsAreLive = Array.isArray(oll.models);
+
+            await type(''); out.blankIsAlwaysFine = warn() === '';
+            document.querySelector('.setup').hidden = true;
+            return JSON.stringify(out);
+          })()`),
+        );
+      }
       // The help buttons take a provider id and a step number, never an address or a
       // command. A page that could hand either one to the operating system would be a way
       // to run anything on the machine wearing a help button's clothes.
@@ -948,7 +991,10 @@ handle('le:detect', async () => {
       command: step.command,
       note: step.note,
     })),
-    models: p.capabilities.models ?? [],
+    // What this install actually has, where the agent could be asked, else the static
+    // list this build shipped with.
+    models: m.get(p.id)?.models ?? p.capabilities.models ?? [],
+    modelSyntax: p.capabilities.modelSyntax ?? null,
     recommend: p.capabilities.recommend ?? {},
     webSearch: p.capabilities.webSearch,
     ...(m.get(p.id) ?? { installed: false, authenticated: false }),

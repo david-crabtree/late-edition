@@ -30,7 +30,15 @@ export const ollamaProvider: AgentProvider = {
       note: 'Several gigabytes, once. Any model you prefer works — put its name in the desk’s model box.',
     },
   ],
-  capabilities: { webSearch: false, fileAccess: false, jsonOutput: true, streaming: true },
+  capabilities: {
+    webSearch: false,
+    fileAccess: false,
+    jsonOutput: true,
+    streaming: true,
+    modelSyntax: {
+      hint: 'The name you pulled, exactly as `ollama list` shows it — e.g. llama3.1 or llama3.1:8b.',
+    },
+  },
 
   async detect(): Promise<Detection> {
     try {
@@ -50,6 +58,9 @@ export const ollamaProvider: AgentProvider = {
         installed: true,
         authenticated: true,
         billing: 'free',
+        // The real list, so the model box offers what is actually on this machine rather
+        // than a guess written when this file was.
+        models,
         detail:
           models.length > 0
             ? `Models: ${models.join(', ')} — local, no cost.`
