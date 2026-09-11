@@ -279,6 +279,27 @@
   .newver .nv-who{ font-family:var(--pixel); font-size:.5rem; color:var(--amber); letter-spacing:.04em; }
   .newver .nv-q{ font-size:.8rem; color:var(--bone); }
   .newver .nv-acts{ margin-left:auto; display:flex; gap:5px; flex-wrap:wrap; }
+  /* The colophon: what this is, who owns it, what leaves the machine. */
+  .colo{ position:fixed; inset:0; z-index:240; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
+  .colo[hidden]{ display:none; }
+  .colo .co-card{ width:min(660px,94vw); max-height:88vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
+  .colo .co-hd{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; padding:12px 14px; background:#14100b; border-bottom:1px solid #2c2519; }
+  .colo .co-hd b{ font-family:var(--display); text-transform:uppercase; letter-spacing:.04em; font-size:1rem; color:var(--amber); }
+  .colo .co-ver{ font-family:var(--pixel); font-size:.5rem; color:var(--bone-dim); }
+  .colo .co-hd .grow{ flex:1; }
+  .colo .co-body{ overflow-y:auto; padding:12px 14px 14px; }
+  .startgate .noticebox h5{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.07em;
+            text-transform:uppercase; color:var(--amber); margin:12px 0 4px; font-weight:400; }
+  .startgate .noticebox h5:first-child{ margin-top:0; }
+  .colo h5{ font-family:var(--pixel); font-size:.52rem; letter-spacing:.07em; text-transform:uppercase;
+            color:var(--bone-dim); margin:14px 0 6px; font-weight:400; }
+  .colo h5:first-child{ margin-top:0; }
+  .colo p{ margin:0 0 8px; font-size:.78rem; line-height:1.6; color:var(--bone-dim); max-width:64ch; }
+  .colo .co-acts{ display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 2px; }
+  .colo .co-meta{ font-family:var(--type); font-size:.7rem; color:#6a6250; line-height:1.7; }
+  .colo .co-meta b{ color:var(--bone-dim); font-weight:400; }
+  .colo .co-switch{ display:flex; align-items:center; gap:7px; font-size:.74rem; color:var(--bone-dim); margin-top:8px; cursor:pointer; }
+  .colo .co-switch input{ accent-color:#6a7a4a; }
   /* Getting an agent working. Same furniture as the other two modals. */
   .wiring{ position:fixed; inset:0; z-index:230; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .wiring[hidden]{ display:none; }
@@ -1522,6 +1543,68 @@
     // An engine that doesn't send `kind` still has to produce a usable list.
     return out||shapeOpts.outlets.map(o=>OPT(o,cur)).join(''); }
   const OPT=(o,cur)=>'<option value="'+o.id+'"'+(o.id===cur?' selected':'')+'>'+escH(o.label)+'</option>';
+  // ---- The colophon --------------------------------------------------------------------
+  // What this is, which build it is, who owns it, what leaves the machine, and the two
+  // links it offers. Everything legal is bundled inside the app, so this works with no
+  // network — which is the point of bundling it rather than linking it.
+  let coloEl=null;
+  function buildColophon(){
+    if(coloEl) return coloEl;
+    const el=document.createElement('div'); el.className='colo'; el.hidden=true;
+    el.innerHTML=`<div class="co-card">
+      <div class="co-hd"><b>Late Edition</b><span class="co-ver" id="coVer"></span>
+        <span class="grow"></span><button class="chip" id="coClose">Close</button></div>
+      <div class="co-body" id="coBody"></div>
+    </div>`;
+    document.body.appendChild(el);
+    el.addEventListener('click', e=>{ if(e.target===el) el.hidden=true; });
+    el.querySelector('#coClose').addEventListener('click',()=>{ el.hidden=true; });
+    coloEl=el; return el; }
+  async function openColophon(){
+    const el=buildColophon();
+    let a={};
+    try{ if(window.lateEdition.about&&apiOk('le:about')) a=await window.lateEdition.about(); }catch(_){ }
+    let giving=true;
+    try{ if(window.lateEdition.donations&&apiOk('le:donations')) giving=await window.lateEdition.donations(); }catch(_){ }
+    el.querySelector('#coVer').textContent =
+      `v${a.version||'?'}${a.commit?` · ${a.commit}${a.clean===false?'+changes':''}`:''}${a.builtOn?` · ${a.builtOn}`:''}`;
+    const legal=(a.legal||[]);
+    const label={ 'LICENSE':'Read the full licence', 'NOTICE':'Notice', 'THIRD_PARTY_NOTICES.md':'Third party notices' };
+    el.querySelector('#coBody').innerHTML=`
+      <h5>What it is</h5>
+      <p>A newsroom that runs on agents you have already installed and signed into. It runs
+         no AI of its own, and it is not journalism — every edition is an unchecked draft
+         and says so in the file itself.</p>
+      <h5>Licence</h5>
+      <p>${escH(a.licence||'')}</p>
+      <p>${escH(a.trademark||'')}</p>
+      <div class="co-acts">${legal.map(f=>`<button class="chip" data-legal="${escH(f)}">${escH(label[f]||f)}</button>`).join('')}</div>
+      <h5>Privacy</h5>
+      <p>${escH(a.privacy||'')}</p>
+      <h5>Community</h5>
+      <p>Help, and somewhere to show off a paper.</p>
+      <div class="co-acts"><button class="chip" data-link="community">Join the newsroom on Discord ↗</button></div>
+      ${giving?`<h5>Support it</h5>
+      <p>Late Edition is free and always will be. Nothing is gated and nothing ever will be.
+         If it earns its keep, this is welcome and entirely optional.</p>
+      <div class="co-acts"><button class="chip" data-link="sponsor">Sponsor it ↗</button></div>`:''}
+      <label class="co-switch"><input type="checkbox" id="coGiving"${giving?' checked':''}>
+        Mention supporting it</label>
+      <h5>This build</h5>
+      <p class="co-meta"><b>${escH(a.copyright||'')}</b><br>
+        Version ${escH(a.version||'?')} · commit ${escH(a.commit||'unknown')}${a.clean===false?' (with uncommitted changes)':''}<br>
+        Built ${escH(a.builtOn||'unknown')} · Electron ${escH(a.electron||'?')} · ${escH(a.platform||'?')}</p>`;
+    el.querySelectorAll('[data-legal]').forEach(b=>b.addEventListener('click',async()=>{
+      const r=await window.lateEdition.openLegal(b.dataset.legal);
+      if(r&&!r.ok) b.textContent=r.error||'Could not open it'; }));
+    el.querySelectorAll('[data-link]').forEach(b=>b.addEventListener('click',()=>{
+      window.lateEdition.openLink(b.dataset.link); }));
+    const g=el.querySelector('#coGiving');
+    if(g) g.addEventListener('change', async e=>{
+      if(window.lateEdition.setDonations) await window.lateEdition.setDonations(e.target.checked);
+      openColophon(); });
+    el.hidden=false; }
+
   // ---- A new edition of the paper itself -----------------------------------------------
   // The only thing this app contacts on its own behalf is GitHub, asking what the latest
   // tag is. It never restarts itself and it never installs behind anyone's back. On macOS
@@ -2290,7 +2373,7 @@
     if(mScene) mScene.textContent='Ready — brief the Chief.';
     const cab=document.querySelector('.cabinet');
     const bar=document.createElement('div'); bar.className='appbar';
-    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><button class="chip" id="appBack">Back issues</button><button class="chip" id="appCases">Case file</button><span class="grow"></span><button class="chip pan" id="appLeft" aria-label="Look left" title="Look left">◀</button><button class="chip pan" id="appRight" aria-label="Look right" title="Look right">▶</button><button class="chip" id="appFollow" aria-pressed="true" title="Auto-focus follows the working desk — turn off to look around freely">⦿ Auto-focus</button><button class="chip" id="appQuips" aria-pressed="true" title="The staff's one-liners">💬 Quips</button><button class="chip" id="appSettings">⚙ Settings</button>`;
+    bar.innerHTML=`<button class="chip danger2" id="appStop" hidden>■ Stop the desk</button><button class="chip primary" id="appResume" hidden>▶ Resume</button><button class="chip" id="appOpen" hidden>Open the paper ↗</button><button class="chip" id="appBack">Back issues</button><button class="chip" id="appCases">Case file</button><span class="grow"></span><button class="chip pan" id="appLeft" aria-label="Look left" title="Look left">◀</button><button class="chip pan" id="appRight" aria-label="Look right" title="Look right">▶</button><button class="chip" id="appFollow" aria-pressed="true" title="Auto-focus follows the working desk — turn off to look around freely">⦿ Auto-focus</button><button class="chip" id="appQuips" aria-pressed="true" title="The staff's one-liners">💬 Quips</button><button class="chip" id="appSettings">⚙ Settings</button><button class="chip" id="appAbout" title="What this is, the licence, and what leaves your machine">About</button>`;
     if(cab) cab.parentNode.insertBefore(bar, cab.nextSibling);
     const ex=document.getElementById('examples'); if(ex) ex.style.display='none';   // demo brief chips are a sim aid, not app chrome
     // Reorder for the app: brief right under the stage, budget becomes a staff card, controls hidden.
@@ -2340,6 +2423,7 @@
       b.addEventListener('pointerdown',on); b.addEventListener('pointerup',off); b.addEventListener('pointerleave',off); b.addEventListener('pointercancel',off); };
     holdPan($('appLeft'),-1); holdPan($('appRight'),1);
     $('appFollow').addEventListener('click', ()=> setFollow(state.panMode));   // in free-look → turn follow on; while following → free look
+    $('appAbout').addEventListener('click', openColophon);
     $('appStop').addEventListener('click', async()=>{ await window.lateEdition.halt(); paintHalt(true); });
     $('appResume').addEventListener('click', async()=>{ await window.lateEdition.resume(); paintHalt(false);
       mScene.textContent='Resumed — brief the Chief.'; });
@@ -2576,18 +2660,24 @@
         <div class="tag">Your agents, your paper. Where should this newsroom live?</div>
         <button class="opt primary" id="gateResume"><b>Resume this newsroom →</b><small id="gateRoot">…</small></button>
         <button class="opt" id="gateNew"><b>Start a new newsroom…</b><small>Pick a fresh folder — config, staff & history start clean.</small></button>
-        <div class="foot">You can re-open <a id="gateSetup">⚙ Setup — wire your agents</a> any time from the Settings button.</div>
+        <div class="foot">You can re-open <a id="gateSetup">⚙ Setup — wire your agents</a> any time from the Settings button.<br>
+          Stuck, or proud of your paper? <a id="gateDiscord">Join the newsroom on Discord</a>.</div>
       </div>
     </div>`;
     document.body.appendChild(gate);
     const $=id=>gate.querySelector('#'+id);
     if(LE.getRoot) LE.getRoot().then(r=>{ $('gateRoot').textContent=r; });
+    $('gateDiscord').addEventListener('click',()=>{ if(LE.openLink) LE.openLink('community'); });
     // The notice comes first, once. After it's been read we go straight to the folder choice.
     const showChoice=()=>{ $('gateNotice').hidden=true; $('gateChoice').hidden=false; };
     if(LE.notices){ LE.notices().then(n=>{
       noticeText=n; applyBillingNotices();
       if(n.accepted){ showChoice(); return; }
-      $('gateNoticeText').innerHTML=(n.firstRun||[]).map(p=>`<p>${escH(p)}</p>`).join('');
+      // Headed sections rather than four unbroken paragraphs. This screen appears once and
+      // then never again, so it gets one chance to be read rather than skipped.
+      $('gateNoticeText').innerHTML=(n.firstRun||[]).map(p=>
+        typeof p==='string' ? `<p>${escH(p)}</p>`
+          : `<h5>${escH(p.heading)}</h5><p>${escH(p.body)}</p>`).join('');
       $('gateNotice').hidden=false;
     }).catch(showChoice); } else showChoice();
     $('gateAccept').addEventListener('click', async()=>{ try{ await LE.acceptNotice(); }catch(_){} showChoice(); });

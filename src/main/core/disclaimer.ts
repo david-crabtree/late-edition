@@ -30,7 +30,52 @@ export const PROJECT_NAME = 'Late Edition';
  * reading. Set this and it appears in every artefact; leave it empty and the credit still
  * appears, just without a link.
  */
-export const PROJECT_URL = '';
+export const PROJECT_URL = 'https://github.com/late-edition/late-edition';
+
+/** Where the community is. A link, and nothing embedded. */
+export const COMMUNITY_URL = 'https://discord.gg/kmr8wqKJJj';
+
+/** Where somebody can support it, if they want to. Nothing here is ever gated behind it. */
+export const SPONSOR_URL = 'https://github.com/sponsors/david-crabtree';
+
+/** Who owns it, for the About screen and the colophon. */
+export const COPYRIGHT = 'Copyright 2026 David Crabtree';
+
+/**
+ * The name and the characters. Not a threat — a fork is welcome and the licence allows one.
+ * It just has to be somebody else's newspaper, with somebody else's name on the masthead.
+ */
+export const TRADEMARK_NOTICE =
+  'Late Edition, the Late Edition masthead and the Late Edition newsroom characters are ' +
+  'trademarks of David Crabtree. Forks and derivative works are welcome and must be ' +
+  'distributed under a different name.';
+
+/**
+ * The licence in words a person will actually read, shown wherever the full text would be
+ * a wall. It is a summary and the LICENSE file is what governs; that is said out loud
+ * rather than left implied.
+ */
+export const LICENCE_SUMMARY =
+  'Late Edition is free to use, at home or at work, for any purpose. You can read the ' +
+  'code, change it and share your changes. The one thing you can’t do is sell it: no ' +
+  'charging for the software, no hosting it as a paid service, no paid products built on ' +
+  'top of it. The name and the characters belong to David Crabtree, so forks need their ' +
+  'own name. Full terms in the LICENSE file.';
+
+/**
+ * What leaves the machine, stated exactly.
+ *
+ * The update check is named here rather than tucked into a footnote. A privacy statement
+ * with an unmentioned exception is worth less than no statement, because the exception is
+ * what somebody was checking for.
+ */
+export const PRIVACY_STATEMENT =
+  'Late Edition runs entirely on your computer. It has no servers, no accounts and no ' +
+  'analytics. The only network traffic is to the sources you configure, to the AI ' +
+  'providers you have already signed in to on your own machine, and to GitHub to ask ' +
+  'whether a newer version exists — which sends nothing about you and which you can turn ' +
+  'off. What those providers do with your data is governed by their terms, not ours. ' +
+  'Nothing is sent to David Crabtree, ever.';
 
 /**
  * The credit line, for the foot of anything this software produces. It sits under the
@@ -44,17 +89,30 @@ export function sourceLine(): string {
 
 /** Shown once, at first run, before anyone briefs the Chief. */
 export const FIRST_RUN_NOTICE = [
-  'Late Edition runs AI agents on your machine and lays their output out as a newspaper. ' +
-    'The newspaper is a presentation style, not a claim that the contents are true.',
-  'What it writes can be wrong, out of date, or invented outright, including its sources. ' +
-    'Treat every edition as an unchecked draft. If you intend to publish or act on any of ' +
-    'it, verify it yourself first.',
-  'The agents run under your own accounts and their usage counts against your own plans or ' +
-    'bills. You are responsible for that usage, for what you do with the output, and for ' +
-    'complying with the terms of whichever AI provider you point it at.',
-  'This software is provided as-is under the Apache License 2.0 with the Commons Clause, ' +
-    'with no warranty and no liability ' +
-    'accepted by its authors.',
+  {
+    heading: 'It is not journalism',
+    body:
+      'Late Edition runs AI agents on your machine and lays their output out as a ' +
+      'newspaper. The newspaper is a presentation style, not a claim that the contents ' +
+      'are true. What it writes can be wrong, out of date, or invented outright, ' +
+      'including its sources. Treat every edition as an unchecked draft, and verify it ' +
+      'yourself before you publish or act on any of it.',
+  },
+  {
+    heading: 'It runs on your accounts',
+    body:
+      'The agents run under your own accounts and their usage counts against your own ' +
+      'plans or bills. You are responsible for that usage, for what you do with the ' +
+      'output, and for complying with the terms of whichever AI provider you point it at.',
+  },
+  {
+    heading: 'Nothing about you leaves this machine',
+    body: PRIVACY_STATEMENT,
+  },
+  {
+    heading: 'Yours to use, not to sell',
+    body: `${LICENCE_SUMMARY} Provided as-is, with no warranty and no liability accepted.`,
+  },
 ];
 
 /** Shown in Setup next to a metered API key, where usage costs real money. */

@@ -9,9 +9,15 @@ import { loadNewsroom } from '../main/config/newsroom.js';
 import { scaffoldNewsroom } from '../main/config/scaffold.js';
 import {
   API_BILLING_NOTICE,
+  COMMUNITY_URL,
+  COPYRIGHT,
   FIRST_RUN_NOTICE,
+  LICENCE_SUMMARY,
   OUTPUT_DISCLAIMER_SHORT,
   PLAN_BILLING_NOTICE,
+  PRIVACY_STATEMENT,
+  SPONSOR_URL,
+  TRADEMARK_NOTICE,
   sourceLine,
 } from '../main/core/disclaimer.js';
 import type { Edition } from '../main/core/edition.js';
@@ -76,6 +82,10 @@ interface AppConfig {
   fieldDesk?: boolean;
   /** Version of the first-run notice the user has read. Bump NOTICE_VERSION to re-show it. */
   noticeAccepted?: number;
+  /** Does the app mention supporting it? Default yes; false removes every trace. */
+  donations?: { enabled?: boolean };
+  /** Does it check whether a newer version exists? Default yes. */
+  updates?: { enabled?: boolean };
 }
 const NOTICE_VERSION = 1;
 function readAppConfig(): AppConfig {
@@ -641,6 +651,44 @@ function createWindow(): void {
           })()`),
         );
       }
+      // What this is, who owns it, and what leaves the machine — reachable, offline, and
+      // saying the same thing as the README because both read the same module.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG colophon:',
+          await js(`(async () => {
+            document.getElementById('appAbout').click();
+            for (let i = 0; i < 40 && !document.querySelector('.colo:not([hidden])'); i++)
+              await new Promise(x => setTimeout(x, 50));
+            const m = document.querySelector('.colo');
+            const t = m.textContent;
+            const out = {
+              opens: !m.hidden,
+              version: m.querySelector('#coVer').textContent,
+              saysNotJournalism: /not journalism/i.test(t),
+              saysWhatYouCannotDo: /can.t do is sell it/i.test(t),
+              saysTheTrademark: /trademarks of David Crabtree/i.test(t),
+              // The privacy line has to name the update check, or it is a promise with an
+              // unmentioned exception, which is worth less than no promise.
+              privacyNamesTheUpdateCheck: /GitHub to ask whether a newer version exists/i.test(t),
+              // Buttons that open nothing are worse than no buttons, so only bundled files
+              // get one.
+              legalButtons: [...m.querySelectorAll('[data-legal]')].map(b => b.dataset.legal),
+              links: [...m.querySelectorAll('[data-link]')].map(b => b.dataset.link),
+              hasDonationSwitch: !!m.querySelector('#coGiving'),
+            };
+            // Off removes every trace of it, which is the whole point of the switch.
+            await window.lateEdition.setDonations(false);
+            m.querySelector('#coClose').click();
+            document.getElementById('appAbout').click();
+            await new Promise(x => setTimeout(x, 400));
+            out.offRemovesIt = !/Sponsor it/i.test(document.querySelector('.colo').textContent);
+            await window.lateEdition.setDonations(true);
+            document.querySelector('.colo').hidden = true;
+            return JSON.stringify(out);
+          })()`),
+        );
+      }
       // "(not ready)" was doing the work of three different facts and hid all of them.
       if (process.env.LE_DEBUG_RUN) {
         console.log(
@@ -1140,6 +1188,81 @@ handle('le:openTerminal', (_e, providerId: string, stepIndex: number) => {
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
+});
+
+/**
+ * The bundled legal files, opened from wherever this build keeps them.
+ *
+ * Packaged they sit beside the app as extra resources; running from source they are simply
+ * in the repo. The About screen has to work with no network, which is the whole reason they
+ * are bundled rather than linked.
+ */
+const LEGAL_FILES = ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md'] as const;
+type LegalFile = (typeof LEGAL_FILES)[number];
+
+function legalPath(name: LegalFile): string | null {
+  const candidates = [
+    join(process.resourcesPath ?? '', name),
+    join(here, '../..', name),
+    join(process.cwd(), name),
+  ];
+  return candidates.find((p) => existsSync(p)) ?? null;
+}
+
+/** What this build is, for the About screen and for a bug report. */
+handle('le:about', () => {
+  let build = { version: app.getVersion(), builtOn: '', commit: 'unknown', clean: true };
+  try {
+    build = { ...build, ...JSON.parse(readFileSync(join(here, '../build-info.json'), 'utf8')) };
+  } catch {
+    /* running from source without a build step; the version alone is still true */
+  }
+  return {
+    ...build,
+    electron: process.versions.electron,
+    platform: process.platform,
+    copyright: COPYRIGHT,
+    trademark: TRADEMARK_NOTICE,
+    licence: LICENCE_SUMMARY,
+    privacy: PRIVACY_STATEMENT,
+    community: COMMUNITY_URL,
+    sponsor: SPONSOR_URL,
+    // Which of the three bundled files this build can actually open. A button that opens
+    // nothing is worse than no button.
+    legal: LEGAL_FILES.filter((f) => legalPath(f) !== null),
+  };
+});
+
+/** Open one of the bundled legal files in whatever the system uses for it. */
+handle('le:openLegal', (_e, name: string) => {
+  if (!LEGAL_FILES.includes(name as LegalFile)) return { ok: false, error: 'Not a legal file.' };
+  const path = legalPath(name as LegalFile);
+  if (!path) return { ok: false, error: `${name} is not bundled with this build.` };
+  shell.openPath(path);
+  return { ok: true, path };
+});
+
+/**
+ * The two outward links the app offers. Named rather than passed as strings, so the page
+ * cannot ask the operating system to open something of its own choosing.
+ */
+handle('le:openLink', (_e, which: string) => {
+  const url = which === 'community' ? COMMUNITY_URL : which === 'sponsor' ? SPONSOR_URL : null;
+  if (!url) return { ok: false, error: 'Unknown link.' };
+  shell.openExternal(url);
+  return { ok: true, url };
+});
+
+/**
+ * Whether the app mentions supporting it at all.
+ *
+ * `donations.enabled: false` removes every trace: the About screen's line, and the credit
+ * in a rendered edition. Nobody gets to call it nagware, and the switch is the proof.
+ */
+handle('le:donations', () => readAppConfig().donations?.enabled !== false);
+handle('le:setDonations', (_e, on: boolean) => {
+  writeAppConfig({ ...readAppConfig(), donations: { enabled: on !== false } });
+  return on !== false;
 });
 
 /** Where a person goes to get a new version themselves. */

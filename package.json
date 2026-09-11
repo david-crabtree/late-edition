@@ -15,7 +15,7 @@
   "scripts": {
     "cli": "tsx src/cli/index.ts",
     "build": "tsc -p tsconfig.build.json",
-    "postbuild": "node -e \"require('fs').copyFileSync('src/electron/preload.cjs','dist/electron/preload.cjs')\"",
+    "postbuild": "node -e \"require('fs').copyFileSync('src/electron/preload.cjs','dist/electron/preload.cjs')\" && node scripts/build-info.mjs",
     "app": "npm run build && electron .",
     "electron": "electron .",
     "typecheck": "tsc --noEmit",

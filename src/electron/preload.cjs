@@ -13,6 +13,13 @@ contextBridge.exposeInMainWorld('lateEdition', {
   acceptNotice: () => ipcRenderer.invoke('le:acceptNotice'),
   /** Which agent providers are ready, and how they bill (plan usage vs metered API). */
   detect: () => ipcRenderer.invoke('le:detect'),
+  // About, and the things it opens. `openLegal` takes one of three known filenames and
+  // `openLink` one of two known destinations — never a path or a URL from the page.
+  about: () => ipcRenderer.invoke('le:about'),
+  openLegal: (name) => ipcRenderer.invoke('le:openLegal', name),
+  openLink: (which) => ipcRenderer.invoke('le:openLink', which),
+  donations: () => ipcRenderer.invoke('le:donations'),
+  setDonations: (on) => ipcRenderer.invoke('le:setDonations', on),
   // New versions. The app asks GitHub what the latest tag is and nothing else — no account,
   // no identifier, no payload.
   updateState: () => ipcRenderer.invoke('le:updateState'),
