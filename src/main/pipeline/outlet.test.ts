@@ -260,3 +260,82 @@ describe('what a copied edition says for itself', () => {
     expect(sourceLine()).toContain(PROJECT_URL);
   });
 });
+
+/**
+ * A follow-up, and what happens to the masthead when a run is interrupted.
+ *
+ * Ida's follow-up goes through the same pipeline as everything else and carries whatever
+ * the picker is set to. The gap was the resume: the outlet was written onto the draft so
+ * the renderer kept it, but the desks were told nothing, so an edition half written as a
+ * LinkedIn post could finish being told it was the house paper.
+ */
+describe('an interrupted run keeps the paper it started as', () => {
+  let root: string;
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'le-resume-'));
+    scaffoldNewsroom(root);
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  const events = (editionId: string) =>
+    readFileSync(join(paths(root).editionDir(editionId), 'log.jsonl'), 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as { event?: string });
+
+  it('finishes as the paper it began as, even resumed with nothing said', async () => {
+    // Stops to ask, because the stand-in files a thin story.
+    let editionId = '';
+    try {
+      await runEdition({
+        root,
+        forceProvider: 'fake',
+        brief: 'a thin topic',
+        research: 0,
+        askToVerify: true,
+        shape: { outlet: 'linkedin' },
+      });
+    } catch (err) {
+      editionId = (err as { editionId?: string }).editionId ?? '';
+    }
+    expect(editionId, 'the run did not stop to ask').toBeTruthy();
+
+    // Resumed by something that does not know, or bother to say, which paper this was.
+    const done = await runEdition({
+      root,
+      forceProvider: 'fake',
+      resumeId: editionId,
+      verifyAnswer: true,
+      research: 0,
+    });
+    expect(done.edition.outlet).toBe('linkedin');
+    // The desks were told too, not just the renderer: a post has no front page to lay out.
+    expect(events(editionId).some((e) => e.event === 'no_front_page')).toBe(true);
+    expect(renderMarkdown(done.edition)).not.toContain('The Daily Bit');
+  });
+
+  it('still lets an explicit choice override what the draft remembers', async () => {
+    let editionId = '';
+    try {
+      await runEdition({
+        root,
+        forceProvider: 'fake',
+        brief: 'another thin topic',
+        research: 0,
+        askToVerify: true,
+        shape: { outlet: 'linkedin' },
+      });
+    } catch (err) {
+      editionId = (err as { editionId?: string }).editionId ?? '';
+    }
+    const done = await runEdition({
+      root,
+      forceProvider: 'fake',
+      resumeId: editionId,
+      verifyAnswer: false,
+      shape: { outlet: 'chronicle' },
+    });
+    expect(done.edition.outlet).toBe('chronicle');
+    expect(renderMarkdown(done.edition)).toContain('The Daily Bit');
+  });
+});

@@ -138,6 +138,11 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
   // Which paper this is written as, recorded on the draft so it survives a resume and
   // reaches the renderer — a post must not come out laid out as a front page.
   if (opts.shape?.outlet) draft.outlet = opts.shape.outlet;
+  // And the other way on a resume: an edition that is half written as one paper must not
+  // finish as another because whoever resumed it did not say which again. The draft's own
+  // record wins over nothing, and an explicit shape still wins over the draft.
+  const shape: CopyShape | undefined =
+    opts.shape ?? (draft.outlet ? { outlet: draft.outlet as CopyShape['outlet'] } : undefined);
 
   const logFile = join(p.editionDir(draft.id), 'log.jsonl');
   const ctx: PipelineContext = {
@@ -147,7 +152,7 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
     research: opts.research,
     maxFindings: opts.maxFindings,
     clarify: opts.clarify !== false,
-    shape: opts.shape,
+    shape,
     askToVerify: opts.askToVerify === true,
     photoDesk: opts.photoDesk === true,
     researcherTimeoutMs: opts.researcherTimeoutMs ?? 180_000,
