@@ -75,11 +75,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "${productName}-${version}-Setup-${arch}.${ext}",
@@ -92,21 +96,30 @@
       "deleteAppDataOnUninstall": false
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Office",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "desktopName": "late-edition.desktop",
-      "synopsis": "A newsroom on your desktop, staffed by the AI agents you already pay for."
+      "synopsis": "A newsroom on your desktop, staffed by the AI agents you already pay for.",
+      "syncDesktopName": true
     },
     "mac": {
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "category": "public.app-category.news",
@@ -118,7 +131,11 @@
     "portable": {
       "artifactName": "${productName}-${version}-portable-${arch}.${ext}"
     },
-    "extraResources": ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"],
+    "extraResources": [
+      "LICENSE",
+      "NOTICE",
+      "THIRD_PARTY_NOTICES.md"
+    ],
     "publish": [
       {
         "provider": "github",
@@ -140,5 +157,6 @@
       "type": "github",
       "url": "https://github.com/sponsors/david-crabtree"
     }
-  ]
+  ],
+  "desktopName": "late-edition.desktop"
 }

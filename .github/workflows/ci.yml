@@ -38,3 +38,12 @@ jobs:
 
       - name: Test
         run: npm test
+
+      # A bad electron-builder config is only discovered when something is packaged, and
+      # the first thing that packages is a tag — by which point three runners have failed
+      # and a release is half made. `--dir` validates the config and packs an unpacked
+      # build without producing installers, which is quick and catches exactly that.
+      - name: Packaging config is valid
+        run: |
+          npm run build
+          npx electron-builder --dir --publish never
