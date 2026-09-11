@@ -502,6 +502,92 @@ function createWindow(): void {
           })()`),
         );
       }
+      // The paper picker: a button beside the brief that opens a modal telling you what
+      // each masthead actually does. A dropdown of eleven names said nothing about any
+      // of them, and it sat in a settings row under the cast where it was easy to miss.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG papers:',
+          await js(`(async () => {
+            const btn = document.getElementById('paperBtn');
+            const brief = document.querySelector('.brief');
+            const depth = document.getElementById('researchLevel');
+            const out = {
+              // Both run options sit with the brief, not in the card under the cast.
+              buttonByTheBrief: !!(btn && brief && brief.parentNode.contains(btn) &&
+                brief.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING),
+              depthByTheBrief: !!(depth && brief && brief.parentNode.contains(depth)),
+              oldDropdownGone: !document.getElementById('fmtSel'),
+              buttonSays: btn ? btn.querySelector('b').textContent : null,
+            };
+            btn.click();
+            for (let i = 0; i < 40 && !document.querySelector('.papers:not([hidden])'); i++)
+              await new Promise(r2 => setTimeout(r2, 50));
+            const modal = document.querySelector('.papers');
+            const cards = [...modal.querySelectorAll('[data-paper]')];
+            out.opens = !modal.hidden;
+            out.papers = cards.length;
+            out.grouped = [...modal.querySelectorAll('.pp-group')].map(g => g.textContent);
+            // The whole point: every one of them explains itself in a sentence or more.
+            out.everyPaperDescribed = cards.every(c => {
+              const p2 = c.querySelector('.pp-blurb');
+              return p2 && p2.textContent.trim().length > 80;
+            });
+            out.marksTheCurrentOne = cards.filter(c => c.getAttribute('aria-checked') === 'true').length;
+            out.offersLength = !!modal.querySelector('#ppLen');
+            // Picking one closes it and the button carries the answer.
+            const moon = cards.find(c => c.dataset.paper === 'moon');
+            moon.click();
+            await new Promise(r2 => setTimeout(r2, 400));
+            out.picking = { closed: modal.hidden, buttonNowSays: btn.querySelector('b').textContent };
+            return JSON.stringify(out);
+          })()`),
+        );
+      }
+      // Spiking a case throws its changes away and they never come back, because the
+      // sources have already been diffed. One stray click used to do it, and left the run
+      // button greyed out with nothing saying why.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG spike:',
+          await js(`(async () => {
+            for (const w of await window.lateEdition.watches()) await window.lateEdition.unwatch(w.id);
+            let r = await window.lateEdition.run('a spikeable topic', { provider: 'fake', research: 1 });
+            if (r.needsDecision) r = await window.lateEdition.answerVerify(r.editionId, false, { provider: 'fake', research: 1 });
+            await window.lateEdition.watchEdition(r.editionId);
+            await window.__leProbe.refreshWatches(false);
+            window.__leProbe.openCaseFile();
+            for (let i = 0; i < 40 && !document.querySelector('.casefile:not([hidden])'); i++)
+              await new Promise(x => setTimeout(x, 50));
+            const card = document.querySelector('.casefile');
+            const spike = card.querySelector('[data-clear]');
+            const run = card.querySelector('[data-run]');
+            const out = {
+              // A dead "Run it" now says out loud why it is dead.
+              runExplainsItself: !!(run && /nothing to follow up|no new research|field desk is off/i.test(run.title)),
+              spikeWarnsFirst: /do not come back/i.test(spike.title || ''),
+              hasCheckNow: !!card.querySelector('#cfCheck'),
+              // The offline stand-in invents example.com URLs, which 404, so a probe case
+              // never has a real change on its spike. The enable rule is asserted here; the
+              // two-click guard below is asserted against the button directly, because the
+              // guard is what changed and it does not depend on there being pending work.
+              disabledWithNothingPending: spike.disabled && run.disabled,
+              pending: ((await window.lateEdition.watches())[0] || {}).pending.length,
+            };
+            spike.disabled = false;
+            const label = spike.textContent;
+            spike.click();
+            out.firstClickArms = /throw them away/i.test(spike.textContent);
+            out.firstClickIsNotTheAction = spike.dataset.armed === '1' && !spike.disabled;
+            // And it disarms itself, so a stray click cannot leave a live trigger sitting there.
+            await new Promise(x => setTimeout(x, 4300));
+            out.disarmsItself = spike.textContent === label && spike.dataset.armed !== '1';
+            for (const w of await window.lateEdition.watches()) await window.lateEdition.unwatch(w.id);
+            card.hidden = true;
+            return JSON.stringify(out);
+          })()`),
+        );
+      }
       // Ida has to ASK, where you'll see it. The offer used to be a button at the bottom
       // of the front page, under the body and the sources, and David never found it.
       if (process.env.LE_DEBUG_RUN) {
@@ -1052,7 +1138,13 @@ handle(
  * cuts a headline, how it writes), so the interface needs exactly one control for it.
  */
 handle('le:formats', () => ({
-  outlets: OUTLETS.map((o) => ({ id: o.id, label: o.label, kind: o.kind, hint: o.hint })),
+  outlets: OUTLETS.map((o) => ({
+    id: o.id,
+    label: o.label,
+    kind: o.kind,
+    hint: o.hint,
+    blurb: o.blurb,
+  })),
   lengths: Object.entries(LENGTHS).map(([id, l]) => ({ id, label: l.label })),
 }));
 

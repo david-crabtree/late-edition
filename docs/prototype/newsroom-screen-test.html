@@ -252,6 +252,35 @@
   .offer .of-acts{ display:flex; gap:7px; flex-wrap:wrap; margin-top:10px; }
   .offer .of-acts .chip.primary{ background:#6a9a55; border-color:#6a9a55; color:#0c120a; }
   .offer .of-acts .chip.primary:hover:not([disabled]){ background:#7db065; border-color:#7db065; }
+  /* Run options that belong with the brief, not buried under the cast. */
+  .runopts{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:9px; }
+  .runopts .paperbtn{ display:flex; align-items:baseline; gap:7px; text-align:left; max-width:min(52%,400px); }
+  .runopts .paperbtn b{ font-size:.78rem; color:var(--bone); white-space:nowrap; }
+  /* The one-liner is a courtesy, not the label - it gives way rather than pushing the
+     research control onto its own line. The full description lives in the picker. */
+  .runopts .paperbtn small{ font-size:.64rem; color:var(--bone-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .runopts .paperbtn .caret{ margin-left:auto; padding-left:4px; color:var(--bone-dim); }
+  .runopts label.hint{ margin-left:6px; }
+  /* The paper picker. Same furniture as the case file, so the app has one modal idiom. */
+  .papers{ position:fixed; inset:0; z-index:220; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
+  .papers[hidden]{ display:none; }
+  .papers .pp-card{ width:min(760px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
+  .papers .pp-hd{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:11px 14px; background:#14100b; border-bottom:1px solid #2c2519; }
+  .papers .pp-hd b{ font-family:var(--display); text-transform:uppercase; letter-spacing:.03em; font-size:.9rem; color:var(--amber); }
+  .papers .pp-sub{ font-family:var(--pixel); font-size:.5rem; color:var(--bone-dim); flex:1; min-width:0; }
+  .papers .pp-list{ overflow-y:auto; padding:8px 10px 12px; }
+  .papers .pp-group{ font-family:var(--pixel); font-size:.5rem; color:var(--bone-dim); text-transform:uppercase; letter-spacing:.08em; margin:10px 2px 5px; }
+  .papers .pp-group:first-child{ margin-top:2px; }
+  .papers .pp{ display:block; width:100%; text-align:left; border:1px solid #23201a; border-radius:6px; background:#0e1116; padding:9px 11px; margin-bottom:6px; cursor:pointer; font:inherit; color:inherit; }
+  .papers .pp:hover{ border-color:#4a3f28; background:#12161c; }
+  .papers .pp[aria-checked="true"]{ border-color:var(--amber); background:#151109; }
+  .papers .pp-name{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .papers .pp-name b{ font-size:.88rem; color:var(--bone); }
+  .papers .pp-name span{ font-size:.68rem; color:var(--bone-dim); }
+  .papers .pp-name .pp-on{ margin-left:auto; font-family:var(--pixel); font-size:.5rem; color:var(--amber); }
+  .papers .pp-blurb{ margin:5px 0 0; font-size:.73rem; line-height:1.5; color:var(--bone-dim); }
+  .papers .pp-ft{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding:10px 14px; background:#0a0d11; border-top:1px solid #2c2519; }
+  .papers .pp-ft .hint{ flex:1; min-width:0; }
   .casefile{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .casefile[hidden]{ display:none; }
   .casefile .cf-card{ width:min(700px,94vw); max-height:86vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
@@ -300,6 +329,8 @@
   .backissues .bi-del{ color:#a8837a; border-color:#3a2a26; }
   .backissues .bi-del:hover:not([disabled]){ color:#e8926a; border-color:#8a3226; }
   .backissues .bi-del.armed{ color:#12161c; background:#c2412d; border-color:#c2412d; }
+  /* A destructive chip that has been armed and is waiting for the second click. */
+  .chip.armed{ color:#12161c; background:#c2412d; border-color:#c2412d; }
   .backissues .bi-empty{ padding:22px 14px; text-align:center; font-size:.76rem; color:var(--bone-dim); }
   .startgate{ position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .startgate[hidden]{ display:none; }
@@ -1444,6 +1475,66 @@
     // An engine that doesn't send `kind` still has to produce a usable list.
     return out||shapeOpts.outlets.map(o=>OPT(o,cur)).join(''); }
   const OPT=(o,cur)=>'<option value="'+o.id+'"'+(o.id===cur?' selected':'')+'>'+escH(o.label)+'</option>';
+  // ---- The paper picker ----------------------------------------------------------------
+  // A dropdown of eleven mastheads told you nothing about any of them. This is the same
+  // list with the paragraph that says what you actually get, opened from the button that
+  // sits next to the brief — because which paper it is belongs with the decision to run it,
+  // not in a settings row under the cast.
+  let papersEl=null;
+  function buildPapers(){
+    if(papersEl) return papersEl;
+    const el=document.createElement('div'); el.className='papers'; el.hidden=true;
+    el.innerHTML=`<div class="pp-card">
+      <div class="pp-hd"><b>Write it as</b>
+        <span class="pp-sub">changes what the desk leads on and how it reads &middot; never the reporting</span>
+        <button class="chip" id="ppClose">Close</button></div>
+      <div class="pp-list" id="ppList"></div>
+      <div class="pp-ft"><label class="hint" for="ppLen">Length</label><select id="ppLen"></select>
+        <span class="hint" id="ppLenHint">relative to that paper's natural shape</span></div>
+    </div>`;
+    document.body.appendChild(el);
+    el.addEventListener('click', e=>{ if(e.target===el) el.hidden=true; });
+    el.addEventListener('keydown', e=>{ if(e.key==='Escape') el.hidden=true; });
+    el.querySelector('#ppClose').addEventListener('click',()=>{ el.hidden=true; });
+    papersEl=el; return el; }
+  function renderPapers(){
+    const el=buildPapers(), list=el.querySelector('#ppList');
+    list.innerHTML='';
+    for(const [kind,label] of OUTLET_GROUPS){
+      const group=shapeOpts.outlets.filter(o=>o.kind===kind);
+      if(!group.length) continue;
+      const h=document.createElement('p'); h.className='pp-group'; h.textContent=label; list.appendChild(h);
+      for(const o of group){
+        const b=document.createElement('button');
+        b.className='pp'; b.type='button'; b.setAttribute('role','radio');
+        b.setAttribute('aria-checked', o.id===chosen.outlet?'true':'false');
+        b.dataset.paper=o.id;
+        b.innerHTML=`<span class="pp-name"><b>${escH(o.label)}</b><span>${escH(o.hint||'')}</span>`
+          +`${o.id===chosen.outlet?'<span class="pp-on">RUNNING THIS</span>':''}</span>`
+          +`<p class="pp-blurb">${escH(o.blurb||o.hint||'')}</p>`;
+        list.appendChild(b); } }
+    // An engine too old to send groups still has to produce a usable list.
+    if(!list.children.length){
+      for(const o of shapeOpts.outlets){
+        const b=document.createElement('button'); b.className='pp'; b.type='button'; b.dataset.paper=o.id;
+        b.innerHTML=`<span class="pp-name"><b>${escH(o.label)}</b></span>`;
+        list.appendChild(b); } }
+    list.querySelectorAll('[data-paper]').forEach(b=>b.addEventListener('click',()=>{
+      chosen.outlet=b.dataset.paper; paintPaperButton(); renderPapers();
+      setTimeout(()=>{ el.hidden=true; }, 160); }));
+    const len=el.querySelector('#ppLen');
+    len.innerHTML=shapeOpts.lengths.map(o=>`<option value="${o.id}"${o.id===chosen.length?' selected':''}>${escH(o.label)}</option>`).join('');
+    len.onchange=()=>{ chosen.length=len.value; paintPaperButton(); }; }
+  // The button carries the answer, so the choice is readable without opening anything.
+  function paintPaperButton(){
+    const b=document.getElementById('paperBtn'); if(!b) return;
+    const o=shapeOpts.outlets.find(x=>x.id===chosen.outlet);
+    const len=shapeOpts.lengths.find(x=>x.id===chosen.length);
+    b.innerHTML=`<b>${escH((o&&o.label)||'The house paper')}</b>`
+      +`<small>${escH((len&&len.id!=='standard'?len.label.toLowerCase()+' · ':'')+((o&&o.hint)||''))}</small>`
+      +'<span class="caret">&#9662;</span>'; }
+  async function openPapers(){ await loadFormats(); renderPapers(); buildPapers().hidden=false; }
+
   // ---- The field desk ---------------------------------------------------------------
   // Ida keeps an eye on the pages a story came from. Polling costs nothing — the adapters
   // fetch and diff with no model involved — so the check runs on open and the result waits
@@ -1461,6 +1552,23 @@
     el.querySelector('#spClose').addEventListener('click',()=>{ el.hidden=true; });
     el.querySelector('#spCases').addEventListener('click',()=>{ el.hidden=true; openCaseFile(); });
     spikeEl=el; return el; }
+  // Spiking a case throws its changes away and they do NOT come back: the sources were
+  // already diffed, so the next poll compares against the new state. That is one click
+  // from "Run it", so it gets the same two-click arm as deleting an edition.
+  function armSpike(b, done){
+    if(b.dataset.armed!=='1'){
+      const was=b.textContent;
+      b.dataset.armed='1'; b.textContent='Throw them away?'; b.classList.add('armed');
+      setTimeout(()=>{ if(b.dataset.armed==='1'){ b.dataset.armed=''; b.textContent=was; b.classList.remove('armed'); } }, 4000);
+      return false; }
+    b.disabled=true; b.textContent='…';
+    done();
+    return true; }
+  // Why the run button is dark, said out loud. A greyed button with no reason is the thing
+  // that made this feel broken rather than finished.
+  const runWhy=(moved,on)=> !on ? 'The field desk is off — turn it back on to run a follow-up.'
+    : moved ? 'File a follow-up on what changed. One writer call, no new research.'
+    : 'Nothing has moved on these pages yet, so there is nothing to follow up. Check again, or wait.';
   const sinceText=iso=>{ if(!iso) return 'not checked yet';
     const mins=Math.max(0,Math.round((Date.now()-new Date(iso).getTime())/60000));
     if(mins<2) return 'just now'; if(mins<60) return `${mins} min ago`;
@@ -1484,14 +1592,14 @@
             : `${w.sources.length} source${w.sources.length>1?'s':''} watched, nothing moved`}</small></div>
         <div class="sp-when">${fpEsc(sinceText(w.lastCheckedAt))}</div>
         <div class="sp-act">
-          <button class="chip primary" data-run="${fpEsc(w.id)}"${w.pending.length?'':' disabled'}>Run it</button>
-          <button class="chip" data-clear="${fpEsc(w.id)}"${w.pending.length?'':' disabled'}>Spike it</button>
+          <button class="chip primary" data-run="${fpEsc(w.id)}"${w.pending.length?'':' disabled'} title="${fpEsc(runWhy(w.pending.length,true))}">Run it</button>
+          <button class="chip" data-clear="${fpEsc(w.id)}"${w.pending.length?'':' disabled'} title="Throw these changes away unread. They do not come back.">Spike it</button>
           <button class="chip" data-drop="${fpEsc(w.id)}" title="Stop watching these sources">Drop</button>
         </div>`;
       list.appendChild(row); }
     list.querySelectorAll('[data-run]').forEach(b=>b.addEventListener('click',()=>runWatched(b.dataset.run)));
-    list.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',async()=>{
-      await window.lateEdition.clearSpike(b.dataset.clear); await refreshWatches(false); }));
+    list.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',()=>{
+      armSpike(b, async()=>{ await window.lateEdition.clearSpike(b.dataset.clear); await refreshWatches(false); }); }));
     list.querySelectorAll('[data-drop]').forEach(b=>b.addEventListener('click',async()=>{
       await window.lateEdition.unwatch(b.dataset.drop); await refreshWatches(false); }));
     el.hidden=false;
@@ -1616,6 +1724,7 @@
     const el=document.createElement('div'); el.className='casefile'; el.hidden=true;
     el.innerHTML=`<div class="cf-card">
       <div class="cf-hd"><b>The case file</b><span class="cf-sub" id="cfSub"></span>
+        <button class="chip" id="cfCheck" title="Poll every watched page now. Costs nothing.">Check now</button>
         <label class="cf-switch"><input type="checkbox" id="cfOn"> Field desk</label>
         <button class="chip" id="cfClose">Close</button></div>
       <div class="cf-list" id="cfList"></div>
@@ -1626,6 +1735,14 @@
     document.body.appendChild(el);
     el.addEventListener('click', e=>{ if(e.target===el) el.hidden=true; });
     el.querySelector('#cfClose').addEventListener('click',()=>{ el.hidden=true; });
+    // Polling is free, so there is no reason to make someone restart the app to do it.
+    // It is also the only way back after a spike: if the page moves again, it reappears.
+    el.querySelector('#cfCheck').addEventListener('click', async e=>{
+      const b=e.target; b.disabled=true; b.textContent='Checking…';
+      const moved=await refreshWatches(true);
+      b.textContent=moved?`${moved} moved`:'Nothing moved';
+      renderCases();
+      setTimeout(()=>{ b.disabled=false; b.textContent='Check now'; }, 2200); });
     el.querySelector('#cfOn').addEventListener('change', async e=>{
       fieldOn=e.target.checked;
       if(apiOk('le:setFieldDesk')){ try{ await window.lateEdition.setFieldDesk(fieldOn); }catch(_){ } }
@@ -1635,6 +1752,7 @@
   function renderCases(){
     const el=buildCaseFile(), list=el.querySelector('#cfList'), sub=el.querySelector('#cfSub');
     el.querySelector('#cfOn').checked=fieldOn;
+    el.querySelector('#cfCheck').hidden=!watchList.length||!fieldOn;
     const srcs=watchList.reduce((n,w)=>n+w.sources.length,0);
     sub.textContent = watchList.length
       ? `${watchList.length} case${watchList.length>1?'s':''} · ${srcs} source${srcs===1?'':'s'} watched`
@@ -1650,8 +1768,8 @@
           <div class="cf-name"><b>${fpEsc(w.name)}</b>
             <small>${moved?`${moved} change${moved===1?'':'s'} waiting`:'nothing has moved'} · checked ${fpEsc(sinceText(w.lastCheckedAt))}</small></div>
           <div class="cf-act">
-            <button class="chip primary" data-run="${fpEsc(w.id)}"${moved&&fieldOn?'':' disabled'}>Run it</button>
-            <button class="chip" data-clear="${fpEsc(w.id)}"${moved?'':' disabled'}>Spike changes</button>
+            <button class="chip primary" data-run="${fpEsc(w.id)}"${moved&&fieldOn?'':' disabled'} title="${fpEsc(runWhy(moved,fieldOn))}">Run it</button>
+            <button class="chip" data-clear="${fpEsc(w.id)}"${moved?'':' disabled'} title="Throw these changes away unread. They do not come back.">Spike changes</button>
             <button class="chip danger2" data-drop="${fpEsc(w.id)}">Drop the case</button>
           </div>
         </div>
@@ -1663,8 +1781,8 @@
       list.appendChild(box); }
     list.querySelectorAll('[data-run]').forEach(b=>b.addEventListener('click',()=>{
       el.hidden=true; runWatched(b.dataset.run); }));
-    list.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',async()=>{
-      await window.lateEdition.clearSpike(b.dataset.clear); await refreshWatches(false); renderCases(); }));
+    list.querySelectorAll('[data-clear]').forEach(b=>b.addEventListener('click',()=>{
+      armSpike(b, async()=>{ await window.lateEdition.clearSpike(b.dataset.clear); await refreshWatches(false); renderCases(); }); }));
     list.querySelectorAll('[data-drop]').forEach(b=>b.addEventListener('click',async()=>{
       await window.lateEdition.unwatch(b.dataset.drop); await refreshWatches(false); renderCases(); }));
     list.querySelectorAll('.cf-x').forEach(b=>b.addEventListener('click',async()=>{
@@ -1975,22 +2093,7 @@
       const budgetRow=document.getElementById('budgetRange') && document.getElementById('budgetRange').closest('.row');
       if(budgetRow){ const card=document.createElement('div'); card.className='budgetcard'; card.appendChild(budgetRow);
         // Research-depth control, baseline "Standard", up to "Deep" or down to "Light".
-        const rr=document.createElement('div'); rr.className='row rdepth';
-        rr.innerHTML='<label class="hint" for="researchLevel">Research depth</label><select id="researchLevel">'+Object.keys(RESEARCH_LEVELS).map(k=>`<option value="${k}"${k===researchKey?' selected':''}>${RESEARCH_LEVELS[k].label}</option>`).join('')+'</select><span class="hint" id="researchHint"></span>';
-        card.appendChild(rr);
         const st=document.getElementById('staff'); if(st&&st.parentNode) st.parentNode.insertBefore(card, st.nextSibling);   // its own row under the cast, full width
-        const sel=rr.querySelector('#researchLevel'), hint=rr.querySelector('#researchHint');
-        const setHint=()=>{ const l=RESEARCH_LEVELS[researchKey]; if(hint) hint.textContent=`~${l.maxFindings} sources${l.research>1?' · 2 passes':''}`; };
-        setHint(); sel.addEventListener('change',()=>{ researchKey=sel.value; setHint(); });
-        // Which paper, chosen before the desks are set going. It reaches the reporter and
-        // the editor as well as the writer, so the angle and the headline move with it -
-        // that is the difference between a masthead and a font. The same picker is offered
-        // again on the finished paper, where a rewrite costs one writer call.
-        const fr=document.createElement('div'); fr.className='row shaperow';
-        fr.innerHTML='<label class="hint" for="fmtSel">Write it as</label><select id="fmtSel"></select>'
-          +'<select id="lenSel" aria-label="Length"></select>'
-          +'<span class="hint" id="fmtHint"></span>';
-        card.appendChild(fr);
         // The picture desk. It writes a shot list, caption and alt text — it does NOT make
         // an image, and saying so here stops anyone expecting one.
         const pr=document.createElement('div'); pr.className='row photorow';
@@ -1998,15 +2101,23 @@
           +'<span class="hint">writes a shot list, caption &amp; alt text — no image is made</span>';
         card.appendChild(pr);
         pr.querySelector('#photoToggle').addEventListener('change', e=>{ photoDesk=e.target.checked; });
-        const fill=(el,items,cur)=>{ el.innerHTML=items.map(o=>`<option value="${o.id}"${o.id===cur?' selected':''}>${escH(o.label)}</option>`).join(''); };
-        loadFormats().then(()=>{
-          const f=fr.querySelector('#fmtSel'), ln=fr.querySelector('#lenSel'), fh=fr.querySelector('#fmtHint');
-          f.innerHTML=outletOptions(chosen.outlet); fill(ln,shapeOpts.lengths,chosen.length);
-          const setFh=()=>{ const o=shapeOpts.outlets.find(x=>x.id===chosen.outlet); fh.textContent=(o&&o.hint)||''; };
-          setFh();
-          f.addEventListener('change',()=>{ chosen.outlet=f.value; setFh(); });
-          ln.addEventListener('change',()=>{ chosen.length=ln.value; });
-        }); }
+        // Which paper and how deep to dig are decisions you make WHILE writing the brief,
+        // so they sit under it rather than in a settings row below the cast, where they
+        // were easy to miss entirely.
+        if(briefCol){
+          const ro=document.createElement('div'); ro.className='runopts';
+          ro.innerHTML='<label class="hint" for="paperBtn">Write it as</label>'
+            +'<button class="chip paperbtn" id="paperBtn" title="Which paper this is written as - click to read what each one does"><b>The house paper</b><small></small><span class="caret">&#9662;</span></button>'
+            +'<label class="hint" for="researchLevel">Research depth</label><select id="researchLevel">'+Object.keys(RESEARCH_LEVELS).map(k=>`<option value="${k}"${k===researchKey?' selected':''}>${RESEARCH_LEVELS[k].label}</option>`).join('')+'</select>'
+            +'<span class="hint" id="researchHint"></span>';
+          const briefBox=briefCol.querySelector('.brief');
+          if(briefBox&&briefBox.parentNode) briefBox.parentNode.insertBefore(ro, briefBox.nextSibling);
+          else briefCol.appendChild(ro);
+          const sel=ro.querySelector('#researchLevel'), hint=ro.querySelector('#researchHint');
+          const setHint=()=>{ const l=RESEARCH_LEVELS[researchKey]; if(hint) hint.textContent=`~${l.maxFindings} sources${l.research>1?' · 2 passes':''}`; };
+          setHint(); sel.addEventListener('change',()=>{ researchKey=sel.value; setHint(); });
+          ro.querySelector('#paperBtn').addEventListener('click', openPapers);
+          loadFormats().then(paintPaperButton); } }
       if(controlsCol) controlsCol.style.display='none';   // the sim's control column — the appbar has the app's own look-around
     }
     const $=id=>document.getElementById(id);
@@ -2239,6 +2350,7 @@
       usageText: () => (document.getElementById('appUsage')||{}).textContent||'',
       desks: () => staff.map(s=>({ role:s.role, label:s.label, spent:s.spent,
         lines:(s.log||[]).length, kinds:[...new Set((s.log||[]).map(e=>e.kind))] })),
+      openCaseFile: () => openCaseFile(),
     };
   }
   if(window.lateEdition){ document.body.classList.add('real');

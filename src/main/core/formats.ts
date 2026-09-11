@@ -55,6 +55,12 @@ export interface OutletSpec {
   kind: OutletKind;
   /** One line under the label, so the choice is obvious without trying it. */
   hint: string;
+  /**
+   * What you actually get, in a few sentences, for the reader choosing between them. This
+   * is the only prose here written for a person rather than for an agent — it never goes
+   * into a prompt.
+   */
+  blurb: string;
   /** What this outlet leads on. Goes to the reporter and the editor — this is the angle. */
   position: string;
   /** How this outlet cuts a headline and a standfirst. Goes to the editor. */
@@ -92,6 +98,10 @@ export const OUTLETS: OutletSpec[] = [
     label: 'The house paper',
     kind: 'paper',
     hint: 'Whatever style.md says — the noir wire desk, unless you have rewritten it.',
+    blurb:
+      'Your own style.md, whatever you have made of it. Out of the box that is a ' +
+      '1940s wire desk: terse, dry, unimpressed, and allergic to hype. Edit the ' +
+      'file and every desk follows it on the next run.',
     shape: 'four to six tight paragraphs when well sourced, fewer when thin',
     citations: 'numbered',
     position:
@@ -115,6 +125,11 @@ export const OUTLETS: OutletSpec[] = [
     label: 'The Moon',
     kind: 'paper',
     hint: 'Red-top daily — loud, human, the price up front.',
+    blurb:
+      'A red-top. It leads on whoever the story lands on rather than the ' +
+      'institution it came out of, puts the price in the opening line, and runs ' +
+      'eight or nine very short paragraphs. Blunt but never sneering, and it ' +
+      'still cannot print a word the sources do not carry.',
     shape: 'six to ten very short paragraphs',
     citations: 'numbered',
     position:
@@ -140,6 +155,10 @@ export const OUTLETS: OutletSpec[] = [
     label: 'The Chronicle',
     kind: 'paper',
     hint: 'Broadsheet daily — measured, sourced, the context behind it.',
+    blurb:
+      'A broadsheet. It leads on what the news means rather than only on what ' +
+      'happened, and will spend a paragraph establishing that if the story needs ' +
+      'it. Careful attribution, room for a real clause, and no jokes.',
     shape: 'six to nine paragraphs with room to develop the argument',
     citations: 'numbered',
     position:
@@ -164,6 +183,11 @@ export const OUTLETS: OutletSpec[] = [
     label: 'The Ledger',
     kind: 'paper',
     hint: 'Business daily — the numbers first, who gains and who pays.',
+    blurb:
+      'A business daily. Nothing runs without a figure attached to it. It says ' +
+      'who gains and who pays inside the first third, compares against prior ' +
+      'numbers rather than against feelings, and says plainly when no figure is ' +
+      'public.',
     shape: 'five to eight paragraphs, front-loaded with figures',
     citations: 'numbered',
     position:
@@ -187,6 +211,11 @@ export const OUTLETS: OutletSpec[] = [
     label: 'Continental Wire',
     kind: 'paper',
     hint: 'Agency copy — flat, attributed, cuttable from the bottom.',
+    blurb:
+      'Agency copy. The most consequential verified fact first, then each ' +
+      'paragraph less essential than the one before, so a desk can cut it from ' +
+      'the bottom without breaking it. No framing and no opinion; where two ' +
+      'parties disagree both get a sentence.',
     shape: 'five to eight mostly single-sentence paragraphs, most important first',
     citations: 'numbered',
     position:
@@ -209,6 +238,11 @@ export const OUTLETS: OutletSpec[] = [
     label: 'The Circuit',
     kind: 'online',
     hint: 'Tech site — the mechanism, and the vendor claim actually tested.',
+    blurb:
+      'A technology site, written for someone who already knows the field. It ' +
+      'explains the mechanism rather than the announcement, treats a vendor claim ' +
+      'as where the reporting starts, and is plain about what is still unreleased ' +
+      'or unknown.',
     shape: 'five to eight paragraphs, with the mechanism in the middle third',
     citations: 'numbered',
     position:
@@ -232,6 +266,10 @@ export const OUTLETS: OutletSpec[] = [
     label: 'Blog post',
     kind: 'online',
     hint: 'Room to explain, with a point of view and a real opening.',
+    blurb:
+      'A post by someone who went and found this out and is now saving you the ' +
+      'trip. It opens on the specific thing that made it worth writing, carries a ' +
+      'view that comes out of the facts, and ends on what it costs you.',
     shape: '500 to 900 words with two or three sub-headings',
     citations: 'numbered',
     position:
@@ -256,6 +294,10 @@ export const OUTLETS: OutletSpec[] = [
     label: 'Newsletter / RSS blurb',
     kind: 'online',
     hint: 'A tight summary someone can scan in a feed.',
+    blurb:
+      'One or two tight paragraphs that stand on their own in a feed reader. ' +
+      'Every sentence carries something you could act on or repeat. No preamble ' +
+      'and no sign-off.',
     shape: '80 to 150 words in one or two paragraphs',
     citations: 'plain',
     position:
@@ -274,6 +316,11 @@ export const OUTLETS: OutletSpec[] = [
     label: 'LinkedIn post',
     kind: 'social',
     hint: 'Plain professional English, first person, no hashtag soup.',
+    blurb:
+      'First person, plain professional English, with the most surprising ' +
+      'concrete fact in the opening line. No hashtags, no engagement bait, ' +
+      'nothing thrilled to share. Sources are listed underneath rather than ' +
+      'footnoted through the prose.',
     shape: '150 to 250 words in short paragraphs of one or two sentences',
     citations: 'plain',
     position:
@@ -298,6 +345,10 @@ export const OUTLETS: OutletSpec[] = [
     label: 'Reddit post',
     kind: 'social',
     hint: 'Conversational, upfront about what is known and what is not.',
+    blurb:
+      'Conversational and direct, and explicit about which parts are well sourced ' +
+      'and which are thin. On Reddit that candour is what keeps a post standing. ' +
+      'marketing register, no sign-off, and sources listed at the end.',
     shape: '200 to 400 words, sub-headed if it helps',
     citations: 'plain',
     position:
@@ -320,6 +371,10 @@ export const OUTLETS: OutletSpec[] = [
     label: 'Plain brief',
     kind: 'plain',
     hint: 'Just the facts, no voice at all.',
+    blurb:
+      'No voice at all. Bullet points, one fact each, ordered by how well each ' +
+      'one stands up. For when you want the findings and nothing wrapped around ' +
+      'them.',
     shape: 'three to six bullet points, one fact each',
     citations: 'numbered',
     position:
