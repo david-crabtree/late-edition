@@ -33,7 +33,12 @@ function licenceText(dir) {
   const file = names.find((n) => /^(LICEN[CS]E|COPYING)(\.(md|txt))?$/i.test(n));
   if (!file) return '';
   try {
-    return readFileSync(join(dir, file), 'utf8').trim();
+    // Normalise the line endings. Several packages ship a LICENSE with CRLF, and git
+    // rewrites those to LF on checkout under this repo's .gitattributes — so a file
+    // generated from the untouched originals can never match the one CI checks out, and
+    // the freshness check fails forever on Linux for a reason that has nothing to do with
+    // the dependencies.
+    return readFileSync(join(dir, file), 'utf8').replace(/\r\n?/g, '\n').trim();
   } catch {
     return '';
   }

@@ -51,7 +51,10 @@
     "typescript": "^5.6.2",
     "vitest": "^2.1.1"
   },
-  "author": "David Crabtree",
+  "author": {
+    "name": "David Crabtree",
+    "email": "97316628+david-crabtree@users.noreply.github.com"
+  },
   "build": {
     "appId": "com.lateedition.app",
     "productName": "Late Edition",
@@ -91,7 +94,9 @@
     "linux": {
       "target": ["AppImage", "deb"],
       "category": "Office",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "desktopName": "late-edition.desktop",
+      "synopsis": "A newsroom on your desktop, staffed by the AI agents you already pay for."
     },
     "mac": {
       "target": [
