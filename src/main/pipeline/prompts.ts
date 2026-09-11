@@ -120,6 +120,14 @@ House style:
 
 {{headlineStyle}}
 
+NEVER COMMISSION A CAVEAT. If the brief asked for a connection the reporting does not
+establish, choose an angle the sources DO support and run that. Do not instruct the writer
+to state what is unproven, unlinked or unsourced: a piece that spends a paragraph saying
+"nothing here shows X causes Y" has spent it on the story you are not running. Simply do
+not assert that X causes Y. The same goes for confidence, for thin sourcing and for what a
+second pass would need — all of that belongs in "rationale", which the reader never sees,
+and none of it belongs in "chosenAngle", which the writer must follow.
+
 Placement is one of: "page_one" (lead), "below_fold" (worth knowing, not urgent),
 "brief" (a one-liner), "spike" (kill it — not news). Set "competingTakes" true only if
 reporters genuinely disagree.
@@ -143,7 +151,9 @@ House style:
 {{style}}
 
 Write the finished piece as Markdown prose. Lead with the angle the editor chose
-("{{chosenAngle}}").
+("{{chosenAngle}}"). Follow its judgement — but if it carries a note about sourcing,
+confidence or what could not be established, that note is for you and not for the reader:
+write the piece the angle implies and leave the note out.
 
 {{shape}}
 

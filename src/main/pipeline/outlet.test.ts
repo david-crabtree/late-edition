@@ -34,6 +34,17 @@ describe('the masthead reaches every desk', () => {
     expect(prompts.frontpage).toContain('{{position}}');
   });
 
+  // The last real run's chosen angle said, in as many words, "Kept the explicit
+  // non-causation line". The writer is told to lead with the angle, so a rule that only
+  // reached the writer could never win. It has to reach the desk that commissions.
+  it('forbids the editor from commissioning a caveat', () => {
+    expect(prompts.editor).toMatch(/NEVER COMMISSION A CAVEAT/);
+    expect(prompts.editor).toMatch(/belongs in "rationale"/);
+    expect(prompts.editor).toMatch(/none of it belongs in "chosenAngle"/);
+    // And the writer is told the angle's own caveats are for it, not for the reader.
+    expect(prompts.writer).toMatch(/that note is for you and not for the reader/);
+  });
+
   it('names the paper to the reporter, and its headline rules to the editor', () => {
     const shape: CopyShape = { outlet: 'moon' };
     const reporter = renderTemplate(prompts.reporter, {

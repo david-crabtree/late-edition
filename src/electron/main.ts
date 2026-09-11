@@ -564,6 +564,38 @@ function createWindow(): void {
           })()`),
         );
       }
+      // The front page in the window is what people actually read and copy — edition.md
+      // is correct and nobody opens it. A post shown here had a news headline, a
+      // standfirst, superscript footnotes numbered off the full source list, and six
+      // sources under three citations. All of it travelled into the paste.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG onscreen:',
+          await js(`(async () => {
+            const read = async (outlet) => {
+              let r = await window.lateEdition.run('an onscreen topic', { provider: 'fake', research: 1, shape: { outlet } });
+              if (r.needsDecision) r = await window.lateEdition.answerVerify(r.editionId, false, { provider: 'fake', research: 1, shape: { outlet } });
+              window.__leProbe.applyResult(r);
+              await new Promise(x => setTimeout(x, 250));
+              const story = ((r.edition || {}).stories || [])[0] || {};
+              const cited = new Set([...String(story.body || '')
+                .matchAll(/\\[([a-z0-9_]+:[0-9a-f]{6,})\\]/gi)].map(m => m[1]));
+              return {
+                headlineShown: !document.getElementById('fpHead').hidden &&
+                  !!document.getElementById('fpHead').textContent.trim(),
+                standfirstShown: !document.getElementById('fpStand').hidden &&
+                  !!document.getElementById('fpStand').textContent.trim(),
+                bylineShown: !!document.getElementById('fpByline').textContent.trim(),
+                markersInProse: document.getElementById('fpBody').querySelectorAll('sup').length,
+                sourcesListed: document.getElementById('fpSources').querySelectorAll('li').length,
+                sourcesOnStory: (story.sources || []).length,
+                citedByCopy: cited.size,
+              };
+            };
+            return JSON.stringify({ linkedin: await read('linkedin'), paper: await read('chronicle') });
+          })()`),
+        );
+      }
       // Spiking a case throws its changes away and they never come back, because the
       // sources have already been diffed. One stray click used to do it, and left the run
       // button greyed out with nothing saying why.
@@ -1165,6 +1197,9 @@ handle('le:formats', () => ({
     kind: o.kind,
     hint: o.hint,
     blurb: o.blurb,
+    // The interface shows the finished piece too, so it needs to know how this outlet
+    // wants its citations rendered — not just how it wants to be written.
+    citations: o.citations,
   })),
   lengths: Object.entries(LENGTHS).map(([id, l]) => ({ id, label: l.label })),
 }));
