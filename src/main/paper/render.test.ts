@@ -91,3 +91,57 @@ describe('citation rendering', () => {
     expect(renderHtml(ed)).toContain('not journalism');
   });
 });
+
+/**
+ * On a cached provider almost none of the traffic is fresh input. Counting only input and
+ * output put a real edition at 15,170 tokens against a true 325,959, while the app's own
+ * readout counted cache and showed the larger figure. Two numbers for one edition, twenty
+ * times apart, both labelled "tok".
+ */
+describe('the token line', () => {
+  const USAGE = [
+    {
+      provider: 'claude',
+      role: 'reporter',
+      inputTokens: 2,
+      outputTokens: 2075,
+      cacheReadTokens: 29338,
+      cacheWriteTokens: 8050,
+    },
+    {
+      provider: 'claude',
+      role: 'writer',
+      inputTokens: 2,
+      outputTokens: 1679,
+      cacheReadTokens: 29338,
+      cacheWriteTokens: 10233,
+    },
+  ];
+
+  const withUsage = () => ({ ...edition({ body: 'A line.' }), tokenUsage: USAGE });
+
+  it('counts cache traffic, because the provider does', () => {
+    // 4 fresh + 3,754 out + 58,676 read + 18,283 written.
+    const total = 2 + 2075 + 2 + 1679 + 29338 + 8050 + 29338 + 10233;
+    expect(total).toBe(80717);
+    expect(renderMarkdown(withUsage())).toContain('claude: 80,717 tok');
+  });
+
+  // A read is roughly a tenth of a fresh token; a write is roughly a quarter more than
+  // one. Printing them as a single "cached" figure hides the expensive half.
+  it('names reads and writes separately', () => {
+    const md = renderMarkdown(withUsage());
+    expect(md).toContain('58,676 read from cache');
+    expect(md).toContain('18,283 written to it');
+  });
+
+  it('says nothing about cache when a provider does not use it', () => {
+    const ed = {
+      ...edition({ body: 'A line.' }),
+      tokenUsage: [{ provider: 'fake', role: 'writer', inputTokens: 10, outputTokens: 20 }],
+    };
+    const md = renderMarkdown(ed);
+    expect(md).toContain('fake: 30 tok');
+    expect(md).not.toMatch(/cache/i);
+  });
+});

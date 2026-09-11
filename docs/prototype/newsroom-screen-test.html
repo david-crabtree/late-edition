@@ -1382,12 +1382,16 @@
     for(const s of staff) s.spent=0; renderRoster(); paintUsage(); }
   // What the headline number is actually made of. A multi-agent run is mostly cache reads —
   // without the split, a routine edition reads as if it cost a fortune.
+  // Reads and writes were lumped together as "from cache", which reads as one cheap
+  // number and is not. A cache READ costs about a tenth of a fresh input token; a cache
+  // WRITE costs about a quarter MORE than one. Putting the premium half under the label
+  // for the discounted half is how a bill surprises somebody.
   function usageBreakdown(){ const k=live.kinds||{};
     const parts=[];
     if(k.output) parts.push(`${fmtK(k.output)} written`);
-    if(k.input) parts.push(`${fmtK(k.input)} read`);
-    const cache=(k.cacheRead||0)+(k.cacheWrite||0);
-    if(cache) parts.push(`${fmtK(cache)} from cache`);
+    if(k.input) parts.push(`${fmtK(k.input)} fresh`);
+    if(k.cacheRead) parts.push(`${fmtK(k.cacheRead)} from cache`);
+    if(k.cacheWrite) parts.push(`${fmtK(k.cacheWrite)} into cache`);
     return parts.join(' · '); }
   // Which agent is doing the spending — named, because "382k tokens" alone tells you
   // nothing about what it was spent on or whose allowance it came out of.
@@ -1403,7 +1407,9 @@
     const b=billing||live.billing||'unknown';
     const tok=fmtK(total!=null?total:live.total), who=whoIsSpending(), on=who?` · ${who}`:'';
     const split=usageBreakdown();
-    el.title = split ? `${split} — cache reads are counted in the total but are the cheap part` : '';
+    el.title = split
+      ? `${split} — all of it counts toward the total. Reads off the cache are the cheap part, around a tenth of a fresh token; writes into it cost about a quarter more than a fresh one.`
+      : '';
     const tail = split ? ` (${split})` : '';
     el.textContent =
       b==='api'      ? `⚠ ${tok} tokens${on}${tail} · billed to your API key · $${(costUsd!=null?costUsd:live.costUsd||0).toFixed(2)}`
@@ -1875,15 +1881,34 @@
   // numbered sources) plus the other headlines — not just the headline + standfirst teaser.
   const FP_CITE=/\[((?:[a-z0-9_]+:[0-9a-f]{6,})(?:\s*,\s*[a-z0-9_]+:[0-9a-f]{6,})*)\]/gi, FP_STRAY=/\[#[^\]\n]{0,60}\]|\[(?:ref|citation needed|source)\]/gi;
   const fpEsc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // What this edition was written as, as far as the interface is concerned. An edition
+  // filed before outlets existed has none, and is a paper.
+  const fpOutlet=edition=>shapeOpts.outlets.find(o=>o.id===((edition&&edition.outlet)||'newspaper'))||{kind:'paper',citations:'numbered'};
   function fpRenderEdition(edition){ const stories=(edition&&edition.stories)||[]; const st=stories[0];
     if(!st){ fpHead.textContent='A quiet day on the wire'; fpStand.textContent='Nothing stood up for page one.'; fpByline.textContent=''; fpBody.innerHTML=''; fpSources.innerHTML=''; fpAlso.innerHTML=''; buildRewritePanel(); frontpage.hidden=false; return; }
-    fpHead.textContent=st.headline||'A quiet day on the wire'; fpStand.textContent=st.standfirst||'';
+    // A post has no headline and no standfirst. The desk still writes one as an internal
+    // label; showing it here is how a LinkedIn post ends up pasted with a news headline on
+    // top of it, which is exactly what happened.
+    const out=fpOutlet(edition), paper=out.kind==='paper', titled=out.kind==='online';
+    fpHead.textContent=(paper||titled)?(st.headline||'A quiet day on the wire'):'';
+    fpHead.hidden=!(paper||titled);
+    fpStand.textContent=paper?(st.standfirst||''):'';
+    fpStand.hidden=!paper;
     fpByline.textContent='';   // no byline: the reporter is a voice, not an author
-    const srcs=st.sources||[], numOf=new Map(); srcs.forEach((r,i)=>{ if(r&&r.signalId) numOf.set(r.signalId,i+1); });
+    // A paper numbers off everything the desk gathered. A post numbers — or drops — off
+    // what the copy actually cites, so six sources never sit under three citations.
+    const all=st.sources||[], cited=[], numOf=new Map();
+    const byId=new Map(all.filter(r=>r&&r.signalId).map(r=>[r.signalId,r]));
+    for(const m of String(st.body||'').matchAll(FP_CITE)){
+      for(const raw of (m[1]||'').split(',')){ const id=raw.trim();
+        if(numOf.has(id)||!byId.has(id)) continue; numOf.set(id,cited.length+1); cited.push(byId.get(id)); } }
+    if(paper){ all.forEach(r=>{ if(r&&r.signalId&&!numOf.has(r.signalId)){ numOf.set(r.signalId,cited.length+1); cited.push(r); } }); }
+    const plain=out.citations==='plain';
     fpBody.innerHTML=(st.body||'').split(/\n{2,}/).map(p=>{ const h=fpEsc(p.trim())
-        .replace(FP_CITE,(_m,ids)=>{ const ns=ids.split(',').map(id=>numOf.get(id.trim())).filter(Boolean); return ns.length?('<sup>['+ns.join(',')+']</sup>'):''; })
-        .replace(FP_STRAY,'').replace(/\n/g,'<br>'); return h?('<p>'+h+'</p>'):''; }).join('');
-    fpSources.innerHTML=srcs.length?('<b>Sources</b><ol>'+srcs.map(r=>'<li>'+fpEsc(r.title||r.url||'source')+'</li>').join('')+'</ol>'):'';
+        .replace(FP_CITE,(_m,ids)=>{ if(plain) return '';
+          const ns=ids.split(',').map(id=>numOf.get(id.trim())).filter(Boolean); return ns.length?('<sup>['+ns.join(',')+']</sup>'):''; })
+        .replace(FP_STRAY,'').replace(/\s+([.,;:)])/g,'$1').replace(/\n/g,'<br>'); return h?('<p>'+h+'</p>'):''; }).join('');
+    fpSources.innerHTML=cited.length?('<b>Sources</b><ol>'+cited.map(r=>'<li>'+fpEsc(r.title||r.url||'source')+'</li>').join('')+'</ol>'):'';
     // The picture desk's brief, if that desk ran. Labelled as a brief, never as a picture.
     const ph=st.photo, phEl=document.getElementById('fpPhoto');
     if(phEl){ phEl.innerHTML = ph ? ('<b>Picture desk</b> <span class="fp-photo-no">no image — a brief for a human</span>'

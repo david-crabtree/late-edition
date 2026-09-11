@@ -287,15 +287,43 @@ function storyMarkdown(s: Story): string {
   return lines.join('\n');
 }
 
+/**
+ * What this edition cost in tokens.
+ *
+ * This used to add input and output and stop there, which on a cached provider is almost
+ * none of it: a real edition came to 15,170 that way against a true 325,959, because 95%
+ * of the prompt was cache traffic. The app's own readout counted cache and the printed
+ * footer did not, so the same edition carried two numbers twenty times apart, both
+ * labelled "tok".
+ *
+ * The three prompt figures are disjoint in the provider's accounting — `input` is only
+ * the part that was NOT cached — so they add up rather than overlap. Reads and writes are
+ * named separately because they do not cost the same: a read is roughly a tenth of a
+ * fresh token, a write is roughly a quarter more than one.
+ */
 function tokenLine(ed: Edition): string {
   if (ed.tokenUsage.length === 0) return `Generated ${ed.generatedAt}. No token usage recorded.`;
   const byProvider = new Map<string, number>();
+  let cacheRead = 0;
+  let cacheWrite = 0;
   for (const u of ed.tokenUsage) {
-    const total = (u.inputTokens ?? 0) + (u.outputTokens ?? 0);
+    const total =
+      (u.inputTokens ?? 0) +
+      (u.outputTokens ?? 0) +
+      (u.cacheReadTokens ?? 0) +
+      (u.cacheWriteTokens ?? 0);
     byProvider.set(u.provider, (byProvider.get(u.provider) ?? 0) + total);
+    cacheRead += u.cacheReadTokens ?? 0;
+    cacheWrite += u.cacheWriteTokens ?? 0;
   }
-  const parts = [...byProvider.entries()].map(([p, t]) => `${p}: ${t} tok`);
-  return `Generated ${ed.generatedAt}. Usage — ${parts.join(', ')}.`;
+  const n = (v: number) => v.toLocaleString('en-GB');
+  const parts = [...byProvider.entries()].map(([p, t]) => `${p}: ${n(t)} tok`);
+  const cache = [
+    cacheRead ? `${n(cacheRead)} read from cache` : '',
+    cacheWrite ? `${n(cacheWrite)} written to it` : '',
+  ].filter(Boolean);
+  const tail = cache.length ? ` (${cache.join(', ')})` : '';
+  return `Generated ${ed.generatedAt}. Usage — ${parts.join(', ')}${tail}.`;
 }
 
 /** Render an edition as a self-contained, newspaper-styled HTML page. */
