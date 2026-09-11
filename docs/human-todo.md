@@ -10,10 +10,16 @@ Ordered roughly by what unblocks the most.
 
 ## Before anything goes public
 
-- [ ] **Create the org and the repository.** `github.com/late-edition/late-edition`, private or public
-      as you like — it can start private. The local repo has no remote and nothing has ever
-      been pushed. Say the word and I will walk the push with you; it is a different profile
-      from the one signed in here, so the credential step is yours.
+- [ ] **Create the repository.** `github.com/david-crabtree/late-edition`. **Public**, not
+      private: Actions is free on public repositories, and on a private one the macOS runner
+      bills at about six pence a minute against a 2,000-minute allowance, so the Mac build
+      would quietly cost money. Public also makes the badges and the Sponsor button work.
+
+      The local repo has no remote and nothing has ever been pushed. `gh` on this machine is
+      signed in as AnderAudio, so the credential step is yours:
+      `gh auth login --scopes "repo,workflow,read:org"` in a private browser window. The
+      `workflow` scope is not in the default set and without it GitHub refuses any push
+      containing `.github/workflows/`.
 
 - [ ] **Decide whether [`HANDOVER.md`](../HANDOVER.md) ships.** It is a working document for
       whoever picks the project up. It reads fine to a stranger, but it talks about you in

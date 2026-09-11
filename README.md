@@ -2,8 +2,8 @@
 
 **A newsroom on your desktop, staffed by the AI agents you already pay for.**
 
-[![Latest release](https://img.shields.io/github/v/release/late-edition/late-edition?label=download)](https://github.com/late-edition/late-edition/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/late-edition/late-edition/total)](https://github.com/late-edition/late-edition/releases)
+[![Latest release](https://img.shields.io/github/v/release/david-crabtree/late-edition?label=download)](https://github.com/david-crabtree/late-edition/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/david-crabtree/late-edition/total)](https://github.com/david-crabtree/late-edition/releases)
 [![Licence](https://img.shields.io/badge/licence-Apache--2.0%20WITH%20Commons--Clause-blue)](LICENSE)
 [![Discord](https://img.shields.io/discord/0?label=discord&logo=discord)](https://discord.gg/kmr8wqKJJj)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/david-crabtree)
@@ -18,7 +18,7 @@ your computer except to the sources you chose and the agent you already signed i
 
 ## Download
 
-**[Get the latest release →](https://github.com/late-edition/late-edition/releases/latest)**
+**[Get the latest release →](https://github.com/david-crabtree/late-edition/releases/latest)**
 
 | | |
 | --- | --- |
@@ -58,7 +58,7 @@ and signed into, so the work counts against a plan you already have rather than 
 
 "Not yet confirmed live" is about our evidence, not missing code. Every one of them is fully
 written and wired the same way as Claude Code. If you get one working it should work, and
-if it doesn't, [that's worth telling us](https://github.com/late-edition/late-edition/issues).
+if it doesn't, [that's worth telling us](https://github.com/david-crabtree/late-edition/issues).
 
 The app's Setup panel finds what you have, and for anything you don't it will open the
 download page and open a terminal sitting at the command, so you never have to know what a
@@ -181,9 +181,9 @@ signing. See [`docs/decisions.md`](docs/decisions.md).
 ## Community and support
 
 - **[Discord](https://discord.gg/kmr8wqKJJj)** — help, and a channel for showing off papers.
-- **[Discussions](https://github.com/late-edition/late-edition/discussions)** — anything that
+- **[Discussions](https://github.com/david-crabtree/late-edition/discussions)** — anything that
   should stay searchable.
-- **[Issues](https://github.com/late-edition/late-edition/issues)** — bugs. An agent changing
+- **[Issues](https://github.com/david-crabtree/late-edition/issues)** — bugs. An agent changing
   its command line under us is a release blocker.
 
 Late Edition is free and always will be. Nothing is gated and nothing ever will be. If it

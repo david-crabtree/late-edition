@@ -1266,7 +1266,7 @@ handle('le:setDonations', (_e, on: boolean) => {
 });
 
 /** Where a person goes to get a new version themselves. */
-const RELEASES_URL = 'https://github.com/late-edition/late-edition/releases';
+const RELEASES_URL = 'https://github.com/david-crabtree/late-edition/releases';
 
 /**
  * Is there a newer version, and can this platform install it for itself?

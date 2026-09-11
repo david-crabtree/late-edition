@@ -30,7 +30,7 @@ export const PROJECT_NAME = 'Late Edition';
  * reading. Set this and it appears in every artefact; leave it empty and the credit still
  * appears, just without a link.
  */
-export const PROJECT_URL = 'https://github.com/late-edition/late-edition';
+export const PROJECT_URL = 'https://github.com/david-crabtree/late-edition';
 
 /** Where the community is. A link, and nothing embedded. */
 export const COMMUNITY_URL = 'https://discord.gg/kmr8wqKJJj';

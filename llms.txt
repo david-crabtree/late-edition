@@ -57,6 +57,6 @@ forks must use a different name.
 
 ## Links
 
-- Source: https://github.com/late-edition/late-edition
-- Releases: https://github.com/late-edition/late-edition/releases
+- Source: https://github.com/david-crabtree/late-edition
+- Releases: https://github.com/david-crabtree/late-edition/releases
 - Author: David Crabtree, as an individual

@@ -63,14 +63,6 @@ https://github.com/sponsors/david-crabtree
 
 ---
 
-## Org description, if the `late-edition` org is created
-
-```
-Late Edition — a newsroom on your desktop, powered by the AI agents you already have.
-```
-
----
-
 ## Discussions
 
 Enable, with these categories:
