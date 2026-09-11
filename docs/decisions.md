@@ -6,6 +6,23 @@ markers where relevant.
 
 ## Release
 
+### DR.4 — The app asks for money in one place, and quietly
+The rollout plan specifies three donation touchpoints. One is built: a link in the colophon
+with a switch beside it, and `donations.enabled: false` removes every trace.
+
+The other two are deliberately dropped.
+
+**A line in every rendered edition** ("Published with the support of readers like you" in the
+masthead footer) would travel into other people's blogs and posts, because that is what
+editions are for. A solicitation inside somebody else's writing is a different thing from
+one inside an app they chose to install, and it is the kind of thing that gets a project
+mocked rather than sponsored.
+
+**The tenth-edition prompt** — the Chief mentioning sponsorship once, in character, after ten
+successful editions — is a better idea than that one, and was still dropped. It only works
+if the line lands, and a fundraising ask wearing a costume reads worse than no line at all.
+The risk is to the app's voice, which is the thing people will actually come for.
+
 ### DR.3 — Where the planning documents and the code disagree
 The copy handoff asks for these to be written down rather than silently reconciled. Read
 off the code on 11 Sep 2026; the full record is in [`app-facts.md`](app-facts.md).

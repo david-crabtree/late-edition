@@ -31,7 +31,7 @@ Sorted by what would be most embarrassing to get wrong.
 | --- | --- | --- |
 | `README.md` Privacy, the app's first-run screen, the About panel | The privacy statement has **one clause added**, naming GitHub and the update check | The plan fixes this wording as unchanged, but update checks make it literally false as written. A promise sitting next to a contradiction of itself is worth less than no promise. **Overrule this if you would rather drop update checks and keep the wording.** |
 | The app | **No donation line in rendered editions** | The plan asks for "Published with the support of readers like you" in the masthead footer of every edition. I have not added it. Editions get pasted into other people's blogs and posts, and a solicitation travelling into somebody else's writing is a different thing from one in an app they chose to install. The About panel has the link, and the switch removes it. Your call. |
-| The app | **No tenth-edition prompt** | Same reason, lower stakes. It is in the plan, it is charming, and it is not built. Say the word. |
+| The app | **No tenth-edition prompt** | Dropped, decided 11 Sep 2026. The plan's Phase 5.3 asks the Chief to mention sponsorship once, after ten editions. It only works if the line lands, and a fundraising ask wearing a costume is worse than no line. Not building it. |
 | `docs/launch/` | Not written | You are handling Discord, LinkedIn and the launch posts. |
 
 ## Facts with a shelf life
