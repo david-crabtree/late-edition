@@ -604,6 +604,32 @@ function createWindow(): void {
           })()`),
         );
       }
+      // "(not ready)" was doing the work of three different facts and hid all of them.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG labels:',
+          await js(`(async () => {
+            document.querySelector('.setup').hidden = false;
+            for (let i = 0; i < 40 && !document.querySelector('select[data-role="reporter"]'); i++)
+              await new Promise(x => setTimeout(x, 100));
+            const opts = [...document.querySelector('select[data-role="reporter"]').options]
+              .map(o => o.textContent).filter(t => !/nobody yet/.test(t));
+            // The old label said nothing about which of three things was true.
+            const out = { labels: opts, noneSayNotReady: !opts.some(t => /not ready/i.test(t)) };
+            // And the pill that is about our evidence rather than their machine explains
+            // itself where somebody is looking at one agent.
+            document.querySelector('[data-wire="opencode"]').click();
+            for (let i = 0; i < 40 && !document.querySelector('.wiring:not([hidden])'); i++)
+              await new Promise(x => setTimeout(x, 100));
+            const m = document.querySelector('.wiring');
+            out.untestedIsExplained = /written and wired up like/i.test(m.textContent);
+            out.saysItIsNotMissingCode = !/not implemented|coming soon|stub/i.test(m.textContent);
+            m.querySelector('#wiClose').click();
+            document.querySelector('.setup').hidden = true;
+            return JSON.stringify(out);
+          })()`),
+        );
+      }
       // The model box hands whatever is typed straight to the agent's command line, and
       // each agent wants a different shape. Nothing said so, and nothing checked.
       if (process.env.LE_DEBUG_RUN) {

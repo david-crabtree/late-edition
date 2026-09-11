@@ -108,6 +108,9 @@
   .setup .note{ font-size:.68rem; color:#7a7259; margin-top:11px; line-height:1.5; }
   /* Breathing room where things were touching: Recheck against the agent list, Save staff
      against the help text below it. */
+  .setup .mdl-shape{ grid-column:3; margin:3px 0 0; font-size:.66rem; line-height:1.45; color:var(--bone-dim); }
+  .setup .mdl-check{ grid-column:3; margin:3px 0 0; font-size:.66rem; line-height:1.45; color:#e8b04b; }
+  .setup input.mdl.wrongshape{ border-color:#a8703a; }
   .setup .agentshd{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin:18px 0 9px; }
   .setup .agentshd h4{ margin:0; }
   .setup .saverow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:16px 0 0; }
@@ -1565,7 +1568,14 @@
     // An agent the app cannot help with says so before the steps, so they can walk away
     // and pick an easier one rather than work down a list of buttons that do nothing.
     const manual=d.manualOnly?`<p class="wi-state">${escH(d.manualOnly)}</p>`:'';
-    body.innerHTML=blurb+state+manual+(steps||'<p class="wi-note">No setup steps are recorded for this one.</p>');
+    // "Untested here" is about our evidence, not about missing code — worth saying, because
+    // read next to "not installed" it looks like the same kind of problem and is not.
+    const untested=d.maturity==='untested'
+      ? `<p class="wi-state">Untested here means this integration is written and wired up like
+         the rest, but no edition has been confirmed end to end on it. If you get it working,
+         it should work — and if it does not, that is worth reporting.</p>`
+      : '';
+    body.innerHTML=blurb+state+untested+manual+(steps||'<p class="wi-note">No setup steps are recorded for this one.</p>');
     const say=m=>{ el.querySelector('#wiMsg').textContent=m; };
     body.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click', async()=>{
       if(!window.lateEdition.openSetupPage||!apiOk('le:openSetupPage')){ say('This build of the engine cannot open pages — run npm run app.'); return; }
@@ -2399,6 +2409,22 @@
     function fillModels(list, providerId){
       const p=provById(providerId); list.innerHTML='';
       for(const m of ((p&&p.models)||[])){ const o=document.createElement('option'); o.value=m; list.appendChild(o); } }
+    // What is wrong with this model name, if anything. Blank is always fine — it means
+    // "whatever the agent uses by default". A name we do not recognise is only ever a
+    // remark, because the lists go stale and new models arrive all the time; a name that
+    // breaks the agent's own required shape is a real answer, because that one cannot work.
+    function modelComplaint(p, value){
+      if(!p||!value) return '';
+      const syn=p.modelSyntax;
+      if(syn&&syn.pattern){
+        let re=null; try{ re=new RegExp(syn.pattern); }catch(_){ }
+        if(re&&!re.test(value)) return syn.whenWrong||('That is not the shape '+(p.displayName||p.id)+' expects.');
+      }
+      const known=(p.models||[]);
+      if(known.length&&!known.includes(value)){
+        return `${p.displayName||p.id} did not list "${value}". It may still be right — it is handed over as typed.`;
+      }
+      return ''; }
     async function refreshRoles(){
       const [det,cfg]=await Promise.all([LE.detect(), LE.staff()]);
       providerInfo=det;
@@ -2410,7 +2436,7 @@
         const sel=document.createElement('select'); sel.dataset.role=rk;
         const none=document.createElement('option'); none.value=UNSET; none.textContent='— nobody yet —'; sel.appendChild(none);
         for(const d of choosable){ const o=document.createElement('option'); o.value=d.id;
-          o.textContent=(d.displayName||d.id)+(d.installed&&d.authenticated?'':' (not ready)');
+          o.textContent=(d.displayName||d.id)+deskLabel(d);
           sel.appendChild(o); }
         sel.value=cur.provider||UNSET;
         const wrap=document.createElement('div'); wrap.className='mdlwrap';
@@ -2420,14 +2446,42 @@
         mdl.setAttribute('list',listId); mdl.placeholder='model (optional)'; mdl.value=cur.model||'';
         const list=document.createElement('datalist'); list.id=listId;
         const rec=document.createElement('span'); rec.className='rec';
+        // What a name for THIS agent looks like. Every one wants a different shape and
+        // the box says nothing, so the only way to learn you were wrong was a failed desk
+        // — after the desks before it had already spent.
+        const shape=document.createElement('p'); shape.className='mdl-shape';
+        const check=document.createElement('p'); check.className='mdl-check'; check.hidden=true;
         const sync=()=>{ rec.textContent=modelHint(rk, sel.value); fillModels(list, sel.value);
           sel.classList.toggle('un', sel.value===UNSET);
-          mdl.disabled=(sel.value===UNSET); };
+          mdl.disabled=(sel.value===UNSET);
+          const p2=provById(sel.value), syn=p2&&p2.modelSyntax;
+          shape.textContent=(sel.value===UNSET)?'':((syn&&syn.hint)||'');
+          shape.hidden=!shape.textContent;
+          verify(); };
+        // A warning, never a block: these lists go stale and a name we have not heard of
+        // may well be right.
+        const verify=()=>{ const v=(mdl.value||'').trim();
+          const p2=provById(sel.value);
+          const bad=modelComplaint(p2, v);
+          check.textContent=bad||''; check.hidden=!bad;
+          mdl.classList.toggle('wrongshape', !!bad); };
+        mdl.addEventListener('input', verify);
         sync();
         // THE fix for "changing provider doesn't change the recommended model".
         sel.addEventListener('change', sync);
-        wrap.append(mdl,list,rec);
+        wrap.append(mdl,list,rec,shape,check);
         rolesEl.append(l,sel,wrap); } }
+
+    // What is actually true about this agent, in the one place you commit to it. These are
+    // three different facts and the old single "(not ready)" hid all of them: whether it is
+    // on this machine, whether anyone has signed in, and whether this integration has ever
+    // been confirmed against a live install. Every one of them is written and wired the
+    // same way; "untested" is about our evidence, not about missing code.
+    const deskLabel=d=>{
+      if(!d.installed) return ' — not installed';
+      if(!d.authenticated) return ' — not signed in';
+      if(d.maturity==='untested') return ' — untested here';
+      return ''; };
 
     // Blank means "whatever the agent uses by default", which on most CLIs is the mid model
     // for every desk — including research, which is by far the biggest spender and wants
@@ -2445,8 +2499,16 @@
     $('setupSave').addEventListener('click', async()=>{ const out={};
       for(const [rk] of SETUP_ROLES){ const sel=box.querySelector(`select[data-role="${rk}"]`), mdl=box.querySelector(`input[data-role="${rk}"]`); out[SETUP_KEY[rk]]={ provider:sel.value, model:(mdl.value||'').trim() }; }
       const empty=SETUP_ROLES.filter(([rk])=>out[SETUP_KEY[rk]].provider===UNSET).length;
+      // Saving is the last moment before a run spends anything on a name that cannot work.
+      const shapeBad=SETUP_ROLES.map(([rk,label])=>{
+        const a=out[SETUP_KEY[rk]], p=provById(a.provider), syn=p&&p.modelSyntax;
+        if(!syn||!syn.pattern||!a.model) return null;
+        let re=null; try{ re=new RegExp(syn.pattern); }catch(_){ return null; }
+        return re.test(a.model)?null:label; }).filter(Boolean);
       try{ await LE.setStaff(out);
-        $('setupMsg').textContent = empty
+        $('setupMsg').textContent = shapeBad.length
+          ? `Saved, but ${shapeBad.join(' and ')} has a model name its agent cannot read — see the note under the box.`
+          : empty
           ? `Saved. ${empty} desk${empty>1?'s':''} still empty — a run will stop there.`
           : 'Saved — the desks use these next run.'; }
       catch(e){ $('setupMsg').textContent='Could not save: '+((e&&e.message)||e); } }); }
