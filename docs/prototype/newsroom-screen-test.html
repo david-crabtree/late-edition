@@ -263,12 +263,10 @@
   /* A small flex-basis, so this shares the line with "Send to the Chief" and then grows
      into whatever is left, rather than measuring its natural width and wrapping below. */
   .runopts{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; flex:1 1 240px; min-width:0; }
-  .runopts .paperbtn{ display:flex; align-items:baseline; gap:7px; text-align:left; flex:0 1 auto; min-width:0; max-width:min(44%,300px); }
+  .runopts .paperbtn{ display:flex; align-items:baseline; gap:7px; text-align:left; flex:0 0 auto; }
   .runopts .paperbtn b{ font-size:.78rem; color:var(--bone); white-space:nowrap; }
-  /* The one-liner is a courtesy, not the label - it gives way rather than pushing the
-     research control onto its own line. The full description lives in the picker. */
-  .runopts .paperbtn small{ font-size:.64rem; color:var(--bone-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
-  .runopts .paperbtn .caret{ margin-left:auto; padding-left:4px; color:var(--bone-dim); }
+  .runopts .paperbtn .caret{ color:var(--bone-dim); }
+  .runopts .paperlen{ font-style:italic; }
   .runopts label.hint{ margin-left:6px; }
   .runopts select, .papers select{ color-scheme:dark; font-family:var(--type); font-size:.78rem; color:var(--bone); background:#12100b; border:1px solid #3a2e1b; border-radius:4px; padding:5px 7px; cursor:pointer; }
   .runopts select:hover, .papers select:hover{ border-color:#5a4a2c; }
@@ -1660,14 +1658,21 @@
     const len=el.querySelector('#ppLen');
     len.innerHTML=shapeOpts.lengths.map(o=>`<option value="${o.id}"${o.id===chosen.length?' selected':''}>${escH(o.label)}</option>`).join('');
     len.onchange=()=>{ chosen.length=len.value; paintPaperButton(); }; }
-  // The button carries the answer, so the choice is readable without opening anything.
+  // The button carries the answer and nothing else: the masthead, and a caret saying
+  // there is more behind it. What each paper does is a paragraph, and a paragraph cut to
+  // "What..." tells you nothing while looking like something broke. It lives in the panel,
+  // and on the button's own tooltip for anyone who hovers.
   function paintPaperButton(){
     const b=document.getElementById('paperBtn'); if(!b) return;
     const o=shapeOpts.outlets.find(x=>x.id===chosen.outlet);
     const len=shapeOpts.lengths.find(x=>x.id===chosen.length);
-    b.innerHTML=`<b>${escH((o&&o.label)||'The house paper')}</b>`
-      +`<small>${escH((len&&len.id!=='standard'?len.label.toLowerCase()+' · ':'')+((o&&o.hint)||''))}</small>`
-      +'<span class="caret">&#9662;</span>'; }
+    b.innerHTML=`<b>${escH((o&&o.label)||'The house paper')}</b><span class="caret">&#9662;</span>`;
+    b.title=((o&&o.hint)||'')+' — click to read what each paper does.';
+    // A length that is not the default is a setting, not a description, and it would
+    // otherwise be invisible until somebody opened the panel again.
+    const tag=document.getElementById('paperLen');
+    if(tag){ const off=len&&len.id!=='standard';
+      tag.textContent=off?len.label.toLowerCase():''; tag.hidden=!off; } }
   async function openPapers(){ await loadFormats(); renderPapers(); buildPapers().hidden=false; }
 
   // ---- The field desk ---------------------------------------------------------------
@@ -2270,7 +2275,8 @@
         if(briefCol){
           const ro=document.createElement('div'); ro.className='runopts';
           ro.innerHTML='<label class="hint" for="paperBtn">Write it as</label>'
-            +'<button class="chip paperbtn" id="paperBtn" title="Which paper this is written as - click to read what each one does"><b>The house paper</b><small></small><span class="caret">&#9662;</span></button>'
+            +'<button class="chip paperbtn" id="paperBtn" title="Which paper this is written as - click to read what each one does"><b>The house paper</b><span class="caret">&#9662;</span></button>'
+            +'<span class="hint paperlen" id="paperLen" hidden></span>'
             +'<label class="hint" for="researchLevel">Research depth</label><select id="researchLevel">'+Object.keys(RESEARCH_LEVELS).map(k=>`<option value="${k}"${k===researchKey?' selected':''}>${RESEARCH_LEVELS[k].label}</option>`).join('')+'</select>'
             +'<span class="hint" id="researchHint"></span>';
           // Inside `.brief`, so it shares the flex line with "Send to the Chief".

@@ -560,7 +560,24 @@ function createWindow(): void {
             const moon = cards.find(c => c.dataset.paper === 'moon');
             moon.click();
             await new Promise(r2 => setTimeout(r2, 400));
-            out.picking = { closed: modal.hidden, buttonNowSays: btn.querySelector('b').textContent };
+            out.picking = {
+              closed: modal.hidden,
+              buttonNowSays: btn.querySelector('b').textContent,
+              stillJustTheName: btn.textContent.replace(/▾/g, '').trim(),
+            };
+            // A non-default length is a setting, not a description, and has to stay visible
+            // without opening the panel again.
+            btn.click();
+            for (let i = 0; i < 40 && modal.hidden; i++) await new Promise(r2 => setTimeout(r2, 50));
+            const lenSel = modal.querySelector('#ppLen');
+            lenSel.value = 'short'; lenSel.dispatchEvent(new Event('change'));
+            await new Promise(r2 => setTimeout(r2, 120));
+            const tag = document.getElementById('paperLen');
+            out.lengthTagWhenShort = tag && !tag.hidden ? tag.textContent : '';
+            lenSel.value = 'standard'; lenSel.dispatchEvent(new Event('change'));
+            await new Promise(r2 => setTimeout(r2, 120));
+            out.lengthTagHiddenOnStandard = !!(tag && tag.hidden);
+            modal.querySelector('#ppClose').click();
             return JSON.stringify(out);
           })()`),
         );
