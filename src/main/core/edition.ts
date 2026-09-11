@@ -71,6 +71,11 @@ export interface Edition {
   /** ISO date (YYYY-MM-DD) the edition covers. */
   date: string;
   paperName: string;
+  /**
+   * Which outlet this was written as (`newspaper`, `linkedin`, …). The renderer needs it:
+   * a post is not laid out as a front page, and its citations are not footnoted.
+   */
+  outlet?: string;
   tagline?: string;
   /** The editor's one-line read on the day's mood. */
   weatherLine?: string;

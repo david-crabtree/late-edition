@@ -135,6 +135,10 @@ export async function runEdition(opts: RunOptions): Promise<RunResult> {
         ? briefDraft(opts.root, newsroom, opts.brief, now, opts)
         : newDraft(opts.root, newsroom.config.paper.name, newsroom.config.paper.tagline, now);
 
+  // Which paper this is written as, recorded on the draft so it survives a resume and
+  // reaches the renderer — a post must not come out laid out as a front page.
+  if (opts.shape?.outlet) draft.outlet = opts.shape.outlet;
+
   const logFile = join(p.editionDir(draft.id), 'log.jsonl');
   const ctx: PipelineContext = {
     newsroom,

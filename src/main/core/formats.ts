@@ -90,7 +90,18 @@ const NO_TELLS = `Avoid the habits that make writing read as machine-made:
   that lands. If every sentence is the same length the reader hears a machine.
 - Prefer a concrete noun to an abstract one every single time: "a €69 hardware token", not
   "an affordable security solution".
-- One idea per sentence, and never restate an idea you've already made.`;
+- One idea per sentence, and never restate an idea you've already made.
+
+And never write about your own working. The reader wants the piece, not the process:
+- No paragraph about what the sources do or do not support, what is inference, what you
+  can or cannot claim, or how confident you are. If a claim is not sourced, CUT THE CLAIM.
+  Do not print a note explaining that you cut it.
+- No "that connection is mine to draw", "no source ties", "I want to say that plainly",
+  "worth noting that the evidence here is thin". Where a limit genuinely matters to a
+  reader, it is one clause inside a sentence that carries a fact, never a paragraph.
+- No invented personal reaction: no "what stays with me", "I keep thinking about", "what
+  strikes me", no claim to have watched, visited, met or felt anything.
+- No sign-off that steps back and comments on the piece you have just written.`;
 
 export const OUTLETS: OutletSpec[] = [
   {
@@ -400,6 +411,24 @@ export function getOutlet(id?: string): OutletSpec {
 /** Does this outlet have a front page to lay out? A LinkedIn post does not. */
 export function hasFrontPage(shape: CopyShape = {}): boolean {
   return getOutlet(shape.outlet).kind === 'paper';
+}
+
+/**
+ * The newsroom's own `style.md`, but only for the paper that actually has one.
+ *
+ * Handing a LinkedIn post the house style guide AS WELL as its own voice produced copy
+ * that was both at once and neither: a 1940s wire desk's cadence under a first-person
+ * post, and — because the house style says "say plainly where the evidence stops" — a
+ * whole paragraph of the writer narrating its own sourcing. Every outlet except the house
+ * paper gets its voice and nothing else.
+ */
+export function houseStyleFor(shape: CopyShape = {}, style = ''): string {
+  if (getOutlet(shape.outlet).id === 'newspaper') return style;
+  return (
+    'Not applicable. This piece is not for the house paper, so the newsroom’s own style ' +
+    'guide does not apply to it. Write to the voice set out below, and do not reach for ' +
+    'the house voice, its period register or its habits.'
+  );
 }
 
 /** How long, relative to the outlet's natural shape. */

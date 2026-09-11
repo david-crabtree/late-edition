@@ -1,5 +1,6 @@
 import { OUTPUT_DISCLAIMER } from '../core/disclaimer.js';
 import type { Edition, SourceRef, Story } from '../core/edition.js';
+import { citationStyle, getOutlet } from '../core/formats.js';
 
 /** Matches an inline citation token — `[sourceId:hash]` or a comma-separated group. */
 const CITE_RE = /\[((?:[a-z0-9_]+:[0-9a-f]{6,})(?:\s*,\s*[a-z0-9_]+:[0-9a-f]{6,})*)\]/gi;
@@ -17,7 +18,10 @@ const STRAY_CITE = /\[#[^\]\n]{0,60}\]|\[(?:ref|citation needed|source)\]/gi;
  * (e.g. the editor's `brief:` instruction, which isn't a real source) map to nothing and
  * are dropped from the prose.
  */
-function orderedSources(s: Story): { list: SourceRef[]; numberOf: Map<string, number> } {
+function orderedSources(
+  s: Story,
+  citedOnly = false,
+): { list: SourceRef[]; numberOf: Map<string, number> } {
   const numberOf = new Map<string, number>();
   const list: SourceRef[] = [];
   const byId = new Map(s.sources.map((r) => [r.signalId, r]));
@@ -31,7 +35,9 @@ function orderedSources(s: Story): { list: SourceRef[]; numberOf: Map<string, nu
   for (const m of s.body.matchAll(CITE_RE)) {
     for (const id of (m[1] ?? '').split(',')) add(id.trim());
   }
-  for (const r of s.sources) add(r.signalId);
+  // A paper prints everything the desk gathered. A post prints only what it actually
+  // leans on — six sources under four citations reads as padding, because it is.
+  if (!citedOnly) for (const r of s.sources) add(r.signalId);
   return { list, numberOf };
 }
 
@@ -48,8 +54,142 @@ function tidy(text: string): string {
   return text.replace(/[ \t]+([.,;:)])/g, '$1').replace(/[ \t]{2,}/g, ' ');
 }
 
+/**
+ * Is this edition a paper, or a post?
+ *
+ * A LinkedIn post that comes out with a masthead, a headline, a standfirst, a fictional
+ * byline, "From the morgue" and the editor's rationale printed underneath is not a
+ * LinkedIn post. It is a newspaper about a LinkedIn post, and there is nothing in it you
+ * can paste anywhere.
+ */
+function isPaper(ed: Edition): boolean {
+  return getOutlet(ed.outlet).kind === 'paper';
+}
+
+/** Resolve the citation tokens in a body to whatever this outlet wants readers to see. */
+function bodyFor(s: Story, numberOf: Map<string, number>, plain: boolean): string {
+  return tidy(
+    s.body
+      .replace(CITE_RE, (_m, ids: string) => {
+        if (plain) return '';
+        const nums = citeNumbers(ids, numberOf);
+        return nums.length ? `[${nums.join(',')}]` : '';
+      })
+      .replace(STRAY_CITE, ''),
+  );
+}
+
+/**
+ * A post, as Markdown you can paste. The piece, its sources, and then — below a rule, so
+ * it never travels with the text — the notice and anything the desk had to say.
+ */
+function renderPostMarkdown(ed: Edition): string {
+  const plain = citationStyle({ outlet: ed.outlet as never }) === 'plain';
+  const titled = getOutlet(ed.outlet).kind === 'online';
+  const out: string[] = [];
+
+  for (const s of ed.stories) {
+    const { list, numberOf } = orderedSources(s, true);
+    // A blog post or a newsletter item has a title. A LinkedIn post does not, and the
+    // desk's headline for one is an internal label, not something to print.
+    if (titled && s.headline) out.push(`# ${s.headline}\n`);
+    out.push(bodyFor(s, numberOf, plain));
+    if (list.length) {
+      out.push('\nSources');
+      list.forEach((r, i) => out.push(`${i + 1}. ${r.title}${r.url ? ` — ${r.url}` : ''}`));
+    }
+    if (s.photo) {
+      out.push('\n**Picture desk** — no image; this is a brief for a human.');
+      if (s.photo.caption) out.push(`- Caption: ${s.photo.caption}`);
+      if (s.photo.altText) out.push(`- Alt text: ${s.photo.altText}`);
+      for (const shot of s.photo.shotList) out.push(`- Shot: ${shot}`);
+    }
+    out.push('');
+  }
+
+  out.push('---');
+  out.push(`\n**About this edition.** ${OUTPUT_DISCLAIMER}`);
+  const notes = deskNotes(ed);
+  if (notes.length) {
+    out.push('\n**Desk notes.**');
+    for (const n of notes) out.push(`- ${n}`);
+  }
+  out.push(`\n*${tokenLine(ed)}*`);
+  return `${out.join('\n')}\n`;
+}
+
+/**
+ * What the desk had to say about its own work: claims the copy desk cut, and any call the
+ * Chief recorded. It belongs under the notice, not inside the piece — but dropping it
+ * would hide the one thing that says this output was checked at all.
+ */
+function deskNotes(ed: Edition): string[] {
+  const notes: string[] = [];
+  for (const c of ed.corrections) notes.push(`Cut by the copy desk: ${c.claim} — ${c.reason}`);
+  for (const n of ed.editorsLog) notes.push(n);
+  return notes;
+}
+
+/** The same post as a standalone HTML page. */
+function renderPostHtml(ed: Edition): string {
+  const plain = citationStyle({ outlet: ed.outlet as never }) === 'plain';
+  const titled = getOutlet(ed.outlet).kind === 'online';
+  const pieces = ed.stories
+    .map((s) => {
+      const { list, numberOf } = orderedSources(s, true);
+      const paras = bodyFor(s, numberOf, plain)
+        .split(/\n{2,}/)
+        .filter(Boolean)
+        .map((para) => `<p>${esc(para)}</p>`)
+        .join('\n      ');
+      const sources = list.length
+        ? `<div class="sources"><strong>Sources</strong><ol>${list
+            .map(
+              (r) =>
+                `<li>${r.url ? `<a href="${esc(r.url)}">${esc(r.title)}</a>` : esc(r.title)}</li>`,
+            )
+            .join('')}</ol></div>`
+        : '';
+      return `<article class="post">
+      ${titled && s.headline ? `<h1>${esc(s.headline)}</h1>` : ''}
+      ${paras}
+      ${sources}
+    </article>`;
+    })
+    .join('\n    ');
+  const notes = deskNotes(ed);
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(getOutlet(ed.outlet).label)} — ${esc(ed.date)}</title>
+<style>${CSS}</style>
+</head>
+<body>
+<main class="paper post-page">
+    ${pieces}
+  <footer class="colophon">
+    <p class="disclaimer"><strong>About this edition.</strong> ${esc(OUTPUT_DISCLAIMER)}</p>
+    ${
+      notes.length
+        ? `<p class="desk-notes"><strong>Desk notes.</strong></p><ul class="desk-notes">${notes
+            .map((n) => `<li>${esc(n)}</li>`)
+            .join('')}</ul>`
+        : ''
+    }
+    <p>${esc(tokenLine(ed))}</p>
+  </footer>
+</main>
+</body>
+</html>
+`;
+}
+
 /** Render an edition as readable Markdown (the `edition.md` artefact). */
 export function renderMarkdown(ed: Edition): string {
+  if (!isPaper(ed)) return renderPostMarkdown(ed);
   const out: string[] = [];
   const date = new Date(ed.date).toDateString();
 
@@ -117,15 +257,7 @@ function storyMarkdown(s: Story): string {
   if (s.standfirst) lines.push(`*${s.standfirst}*`);
   lines.push(`\nBy ${s.byline}\n`);
   const { list, numberOf } = orderedSources(s);
-  const body = tidy(
-    s.body
-      .replace(CITE_RE, (_m, ids: string) => {
-        const nums = citeNumbers(ids, numberOf);
-        return nums.length ? `[${nums.join(',')}]` : '';
-      })
-      .replace(STRAY_CITE, ''),
-  );
-  lines.push(body);
+  lines.push(bodyFor(s, numberOf, false));
   if (list.length) {
     lines.push('\n**Sources:**');
     list.forEach((r, i) => lines.push(`${i + 1}. ${r.title}${r.url ? ` — ${r.url}` : ''}`));
@@ -158,6 +290,7 @@ function tokenLine(ed: Edition): string {
 
 /** Render an edition as a self-contained, newspaper-styled HTML page. */
 export function renderHtml(ed: Edition): string {
+  if (!isPaper(ed)) return renderPostHtml(ed);
   const date = new Date(ed.date).toDateString();
   const pageOne = ed.stories.filter((s) => s.placement === 'page_one');
   const belowFold = ed.stories.filter((s) => s.placement !== 'page_one');
@@ -323,6 +456,9 @@ section > h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .18e
 .story { margin: 1.25rem 0; padding-bottom: 1rem; border-bottom: 1px solid #cdc4ae; }
 .story h3 { margin: .2rem 0; line-height: 1.15; }
 .standfirst { font-style: italic; color: #40382a; margin: .2rem 0 .6rem; }
+.post-page .post { margin: 0 0 1.4rem; }
+.post-page .post p { margin: 0 0 .85rem; }
+.desk-notes { font-size: .85rem; color: #5a5142; }
 .byline { text-transform: uppercase; letter-spacing: .1em; font-size: .68rem; color: #6a6250; margin: 0 0 .6rem; }
 .body { columns: 1; }
 .body p { margin: 0 0 .8rem; line-height: 1.5; text-align: justify; }

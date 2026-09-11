@@ -2,7 +2,13 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadNewsroom } from '../config/newsroom.js';
 import type { Edition, SourceRef, Story } from '../core/edition.js';
-import { type CopyShape, citationStyle, getOutlet, shapeDirective } from '../core/formats.js';
+import {
+  type CopyShape,
+  citationStyle,
+  getOutlet,
+  houseStyleFor,
+  shapeDirective,
+} from '../core/formats.js';
 import { EditionLog, type LogEvent } from '../store/log.js';
 import { paths } from '../store/paths.js';
 import { resolveWriter } from './agents.js';
@@ -123,7 +129,7 @@ export async function rewriteStory(opts: RewriteOptions): Promise<RewriteResult>
   const systemPrompt = renderTemplate(template, {
     paperName: edition.paperName,
     beatName: story.beatName,
-    style: newsroom.style,
+    style: houseStyleFor(opts.shape, newsroom.style),
     chosenAngle: story.chosenAngle || story.headline,
     shape: shapeDirective(opts.shape),
     sourceCount: String(story.sources.length),

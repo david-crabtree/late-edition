@@ -53,6 +53,8 @@ export interface EditionDraft {
   date: string;
   paperName: string;
   tagline?: string;
+  /** Which outlet this edition is being written as, so the renderer can lay it out right. */
+  outlet?: string;
   stage: Stage;
   stories: StoryDraft[];
   briefs: Brief[];

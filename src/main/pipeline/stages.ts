@@ -5,6 +5,7 @@ import {
   getOutlet,
   hasFrontPage,
   headlineDirective,
+  houseStyleFor,
   positionDirective,
   shapeDirective,
 } from '../core/formats.js';
@@ -196,7 +197,7 @@ async function pictureDesk(draft: EditionDraft, ctx: PipelineContext): Promise<v
         resolved,
         systemPrompt: renderTemplate(template, {
           paperName: draft.paperName,
-          style: ctx.newsroom.style,
+          style: houseStyleFor(ctx.shape, ctx.newsroom.style),
           position: positionDirective(ctx.shape),
         }),
         userPrompt: `${story.call?.headline ?? story.beatName}\n\n${story.copy ?? ''}`,
@@ -606,7 +607,7 @@ export async function stageReport(draft: EditionDraft, ctx: PipelineContext): Pr
       reporterName: t.label,
       paperName: draft.paperName,
       beatName: t.story.beatName,
-      style: ctx.newsroom.style,
+      style: houseStyleFor(ctx.shape, ctx.newsroom.style),
       position: positionDirective(ctx.shape),
       persona: personaBlock(ctx, t.story.reporterName),
       angleDirective: angleDirective(t.index, t.total),
@@ -721,7 +722,7 @@ export async function stageCall(draft: EditionDraft, ctx: PipelineContext): Prom
     const systemPrompt = renderTemplate(template, {
       paperName: draft.paperName,
       beatName: story.beatName,
-      style: ctx.newsroom.style,
+      style: houseStyleFor(ctx.shape, ctx.newsroom.style),
       position: positionDirective(ctx.shape),
       headlineStyle: headlineDirective(ctx.shape),
     });
@@ -797,7 +798,7 @@ async function frontPage(draft: EditionDraft, ctx: PipelineContext): Promise<voi
       resolved: editor,
       systemPrompt: renderTemplate(template, {
         paperName: draft.paperName,
-        style: ctx.newsroom.style,
+        style: houseStyleFor(ctx.shape, ctx.newsroom.style),
         position: positionDirective(ctx.shape),
       }),
       userPrompt: headlines.map((h, i) => `${i + 1}. ${h}`).join('\n'),
@@ -826,7 +827,7 @@ export async function stageWrite(draft: EditionDraft, ctx: PipelineContext): Pro
     const systemPrompt = renderTemplate(template, {
       paperName: draft.paperName,
       beatName: story.beatName,
-      style: ctx.newsroom.style,
+      style: houseStyleFor(ctx.shape, ctx.newsroom.style),
       chosenAngle: story.call?.chosenAngle ?? story.reports[0]?.proposedAngle ?? '',
       // What shape the copy comes out in — newspaper story, LinkedIn post, plain brief.
       // Voice and furniture only; the citation contract below is untouched by it.
@@ -1070,6 +1071,7 @@ export function assembleEdition(draft: EditionDraft): Edition {
     date: draft.date,
     paperName: draft.paperName,
     tagline: draft.tagline,
+    outlet: draft.outlet,
     weatherLine: draft.weatherLine,
     lateExtra: draft.lateExtra,
     assignmentId: draft.assignmentId,

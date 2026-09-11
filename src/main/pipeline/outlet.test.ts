@@ -8,8 +8,11 @@ import {
   OUTLETS,
   getOutlet,
   headlineDirective,
+  houseStyleFor,
   positionDirective,
+  shapeDirective,
 } from '../core/formats.js';
+import { renderHtml, renderMarkdown } from '../paper/render.js';
 import { paths } from '../store/paths.js';
 import { defaultPrompts, renderTemplate } from './prompts.js';
 import { runEdition } from './run.js';
@@ -104,5 +107,92 @@ describe('an outlet with no front page', () => {
     expect(getOutlet('chronicle').kind).toBe('paper');
     expect(getOutlet('linkedin').kind).toBe('social');
     expect(OUTLETS.filter((o) => o.kind === 'paper').length).toBeGreaterThan(3);
+  });
+});
+
+/**
+ * The first real edition written as a LinkedIn post came out with a masthead, a headline,
+ * a 45-word standfirst, a fictional byline, "From the morgue", the editor's private
+ * rationale, and numbered footnotes through the prose. There was nothing in it you could
+ * paste anywhere. These are the two halves of why.
+ */
+describe('a post is a post, not a newspaper about one', () => {
+  let root: string;
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'le-post-'));
+    scaffoldNewsroom(root);
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  const run = (outlet: CopyShape['outlet']) =>
+    runEdition({ root, forceProvider: 'fake', brief: 'a topic', research: 1, shape: { outlet } });
+
+  it('prints none of the paper furniture, and keeps the notice', async () => {
+    const res = await run('linkedin');
+    const md = renderMarkdown(res.edition);
+    const html = renderHtml(res.edition);
+    for (const out of [md, html]) {
+      expect(out).not.toContain('The Daily Bit');
+      expect(out).not.toContain('Page One');
+      expect(out).not.toContain('Below the Fold');
+      expect(out).not.toMatch(/From the morgue/i);
+      expect(out).not.toMatch(/Editor.s note/i);
+      expect(out).not.toMatch(/\bBy Sam Vance\b/);
+      // The one thing that must survive every outlet.
+      expect(out).toContain('This is not journalism');
+    }
+    // A social post carries no bracketed footnote markers in the prose at all.
+    expect(md.split('Sources')[0]).not.toMatch(/\[\d+(,\d+)*\]/);
+  });
+
+  it('still lays a paper out as a paper', async () => {
+    const res = await run('chronicle');
+    const md = renderMarkdown(res.edition);
+    expect(md).toContain('The Daily Bit');
+    expect(md).toMatch(/Page One|Below the Fold/);
+  });
+
+  it('lists only the sources the piece actually leans on', async () => {
+    const res = await run('linkedin');
+    const story = res.edition.stories[0];
+    if (!story) return;
+    const cited = new Set(
+      [...story.body.matchAll(/\[([a-z0-9_]+:[0-9a-f]{6,})\]/gi)].map((m) => m[1]),
+    );
+    const md = renderMarkdown(res.edition);
+    for (const ref of story.sources) {
+      if (!cited.has(ref.signalId)) expect(md).not.toContain(ref.title);
+    }
+  });
+
+  // An edition filed before outlets existed has no outlet on it, and must still render.
+  it('treats an edition with no outlet as the house paper', async () => {
+    const res = await run('newspaper');
+    const legacy = { ...res.edition, outlet: undefined };
+    expect(renderMarkdown(legacy)).toContain('The Daily Bit');
+  });
+});
+
+describe('the house style belongs to the house paper', () => {
+  // A LinkedIn post handed BOTH the noir style guide and its own voice wrote in both at
+  // once, and — because the house style says "say plainly where the evidence stops" —
+  // spent a paragraph narrating its own sourcing instead of reporting.
+  it('passes style.md to the house paper and to nobody else', () => {
+    const style = '# House style\nA 1940s wire desk. Terse, dry, unimpressed.';
+    expect(houseStyleFor({ outlet: 'newspaper' }, style)).toBe(style);
+    for (const id of ['moon', 'chronicle', 'linkedin', 'reddit', 'blog', 'brief'] as const) {
+      const given = houseStyleFor({ outlet: id }, style);
+      expect(given).not.toContain('1940s wire desk');
+      expect(given).toMatch(/not applicable/i);
+    }
+  });
+
+  it('tells every outlet not to narrate its own working', () => {
+    for (const o of OUTLETS) {
+      const d = shapeDirective({ outlet: o.id });
+      expect(d).toMatch(/never write about your own working/i);
+      expect(d).toMatch(/CUT THE CLAIM/);
+      expect(d).toMatch(/what stays with me/i);
+    }
   });
 });
