@@ -1,0 +1,62 @@
+# Late Edition
+
+> A desktop app that turns the AI agent CLIs already installed on your machine into the
+> staff of a newspaper. You brief an editor with a topic; a researcher, reporters, an editor
+> and a copy desk produce an edition you read. Runs locally. Source-available.
+
+## What it is
+
+An Electron desktop application in TypeScript. It runs no AI of its own. Each desk is handed
+to an agent the user has already installed and signed into: Claude Code, the Codex CLI, the
+Gemini CLI, OpenCode, Ollama for local models, or any OpenAI- or Anthropic-shaped endpoint.
+Work counts against the user's existing subscription rather than a new bill.
+
+Only the Claude Code integration has been confirmed end to end. The other five are written
+and wired identically but have not been run against a live install.
+
+## How an edition is made
+
+Twelve stages, with state written to disk after each one so a run can be resumed:
+WIRE, ASSIGN, TRIAGE, RESEARCH, REPORT, ANGLES, CALL, WRITE, CHECK, PROOF, PRESS, DONE.
+
+Source adapters fetch and diff with no model involved: RSS, a local git repository, the
+GitHub API, web page diffs, a folder, iCalendar. Each emits a signal with an id.
+
+Agents cite by writing a signal's literal id. Only real ids resolve to footnotes; invented
+markers are removed by the renderer. The copy desk verifies every claim against a cited
+signal, and cuts anything unsupported into a Corrections column. A story cannot cite a
+source the researcher never found.
+
+Where two reporters disagree, the edition runs both takes rather than merging them.
+
+## Output
+
+An edition can be written as one of eleven outlets: a house style, a red-top, a broadsheet,
+a business daily, an agency wire, a technology site, a blog post, a newsletter item, a
+LinkedIn post, a Reddit post, or a plain brief. The choice reaches the reporter and the
+editor as well as the writer, so what the desk leads on changes, not only the wording. It
+never affects what was researched.
+
+Every edition is written to disk as Markdown and HTML, carrying a notice that it was made
+by software, is not journalism, and should be verified against its sources.
+
+Finished editions can be sent to Slack, Teams, a webhook or an RSS feed. This is opt-in.
+
+## Privacy
+
+No servers, no accounts, no analytics, no telemetry. Network traffic goes to the sources the
+user configures, to the agent the user already signed into, and to GitHub to check whether a
+newer version exists. That check sends nothing identifying and can be disabled.
+
+## Licence
+
+Apache License 2.0 with the Commons Clause. Free to use for any purpose including
+commercially. May not be sold, hosted for a fee, or built into a paid product. This is
+source-available, not OSI open source. The name and the newsroom characters are trademarks;
+forks must use a different name.
+
+## Links
+
+- Source: https://github.com/late-edition/late-edition
+- Releases: https://github.com/late-edition/late-edition/releases
+- Author: David Crabtree, as an individual
