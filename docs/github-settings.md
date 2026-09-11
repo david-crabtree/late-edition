@@ -117,7 +117,6 @@ signing certificate, no notarisation credential and no publish token beyond that
 - [ ] `backup/pre-attribution-scrub` is not pushed. Push `main` only.
 - [ ] The sponsor URL resolves.
 - [ ] The Discord invite resolves in a private window.
-- [ ] A decision on [`HANDOVER.md`](../HANDOVER.md), which talks about you in the third
-      person.
+- [x] HANDOVER.md removed from the tree.
 - [ ] The two planning documents in the repo root are agent briefs, not documentation.
       `notes/` is gitignored if you want them kept alongside the project.

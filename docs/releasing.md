@@ -84,10 +84,10 @@ The repository has no remote yet, which is the cheap moment to do all of this.
       git log --all --format='%H %B' | grep -iE 'co-authored-by|generated with' | head
       ```
 
-- [ ] Decide whether [`HANDOVER.md`](../HANDOVER.md) ships. It is a working document for
-      whoever picks the project up, and it is written to be readable by a stranger — but it
-      talks about the project's own release plumbing, so it may not be what you want on the
-      front page of a public repo. `git rm` it, or leave it. Nothing depends on it.
+- [x] HANDOVER.md is gone from the tree. It was a working document addressed to whoever
+      picked this up, and the release conditions rule out notes written to a coding session.
+      Anything in it worth keeping is in [`architecture.md`](architecture.md) and
+      [`decisions.md`](decisions.md).
 - [ ] **Push only `main`.** `git push -u origin main`, not `--all` and not `--mirror`, or the
       backup branch goes up with it.
 - [ ] Older commit *diffs* still contain the development notes that were removed from the

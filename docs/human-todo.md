@@ -21,10 +21,11 @@ Ordered roughly by what unblocks the most.
       `workflow` scope is not in the default set and without it GitHub refuses any push
       containing `.github/workflows/`.
 
-- [ ] **Decide whether [`HANDOVER.md`](../HANDOVER.md) ships.** It is a working document for
-      whoever picks the project up. It reads fine to a stranger, but it talks about you in
-      the third person and about the project's own release plumbing, which may not be what
-      you want on the front page. `git rm` it or leave it. Nothing depends on it.
+- [x] **HANDOVER.md removed**, 11 Sep 2026. It was a working document addressed to whoever
+      picked the project up, written about David in the third person, and the release
+      conditions say plainly that the repo must not carry notes addressed to a coding
+      session. It reached the public repo before anyone caught it and was removed from the
+      tree straight after. It remains in the history unless that is purged too.
 
 - [ ] **Drop the pre-scrub branch before the first push.** `backup/pre-attribution-scrub`
       holds the original commit messages, attribution trailers and all. Commands are in
