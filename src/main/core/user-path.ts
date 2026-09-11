@@ -71,7 +71,13 @@ export function resolveUserPath(
   current: string | undefined,
   opts: {
     platform?: NodeJS.Platform;
-    shell?: string;
+    /**
+     * Which login shell to ask. Omit for the user's own. **`null` asks none**, which is
+     * how a test stays hermetic — otherwise it silently inherits whatever PATH the machine
+     * running it happens to have, and passes or fails for reasons that have nothing to do
+     * with the code.
+     */
+    shell?: string | null;
     home?: string;
     exists?: (p: string) => boolean;
   } = {},
@@ -92,7 +98,8 @@ export function resolveUserPath(
     }
   };
 
-  for (const dir of loginShellPath(opts.shell ?? process.env.SHELL).split(d)) {
+  const shell = opts.shell === null ? undefined : (opts.shell ?? process.env.SHELL);
+  for (const dir of loginShellPath(shell).split(d)) {
     if (dir) add(dir);
   }
   for (const dir of wellKnownBinDirs(opts.home)) {

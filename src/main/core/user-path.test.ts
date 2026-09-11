@@ -15,7 +15,9 @@ describe('the PATH a GUI app is handed', () => {
   const HOME = '/Users/davidcrabtree';
   const opts = (extra: Record<string, unknown> = {}) => ({
     platform: 'darwin' as NodeJS.Platform,
-    shell: undefined, // no login shell in a test; the well-known list has to carry it
+    // null, not undefined: undefined falls through to the machine's own SHELL, and this
+    // file then passes or fails on whatever PATH the runner happens to have. It did.
+    shell: null,
     home: HOME,
     exists: () => true,
     ...extra,
