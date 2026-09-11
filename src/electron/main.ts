@@ -22,6 +22,7 @@ import {
 } from '../main/core/disclaimer.js';
 import type { Edition } from '../main/core/edition.js';
 import { type CopyShape, LENGTHS, OUTLETS } from '../main/core/formats.js';
+import { shellQuote } from '../main/core/shell-quote.js';
 import { ClarificationNeededError } from '../main/pipeline/clarify.js';
 import { sumUsage } from '../main/pipeline/draft.js';
 import { rewriteStory } from '../main/pipeline/rewrite.js';
@@ -1154,12 +1155,17 @@ handle('le:openTerminal', (_e, providerId: string, stepIndex: number) => {
         windowsVerbatimArguments: false,
       }).unref();
     } else if (process.platform === 'darwin') {
-      const escaped = step.command.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      // Terminal.app starts its own shell, so the working directory has to be written into
+      // the command rather than passed as an option — and the default newsroom lives under
+      // "~/Library/Application Support", which has a space in it. Unquoted, zsh reads that
+      // as two arguments and cd fails before the command it was opened for ever runs.
+      const script = `cd ${shellQuote(cwd)} && ${step.command}`;
+      const escaped = script.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       spawn(
         'osascript',
         [
           '-e',
-          `tell application "Terminal" to do script "cd ${cwd} && ${escaped}"`,
+          `tell application "Terminal" to do script "${escaped}"`,
           '-e',
           'tell application "Terminal" to activate',
         ],
