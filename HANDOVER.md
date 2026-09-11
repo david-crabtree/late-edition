@@ -11,7 +11,8 @@ Everything you need to continue this work with no prior context. Read this, then
 
 ## 1. What this is
 
-**Late Edition** — a free, MIT, local-first Electron + TypeScript desktop app. It wraps the
+**Late Edition** — a free, source-available, local-first Electron + TypeScript desktop app.
+Apache 2.0 with the Commons Clause. It wraps the
 AI agent CLIs you already have installed (Claude Code, Codex, Gemini CLI, OpenCode, Ollama,
 or a direct API key) and casts them as the staff of a 1940s noir newspaper. You brief the
 Chief with a topic; researchers, reporters, copywriters, an editor and a copy desk work it

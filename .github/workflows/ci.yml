@@ -7,7 +7,7 @@ on:
 
 jobs:
   check:
-    name: typecheck · lint · test
+    name: typecheck · lint · notices · ui · test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +24,17 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      # The interface is one uncompiled HTML file with an inline script, so nothing else
+      # would catch a stray bracket before it shipped as a blank window.
+      - name: Interface parses
+        run: npm run check:ui
+
+      # A notice file that is out of date makes a claim about what is in the build that is
+      # no longer true, and a dependency that cannot be redistributed puts the licence of
+      # the whole build in question. Both are cheap here and expensive at release time.
+      - name: Third party notices current
+        run: npm run check:notices
 
       - name: Test
         run: npm test

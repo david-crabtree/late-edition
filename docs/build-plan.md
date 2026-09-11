@@ -1,7 +1,8 @@
 # LATE EDITION
 ### A noir newsroom that turns your own AI agents into a daily paper
 
-Working title. Rename freely. Free, open source, MIT.
+Working title. Rename freely. Free to use; Apache 2.0 with the Commons Clause.
+(This line said MIT when the plan was written — see `decisions.md` DR.1 for why it changed.)
 
 This document is the original build plan. Read it fully before writing code. Where a detail is marked VERIFY, check it against the real tool at build time rather than trusting this document. Where something is marked DECIDE, make the call, write it in `docs/decisions.md`, and move on.
 
@@ -23,7 +24,8 @@ The lesson from multi-agent harnesses that people actually enjoy using: the fun 
 4. Provider neutral. Claude, OpenAI, Google, xAI, GitHub and local models are all first class. We do not personally use most of them. They still ship day one.
 5. The paper must be better than the six tabs it replaces. If the front page is not useful the art is a costume. Every design decision is judged against "would a busy person open this tomorrow".
 6. No paid dependencies. No SaaS in the build chain except free tiers we can live without.
-7. Free and open source. MIT licence. Contributor friendly repo from day one.
+7. Free to use, at home or at work. Apache 2.0 with the Commons Clause, so nobody can
+   sell it. Contributor friendly repo from day one.
 
 ---
 

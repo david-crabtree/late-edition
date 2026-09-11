@@ -52,7 +52,8 @@ export const FIRST_RUN_NOTICE = [
   'The agents run under your own accounts and their usage counts against your own plans or ' +
     'bills. You are responsible for that usage, for what you do with the output, and for ' +
     'complying with the terms of whichever AI provider you point it at.',
-  'This software is provided as-is under the MIT licence, with no warranty and no liability ' +
+  'This software is provided as-is under the Apache License 2.0 with the Commons Clause, ' +
+    'with no warranty and no liability ' +
     'accepted by its authors.',
 ];
 

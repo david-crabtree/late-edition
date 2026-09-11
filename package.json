@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "A noir newsroom that turns your own AI agents into a daily paper.",
-  "license": "MIT",
+  "license": "Apache-2.0 WITH Commons-Clause",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -24,13 +24,15 @@
     "format": "biome format --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run lint && npm run check:ui && npm run test",
+    "check": "npm run typecheck && npm run lint && npm run check:ui && npm run check:notices && npm run test",
     "dist": "npm run icon && npm run build && electron-builder --publish never",
     "dist:win": "npm run icon && npm run build && electron-builder --win --publish never",
     "dist:linux": "npm run icon && npm run build && electron-builder --linux --publish never",
     "dist:mac": "npm run icon && npm run build && electron-builder --mac --publish never",
     "icon": "node scripts/make-icon.mjs",
-    "check:ui": "node scripts/check-ui.mjs"
+    "check:ui": "node scripts/check-ui.mjs",
+    "notices": "node scripts/third-party-notices.mjs",
+    "check:notices": "node scripts/third-party-notices.mjs --check"
   },
   "dependencies": {
     "cheerio": "^1.0.0",
@@ -48,11 +50,11 @@
     "typescript": "^5.6.2",
     "vitest": "^2.1.1"
   },
-  "author": "Late Edition contributors",
+  "author": "David Crabtree",
   "build": {
     "appId": "com.lateedition.app",
     "productName": "Late Edition",
-    "copyright": "Copyright (c) 2026 Late Edition contributors",
+    "copyright": "Copyright 2026 David Crabtree",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -102,6 +104,15 @@
     },
     "portable": {
       "artifactName": "${productName}-${version}-portable-${arch}.${ext}"
-    }
-  }
+    },
+    "extraResources": ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/david-crabtree/late-edition.git"
+  },
+  "bugs": {
+    "url": "https://github.com/david-crabtree/late-edition/issues"
+  },
+  "homepage": "https://github.com/david-crabtree/late-edition"
 }

@@ -1,7 +1,12 @@
 # Contributing to Late Edition
 
-Thanks for helping build the newsroom. This project is MIT licensed and welcomes
-contributions of code, art, personas, source adapters and provider adapters.
+Thanks for helping build the newsroom. This project is licensed under the Apache
+License 2.0 with the Commons Clause, and welcomes contributions of code, art, personas,
+source adapters and provider adapters.
+
+> By submitting a contribution you confirm that you wrote it or have the right to submit
+> it, and you agree that it is licensed under the same terms as the project (Apache 2.0
+> with the Commons Clause), with David Crabtree as licensor.
 
 ## Ground rules (the non-negotiables)
 
@@ -14,7 +19,9 @@ These come from the build plan and every change is judged against them:
 4. **Provider neutral.** No provider is privileged in the architecture.
 5. **The paper must be better than the six tabs it replaces.**
 6. **No paid dependencies**, no required SaaS in the build chain.
-7. **MIT, free and open source.**
+7. **Free to use, and nobody sells it.** Apache 2.0 with the Commons Clause: use it
+   anywhere including at work, change it, share it. Selling it, hosting it for a fee or
+   building a paid product on it is out.
 
 ## Getting set up
 

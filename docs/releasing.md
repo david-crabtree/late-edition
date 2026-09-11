@@ -145,8 +145,12 @@ built from your own source, builds must be verifiable from source, every release
 manual approval, and every contributor needs multi-factor authentication. The certificate is
 issued in SignPath Foundation's name, not yours, with the key on their HSM.
 
-Late Edition is MIT with no proprietary parts, so it qualifies on licence. The contributor
-MFA requirement is the one to check before applying.
+**Late Edition does not qualify.** SignPath Foundation asks for "an OSI-approved Open
+Source license without commercial dual-licensing for all components", and Apache 2.0 with
+the Commons Clause is not OSI-approved — forbidding sale is a restriction on use, which the
+OSI definition does not permit. This was checked against their own terms, not assumed. The
+licence was chosen knowing that; the decision is in [`decisions.md`](decisions.md) DR.1 and
+the consequence is that Windows ships unsigned with checksums.
 
 **One date to diary:** from 27 February 2026 a single code-signing certificate may be valid
 for a maximum of 459 days. Certum reissues free during a longer service period, but a €69

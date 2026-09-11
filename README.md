@@ -17,7 +17,8 @@ read the paper before it goes to your team.
 - **Every artefact is a plain file.** Editions, reports, and config are Markdown, JSON and
   YAML in a folder you can open, grep, back up and commit.
 - **Provider neutral.** Claude, OpenAI, Google, local models — all first class.
-- **MIT licensed.** Free and open source, contributor friendly from day one.
+- **Free to use, and nobody sells it.** Apache 2.0 with the Commons Clause, contributor
+  friendly from day one.
 
 > Status: early. See [`docs/architecture.md`](docs/architecture.md) for how it's put
 > together, [`docs/build-plan.md`](docs/build-plan.md) for the full vision, and
@@ -80,7 +81,7 @@ a claim that the contents are true.** No reporter wrote it and no editor checked
   plan allowance, or is billed to your own API key, and we can neither see nor cap it. You are
   responsible for that spend and for complying with your AI provider's terms.
 - **No warranty, no liability.** This is free software provided as-is under the
-  [MIT licence](LICENSE). The authors accept no responsibility for what it produces or for
+  [LICENSE](LICENSE). The author accepts no responsibility for what it produces or for
   anything done with it.
 
 ## Quick start from source (the engine, headless)
@@ -109,4 +110,21 @@ meant to take a single file — that's a design goal, not an aspiration.
 
 ## Licence
 
-[MIT](LICENSE).
+Late Edition is free to use, at home or at work, for any purpose. You can read the code, change it and share your changes. The one thing you can't do is sell it: no charging for the software, no hosting it as a paid service, no paid products built on top of it. The name and the characters belong to David Crabtree, so forks need their own name. Full terms in the LICENSE file.
+
+Apache License 2.0 with the [Commons Clause](LICENSE) License Condition v1.0. The
+`license` field in `package.json` reads `Apache-2.0 WITH Commons-Clause`, which is the
+conventional string for this pairing rather than a registered SPDX identifier — the
+[LICENSE](LICENSE) file is what governs.
+
+This makes Late Edition **source-available, not open source**: the OSI definition does not
+allow a restriction on who may use software or for what, and forbidding sale is exactly
+such a restriction. That is a deliberate choice and it costs something — free code-signing
+programmes are for OSI-approved licences only. See [`docs/decisions.md`](docs/decisions.md).
+
+## Privacy
+
+Late Edition runs entirely on your computer. It has no servers, no accounts and no
+analytics. The only network traffic is to the sources you configure and to the AI providers
+you have already signed in to on your own machine. What those providers do with your data is
+governed by their terms, not ours. Nothing is sent to David Crabtree, ever.
