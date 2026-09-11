@@ -253,14 +253,20 @@
   .offer .of-acts .chip.primary{ background:#6a9a55; border-color:#6a9a55; color:#0c120a; }
   .offer .of-acts .chip.primary:hover:not([disabled]){ background:#7db065; border-color:#7db065; }
   /* Run options that belong with the brief, not buried under the cast. */
-  .runopts{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:9px; }
-  .runopts .paperbtn{ display:flex; align-items:baseline; gap:7px; text-align:left; max-width:min(52%,400px); }
+  /* A small flex-basis, so this shares the line with "Send to the Chief" and then grows
+     into whatever is left, rather than measuring its natural width and wrapping below. */
+  .runopts{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; flex:1 1 240px; min-width:0; }
+  .runopts .paperbtn{ display:flex; align-items:baseline; gap:7px; text-align:left; flex:0 1 auto; min-width:0; max-width:min(44%,300px); }
   .runopts .paperbtn b{ font-size:.78rem; color:var(--bone); white-space:nowrap; }
   /* The one-liner is a courtesy, not the label - it gives way rather than pushing the
      research control onto its own line. The full description lives in the picker. */
   .runopts .paperbtn small{ font-size:.64rem; color:var(--bone-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .runopts .paperbtn .caret{ margin-left:auto; padding-left:4px; color:var(--bone-dim); }
   .runopts label.hint{ margin-left:6px; }
+  .runopts select, .papers select{ color-scheme:dark; font-family:var(--type); font-size:.78rem; color:var(--bone); background:#12100b; border:1px solid #3a2e1b; border-radius:4px; padding:5px 7px; cursor:pointer; }
+  .runopts select:hover, .papers select:hover{ border-color:#5a4a2c; }
+  .runopts select:focus-visible, .papers select:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
+  .runopts select option, .papers select option{ background:#12100b; color:var(--bone); }
   /* The paper picker. Same furniture as the case file, so the app has one modal idiom. */
   .papers{ position:fixed; inset:0; z-index:220; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .papers[hidden]{ display:none; }
@@ -276,9 +282,8 @@
   .papers .pp[aria-checked="true"]{ border-color:var(--amber); background:#151109; }
   .papers .pp-name{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
   .papers .pp-name b{ font-size:.88rem; color:var(--bone); }
-  .papers .pp-name span{ font-size:.68rem; color:var(--bone-dim); }
   .papers .pp-name .pp-on{ margin-left:auto; font-family:var(--pixel); font-size:.5rem; color:var(--amber); }
-  .papers .pp-blurb{ margin:5px 0 0; font-size:.73rem; line-height:1.5; color:var(--bone-dim); }
+  .papers .pp-blurb{ margin:4px 0 0; font-size:.74rem; line-height:1.55; color:var(--bone-dim); max-width:68ch; }
   .papers .pp-ft{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding:10px 14px; background:#0a0d11; border-top:1px solid #2c2519; }
   .papers .pp-ft .hint{ flex:1; min-width:0; }
   .casefile{ position:fixed; inset:0; z-index:210; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
@@ -365,7 +370,7 @@
   .budgetcard .row > label, .budgetcard .row > .hint:first-child{ font-size:.72rem; color:var(--bone-dim); }
   .budgetcard .rdepth, .budgetcard .shaperow, .budgetcard .photorow{ align-items:flex-start; }
   .budgetcard .shaperow select{ width:100%; }
-  .budgetcard select{ background:#12100b; color:var(--bone); border:1px solid #3a2e1b; border-radius:4px; padding:4px 7px; font-family:var(--type); font-size:.84rem; cursor:pointer; }
+  .budgetcard select{ color-scheme:dark; background:#12100b; color:var(--bone); border:1px solid #3a2e1b; border-radius:4px; padding:4px 7px; font-family:var(--type); font-size:.84rem; cursor:pointer; }
   .budgetcard select:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
   .budgetcard input[type=range]{ width:100%; }
   .budgetcard .photorow label{ display:flex; align-items:center; gap:6px; cursor:pointer; }
@@ -1509,7 +1514,7 @@
         b.className='pp'; b.type='button'; b.setAttribute('role','radio');
         b.setAttribute('aria-checked', o.id===chosen.outlet?'true':'false');
         b.dataset.paper=o.id;
-        b.innerHTML=`<span class="pp-name"><b>${escH(o.label)}</b><span>${escH(o.hint||'')}</span>`
+        b.innerHTML=`<span class="pp-name"><b>${escH(o.label)}</b>`
           +`${o.id===chosen.outlet?'<span class="pp-on">RUNNING THIS</span>':''}</span>`
           +`<p class="pp-blurb">${escH(o.blurb||o.hint||'')}</p>`;
         list.appendChild(b); } }
@@ -2110,9 +2115,9 @@
             +'<button class="chip paperbtn" id="paperBtn" title="Which paper this is written as - click to read what each one does"><b>The house paper</b><small></small><span class="caret">&#9662;</span></button>'
             +'<label class="hint" for="researchLevel">Research depth</label><select id="researchLevel">'+Object.keys(RESEARCH_LEVELS).map(k=>`<option value="${k}"${k===researchKey?' selected':''}>${RESEARCH_LEVELS[k].label}</option>`).join('')+'</select>'
             +'<span class="hint" id="researchHint"></span>';
+          // Inside `.brief`, so it shares the flex line with "Send to the Chief".
           const briefBox=briefCol.querySelector('.brief');
-          if(briefBox&&briefBox.parentNode) briefBox.parentNode.insertBefore(ro, briefBox.nextSibling);
-          else briefCol.appendChild(ro);
+          if(briefBox) briefBox.appendChild(ro); else briefCol.appendChild(ro);
           const sel=ro.querySelector('#researchLevel'), hint=ro.querySelector('#researchHint');
           const setHint=()=>{ const l=RESEARCH_LEVELS[researchKey]; if(hint) hint.textContent=`~${l.maxFindings} sources${l.research>1?' · 2 passes':''}`; };
           setHint(); sel.addEventListener('change',()=>{ researchKey=sel.value; setHint(); });

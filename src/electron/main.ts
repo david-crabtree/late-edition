@@ -512,13 +512,21 @@ function createWindow(): void {
             const btn = document.getElementById('paperBtn');
             const brief = document.querySelector('.brief');
             const depth = document.getElementById('researchLevel');
+            const send = document.getElementById('briefBtn');
             const out = {
-              // Both run options sit with the brief, not in the card under the cast.
-              buttonByTheBrief: !!(btn && brief && brief.parentNode.contains(btn) &&
-                brief.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING),
-              depthByTheBrief: !!(depth && brief && brief.parentNode.contains(depth)),
+              // Both run options sit with the brief, not in the card under the cast — and
+              // on the same line as the button that sends it, not stranded underneath.
+              buttonByTheBrief: !!(btn && brief && brief.contains(btn)),
+              depthByTheBrief: !!(depth && brief && brief.contains(depth)),
+              inLineWithSend: !!(btn && send &&
+                Math.abs(btn.getBoundingClientRect().top - send.getBoundingClientRect().top) < 20),
               oldDropdownGone: !document.getElementById('fmtSel'),
               buttonSays: btn ? btn.querySelector('b').textContent : null,
+              // The browser's own white select had nothing to do with the rest of the app.
+              depthStyled: depth ? (() => {
+                const cs = getComputedStyle(depth);
+                return cs.colorScheme === 'dark' && !/255, 255, 255/.test(cs.backgroundColor);
+              })() : false,
             };
             btn.click();
             for (let i = 0; i < 40 && !document.querySelector('.papers:not([hidden])'); i++)
@@ -532,6 +540,12 @@ function createWindow(): void {
             out.everyPaperDescribed = cards.every(c => {
               const p2 = c.querySelector('.pp-blurb');
               return p2 && p2.textContent.trim().length > 80;
+            });
+            // The hint used to print beside the masthead AND again as the blurb below it.
+            out.saysItOnce = cards.every(c => {
+              const line = c.querySelector('.pp-blurb').textContent.trim();
+              const rest = c.textContent.trim().replace(line, '').replace(/RUNNING THIS/, '').trim();
+              return !rest.includes(line.slice(0, 30));
             });
             out.marksTheCurrentOne = cards.filter(c => c.getAttribute('aria-checked') === 'true').length;
             out.offersLength = !!modal.querySelector('#ppLen');
