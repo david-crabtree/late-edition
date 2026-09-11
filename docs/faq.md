@@ -146,6 +146,22 @@ hidden in Setup unless you deliberately ask for it.
 Claude Code, if you have it. It is the only one confirmed end to end, and it can browse,
 which the research desk wants.
 
+**It needs a Claude Pro, Max, Team or Console account.** The free Claude.ai plan does not
+include Claude Code, so signing in on the website is not enough on its own.
+
+### I clicked install and it just opened a web page.
+
+Most of these agents install from a command rather than a download, and Claude Code is one
+of them. On macOS or Linux:
+
+```
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+The Setup panel gives you the right command for your machine and a button that opens a
+terminal sitting at it. Signing in to claude.ai in a browser does nothing for the CLI —
+it keeps its own login.
+
 The others are written and wired identically and have simply never been run against a live
 install. "Untested" here is about our evidence, not missing code. If you get one working it
 should work. If it doesn't, that is a bug worth reporting.

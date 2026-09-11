@@ -14,7 +14,11 @@ export const opencodeProvider: AgentProvider = {
   maturity: 'untested',
   blurb: 'An open-source agent that can front several different model providers.',
   setup: [
-    { text: 'Install OpenCode', url: 'https://opencode.ai' },
+    {
+      text: 'Install OpenCode',
+      url: 'https://opencode.ai',
+      note: 'Its own page has the current instructions. We have not verified them against a live install — if they have changed, that is worth reporting.',
+    },
     { text: 'Sign in to whichever provider you want it to use', command: 'opencode auth login' },
   ],
   capabilities: {

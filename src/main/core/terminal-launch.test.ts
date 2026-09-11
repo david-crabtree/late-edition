@@ -15,14 +15,38 @@ import { LINUX_TERMINALS, terminalLaunch } from './terminal-launch.js';
 const SPACEY = '/Users/davidcrabtree/Library/Application Support/late-edition/newsroom';
 
 /** Every command any provider ships, taken from the providers themselves. */
-const COMMANDS = listProviders()
-  .filter((p) => p.maturity !== 'internal')
-  .flatMap((p) => (p.setup ?? []).filter((s) => s.command).map((s) => [p.id, s.command as string]));
+const PLATFORMS: NodeJS.Platform[] = ['darwin', 'win32', 'linux'];
+
+/** Every command any provider ships, resolved the way the app resolves it per platform. */
+const commandsFor = (platform: NodeJS.Platform) =>
+  listProviders()
+    .filter((p) => p.maturity !== 'internal')
+    .flatMap((p) =>
+      (p.setup ?? [])
+        .map((s) => [p.id, s.commands?.[platform] ?? s.command] as const)
+        .filter((pair): pair is readonly [string, string] => !!pair[1])
+        .map(([id, command]) => [id, command] as [string, string]),
+    );
+
+const COMMANDS = commandsFor('darwin');
 
 describe('opening a terminal at a setup command', () => {
-  it('has commands to test, from more than one provider', () => {
-    expect(COMMANDS.length).toBeGreaterThan(4);
-    expect(new Set(COMMANDS.map(([id]) => id)).size).toBeGreaterThan(2);
+  it('has commands to test, on every platform, from more than one provider', () => {
+    for (const platform of PLATFORMS) {
+      const found = commandsFor(platform);
+      expect(found.length, platform).toBeGreaterThan(4);
+      expect(new Set(found.map(([id]) => id)).size, platform).toBeGreaterThan(2);
+    }
+  });
+
+  // The install commands are the ones that differ, and the ones a pipe or a redirect could
+  // break. Claude Code's macOS installer pipes curl into bash; Windows redirects to a file.
+  it('resolves a different install command per platform where there is one', () => {
+    const claudeInstall = (p: NodeJS.Platform) =>
+      commandsFor(p).find(([id, c]) => id === 'claude' && c.includes('install'))?.[1];
+    expect(claudeInstall('darwin')).toContain('install.sh');
+    expect(claudeInstall('win32')).toContain('install.cmd');
+    expect(claudeInstall('darwin')).not.toBe(claudeInstall('win32'));
   });
 
   it.each(COMMANDS)('%s: "%s" survives macOS', (_id, command) => {
@@ -36,7 +60,8 @@ describe('opening a terminal at a setup command', () => {
     expect(script).not.toContain(`cd ${SPACEY}`);
   });
 
-  it.each(COMMANDS)('%s: "%s" survives Windows', (_id, command) => {
+  // Install commands differ by platform, so Windows is checked against its own.
+  it.each(commandsFor('win32'))('%s: "%s" survives Windows', (_id, command) => {
     const { attempts, cwd } = terminalLaunch(
       'win32',
       'C:\\Users\\demo\\App Data\\newsroom',
@@ -48,7 +73,7 @@ describe('opening a terminal at a setup command', () => {
     expect(attempts[0]?.args).toContain(command);
   });
 
-  it.each(COMMANDS)('%s: "%s" survives Linux', (_id, command) => {
+  it.each(commandsFor('linux'))('%s: "%s" survives Linux', (_id, command) => {
     const { attempts, cwd } = terminalLaunch('linux', SPACEY, command);
     expect(cwd).toBe(SPACEY);
     expect(attempts).toHaveLength(LINUX_TERMINALS.length);

@@ -1100,7 +1100,8 @@ handle('le:detect', async () => {
       i,
       text: step.text,
       url: step.url,
-      command: step.command,
+      // Resolved here, so the panel shows and copies the command this machine would run.
+      command: step.commands?.[process.platform] ?? step.command,
       note: step.note,
     })),
     // What this install actually has, where the agent could be asked, else the static
@@ -1142,12 +1143,14 @@ handle('le:openSetupPage', (_e, providerId: string, stepIndex: number) => {
  */
 handle('le:openTerminal', (_e, providerId: string, stepIndex: number) => {
   const step = getProvider(providerId)?.setup?.[stepIndex];
-  if (!step?.command) return { ok: false, error: 'No command for that step.' };
+  // Install commands differ by platform; everything else is the same everywhere.
+  const command = step?.commands?.[process.platform] ?? step?.command;
+  if (!command) return { ok: false, error: 'No command for that step.' };
   const cwd = existsSync(newsroomRoot()) ? newsroomRoot() : homedir();
   try {
     // How to open a terminal on this platform lives in core, where it can be tested against
     // every command every provider ships rather than only on whichever machine is running.
-    const { attempts, cwd: spawnCwd } = terminalLaunch(process.platform, cwd, step.command);
+    const { attempts, cwd: spawnCwd } = terminalLaunch(process.platform, cwd, command);
     let opened = false;
     for (const attempt of attempts) {
       try {
@@ -1168,7 +1171,7 @@ handle('le:openTerminal', (_e, providerId: string, stepIndex: number) => {
         error: `No terminal found. Tried: ${attempts.map((a) => a.file).join(', ')}.`,
       };
     }
-    return { ok: true, command: step.command, cwd };
+    return { ok: true, command, cwd };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }

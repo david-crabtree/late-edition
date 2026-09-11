@@ -13,7 +13,11 @@ export const geminiProvider: AgentProvider = {
   maturity: 'untested',
   blurb: 'Google’s command-line agent. Runs on a Google account or a Gemini API key.',
   setup: [
-    { text: 'Install the Gemini CLI', url: 'https://geminicli.com' },
+    {
+      text: 'Install the Gemini CLI',
+      url: 'https://geminicli.com',
+      note: 'Its own page has the current instructions. We have not verified them against a live install — if they have changed, that is worth reporting.',
+    },
     {
       text: 'Sign in, so it can talk to Google on your behalf',
       command: 'gemini',

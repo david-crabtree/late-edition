@@ -136,6 +136,11 @@ export interface SetupStep {
   url?: string;
   /** A command to run. The app never takes this from the interface — see `le:openTerminal`. */
   command?: string;
+  /**
+   * Where the command differs by platform, as most install commands do. Falls back to
+   * `command` for anything not listed. A step with neither offers nothing to run.
+   */
+  commands?: Partial<Record<NodeJS.Platform, string>>;
   /** Anything they will want to know before doing it. Shown under the step. */
   note?: string;
 }

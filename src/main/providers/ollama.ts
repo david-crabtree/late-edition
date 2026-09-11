@@ -18,7 +18,11 @@ export const ollamaProvider: AgentProvider = {
     'Runs models on your own machine. Nothing leaves it, and nothing is billed — but it ' +
     'is only as good as the model your hardware can hold, and it cannot browse the web.',
   setup: [
-    { text: 'Install Ollama', url: 'https://ollama.com' },
+    {
+      text: 'Install Ollama',
+      url: 'https://ollama.com',
+      note: 'A real installer, on that page. On a Mac, `brew install ollama` works too.',
+    },
     {
       text: 'Start it running',
       command: 'ollama serve',

@@ -52,7 +52,7 @@ and signed into, so the work counts against a plan you already have rather than 
 
 | Agent | Status | Get it |
 | --- | --- | --- |
-| **Claude Code** | Proven end to end | [claude.com/code](https://claude.com/code) |
+| **Claude Code** | Proven end to end | [Install](https://code.claude.com/docs/en/setup) · needs a Pro, Max, Team or Console account |
 | Codex CLI | Written, not yet confirmed live | [developers.openai.com/codex](https://developers.openai.com/codex) |
 | Gemini CLI | Written, not yet confirmed live | [geminicli.com](https://geminicli.com) |
 | OpenCode | Written, not yet confirmed live | [opencode.ai](https://opencode.ai) |
@@ -63,9 +63,9 @@ and signed into, so the work counts against a plan you already have rather than 
 written and wired the same way as Claude Code. If you get one working it should work, and
 if it doesn't, [that's worth telling us](https://github.com/david-crabtree/late-edition/issues).
 
-The app's Setup panel finds what you have, and for anything you don't it will open the
-download page and open a terminal sitting at the command, so you never have to know what a
-terminal is to get started.
+Most of these install from a command rather than a download. The app's Setup panel finds
+what you have, gives you the right command for your machine, and opens a terminal already
+sitting at it — so you never have to know what a terminal is to get started.
 
 Desks are staffed individually, so you can put a cheap model on research — by far the
 hungriest desk — and a strong one on the editor, who makes the call.

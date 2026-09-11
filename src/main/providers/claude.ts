@@ -44,23 +44,30 @@ export const claudeProvider: AgentProvider = {
   displayName: 'Claude Code',
   maturity: 'proven',
   blurb:
-    'Anthropic’s own command-line agent. The one desk of this newsroom that has been ' +
-    'proven end to end. Runs on a Claude subscription or an API key.',
+    'Anthropic’s own command-line agent, and the one desk of this newsroom proven end to ' +
+    'end. Needs a Claude Pro, Max, Team or Console account — the free plan does not ' +
+    'include Claude Code.',
   setup: [
     {
-      text: 'Install Claude Code on this machine',
-      url: 'https://claude.com/code',
-      note: 'Follow the installer on that page. When it finishes, come back here.',
+      text: 'Install Claude Code — one command, it is not a download',
+      commands: {
+        darwin: 'curl -fsSL https://claude.ai/install.sh | bash',
+        linux: 'curl -fsSL https://claude.ai/install.sh | bash',
+        win32:
+          'curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd',
+      },
+      url: 'https://code.claude.com/docs/en/setup',
+      note: 'There is no installer to download — this command fetches and installs it. On a Mac, `brew install --cask claude-code` works too if you use Homebrew. The page is the full instructions, including Windows PowerShell and Linux package managers.',
     },
     {
       text: 'Sign in, so it can talk to Anthropic on your behalf',
       command: 'claude auth login',
-      note: 'This opens your browser to sign in. Late Edition never sees the login — it lives inside Claude Code.',
+      note: 'Opens your browser. Signing in to claude.ai on its own does nothing for this — the CLI keeps its own login, and Late Edition never sees either.',
     },
     {
       text: 'Check it answers',
       command: 'claude --version',
-      note: 'If this prints a version number you are done. Press Recheck below.',
+      note: 'A version number means you are done. Press Recheck below.',
     },
   ],
   capabilities: {
