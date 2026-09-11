@@ -6,6 +6,30 @@ markers where relevant.
 
 ## Release
 
+### DR.3 — Where the planning documents and the code disagree
+The copy handoff asks for these to be written down rather than silently reconciled. Read
+off the code on 11 Sep 2026; the full record is in [`app-facts.md`](app-facts.md).
+
+- **Only Windows has ever been built.** macOS and Linux targets are configured in
+  `electron-builder` and neither has been produced or opened. The rollout plan's README
+  section wants three download links. There is one.
+- **There is no auto-update.** `electron-updater` is not a dependency and nothing checks for
+  a new version, so the plan's `updates.enabled` key has nothing to switch off.
+- **There are no donation touchpoints.** No sponsor link, no Help item, no edition footer
+  line, no tenth-edition prompt, and therefore no `donations.enabled` key. Phase 5.3 is
+  unbuilt.
+- **One persona ships, not eight.** The cast exists in the interface with names, desks and
+  their own lines, but `newsroom/staff/` scaffolds `sam-vance.md` alone, and every story is
+  bylined by the reporter on its beat. Copy must not imply eight voices.
+- **The byline is no longer printed.** Crediting a person who does not exist as the author
+  of something a reader might take for journalism was the one flatly untrue claim in the
+  output.
+- **Two things exist that the plan never anticipated:** the field desk, which watches the
+  pages a story came from for nothing, and outlets, which change what the desk leads on as
+  well as how it reads.
+- **`late-edition-launch-kit.md` is not in the repo**, so its "structure and tone" cannot be
+  followed. Launch copy follows the rollout plan's section 7.2 instead.
+
 ### DR.1 — Licence: Apache 2.0 with the Commons Clause, and therefore no free signing
 Apache 2.0 with the Commons Clause License Condition v1.0. Anyone may use it, at home or
 at work, read it, change it and share their changes. Nobody may sell it, host it for a fee,

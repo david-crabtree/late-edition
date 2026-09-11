@@ -10,7 +10,7 @@ Ordered roughly by what unblocks the most.
 
 ## Before anything goes public
 
-- [ ] **Create the repository.** `github.com/david-crabtree/late-edition`, private or public
+- [ ] **Create the org and the repository.** `github.com/late-edition/late-edition`, private or public
       as you like — it can start private. The local repo has no remote and nothing has ever
       been pushed. Say the word and I will walk the push with you; it is a different profile
       from the one signed in here, so the credential step is yours.
@@ -33,14 +33,17 @@ Ordered roughly by what unblocks the most.
 ## Accounts and money
 
 - [ ] **GitHub Sponsors.** Sign up as an individual and complete the Stripe onboarding. UK
-      individuals are supported. Then tell me the URL and I will wire the funding file, the
-      README badge, the Help menu item and the edition footer.
+      individuals are supported. The URL is already wired into `package.json` and
+      `.github/FUNDING.yml` as `github.com/sponsors/david-crabtree` — **it 404s until the
+      account is live**, so check it in a private window before anything is posted. The
+      in-app touchpoints (Help item, edition footer, the one-time prompt) are not built yet.
       Tiers the plan suggests: a one-off "buy the newsroom a coffee", a small monthly, a
       larger monthly. Perks stay honest — credits and a Discord role, never a feature.
 
 - [ ] **Ko-fi**, optional, for people without a GitHub account.
 
-- [ ] **Discord server.** Channels from the plan: announcements, general, help,
+- [ ] **Discord server.** The invite `discord.gg/kmr8wqKJJj` is fixed in the copy handoff
+      and will go into the README and the app, so it has to resolve. Channels from the plan: announcements, general, help,
       show-your-paper, beats-and-sources, dev, feature-ideas. Create a permanent invite with
       no expiry and no use limit, and a webhook in announcements for release posts. Give me
       the invite and add the webhook to the repo secrets as `DISCORD_RELEASE_WEBHOOK`.

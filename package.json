@@ -109,10 +109,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/david-crabtree/late-edition.git"
+    "url": "git+https://github.com/late-edition/late-edition.git"
   },
   "bugs": {
-    "url": "https://github.com/david-crabtree/late-edition/issues"
+    "url": "https://github.com/late-edition/late-edition/issues"
   },
-  "homepage": "https://github.com/david-crabtree/late-edition"
+  "homepage": "https://github.com/late-edition/late-edition",
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/david-crabtree"
+    }
+  ]
 }
