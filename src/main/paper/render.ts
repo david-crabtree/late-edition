@@ -1,4 +1,4 @@
-import { OUTPUT_DISCLAIMER } from '../core/disclaimer.js';
+import { OUTPUT_DISCLAIMER, PROJECT_URL, sourceLine } from '../core/disclaimer.js';
 import type { Edition, SourceRef, Story } from '../core/edition.js';
 import { citationStyle, getOutlet } from '../core/formats.js';
 
@@ -39,6 +39,13 @@ function orderedSources(
   // leans on — six sources under four citations reads as padding, because it is.
   if (!citedOnly) for (const r of s.sources) add(r.signalId);
   return { list, numberOf };
+}
+
+/** The credit line with the URL as a real link, so it survives a copy-paste into an editor. */
+function sourceLineHtml(): string {
+  const line = esc(sourceLine());
+  if (!PROJECT_URL) return line;
+  return line.replace(esc(PROJECT_URL), `<a href="${esc(PROJECT_URL)}">${esc(PROJECT_URL)}</a>`);
 }
 
 /** Map an inline citation token to the footnote numbers of the sources it names. */
@@ -109,6 +116,7 @@ function renderPostMarkdown(ed: Edition): string {
 
   out.push('---');
   out.push(`\n**About this edition.** ${OUTPUT_DISCLAIMER}`);
+  out.push(`\n${sourceLine()}`);
   const notes = deskNotes(ed);
   if (notes.length) {
     out.push('\n**Desk notes.**');
@@ -172,6 +180,7 @@ function renderPostHtml(ed: Edition): string {
     ${pieces}
   <footer class="colophon">
     <p class="disclaimer"><strong>About this edition.</strong> ${esc(OUTPUT_DISCLAIMER)}</p>
+    <p class="source-line">${sourceLineHtml()}</p>
     ${
       notes.length
         ? `<p class="desk-notes"><strong>Desk notes.</strong></p><ul class="desk-notes">${notes
@@ -246,6 +255,7 @@ export function renderMarkdown(ed: Edition): string {
 
   out.push('\n---');
   out.push(`\n**About this edition.** ${OUTPUT_DISCLAIMER}`);
+  out.push(`\n${sourceLine()}`);
   out.push(`\n*${tokenLine(ed)}*`);
   return `${out.join('\n')}\n`;
 }
@@ -255,7 +265,7 @@ function storyMarkdown(s: Story): string {
     ? ['**🛑 STOP THE PRESS**', '', `### ${s.headline}`]
     : [`### ${s.headline}`];
   if (s.standfirst) lines.push(`*${s.standfirst}*`);
-  lines.push(`\nBy ${s.byline}\n`);
+  lines.push('');
   const { list, numberOf } = orderedSources(s);
   lines.push(bodyFor(s, numberOf, false));
   if (list.length) {
@@ -363,6 +373,7 @@ export function renderHtml(ed: Edition): string {
   ${sections.join('\n  ')}
   <footer class="colophon">
     <p class="disclaimer"><strong>About this edition.</strong> ${esc(OUTPUT_DISCLAIMER)}</p>
+    <p class="source-line">${sourceLineHtml()}</p>
     <p>${esc(tokenLine(ed))}</p>
   </footer>
 </main>
@@ -406,7 +417,6 @@ function storyHtml(s: Story): string {
     ${kicker}
     <h3>${esc(s.headline)}</h3>
     ${s.standfirst ? `<p class="standfirst">${esc(s.standfirst)}</p>` : ''}
-    <p class="byline">By ${esc(s.byline)}</p>
     ${photo}
     <div class="body">${paragraphs(s.body, numberOf)}</div>
     ${sources}
@@ -459,6 +469,7 @@ section > h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .18e
 .post-page .post { margin: 0 0 1.4rem; }
 .post-page .post p { margin: 0 0 .85rem; }
 .desk-notes { font-size: .85rem; color: #5a5142; }
+.source-line { font-size: .85rem; color: #5a5142; }
 .byline { text-transform: uppercase; letter-spacing: .1em; font-size: .68rem; color: #6a6250; margin: 0 0 .6rem; }
 .body { columns: 1; }
 .body p { margin: 0 0 .8rem; line-height: 1.5; text-align: justify; }

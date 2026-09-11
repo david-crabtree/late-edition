@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { scaffoldNewsroom } from '../config/scaffold.js';
+import { PROJECT_URL, sourceLine } from '../core/disclaimer.js';
 import {
   type CopyShape,
   OUTLETS,
@@ -194,5 +195,57 @@ describe('the house style belongs to the house paper', () => {
       expect(d).toMatch(/CUT THE CLAIM/);
       expect(d).toMatch(/what stays with me/i);
     }
+  });
+});
+
+/**
+ * What travels with the text once it leaves the app. Output from this gets pasted into
+ * blogs and posts by people who did not generate it, so what a stranger reads at the other
+ * end has to be honest without any of the surrounding app.
+ */
+describe('what a copied edition says for itself', () => {
+  let root: string;
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'le-credit-'));
+    scaffoldNewsroom(root);
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  const run = (outlet: CopyShape['outlet']) =>
+    runEdition({ root, forceProvider: 'fake', brief: 'a topic', research: 1, shape: { outlet } });
+
+  // The reporter persona shapes the voice. It is not an author, and crediting one on
+  // something a reader might take for journalism is a claim by a person who does not exist.
+  it('credits no human author, in any outlet', async () => {
+    for (const outlet of ['newspaper', 'moon', 'linkedin'] as const) {
+      const res = await run(outlet);
+      for (const out of [renderMarkdown(res.edition), renderHtml(res.edition)]) {
+        expect(out).not.toMatch(/\bBy Sam Vance\b/);
+        expect(out).not.toMatch(/class="byline"/);
+      }
+      // The persona is still recorded — it is the byline field that stops being printed.
+      expect(res.edition.stories[0]?.byline).toBeTruthy();
+    }
+  });
+
+  it('says what made it, in every artefact', async () => {
+    for (const outlet of ['newspaper', 'linkedin'] as const) {
+      const res = await run(outlet);
+      for (const out of [renderMarkdown(res.edition), renderHtml(res.edition)]) {
+        expect(out).toContain('Late Edition');
+        expect(out).toContain('open-source AI newsroom');
+        expect(out).toContain('This is not journalism');
+      }
+    }
+  });
+
+  // Set the project URL and it has to reach the reader, as a link in the HTML and as a
+  // bare address in the Markdown — a link is no use to someone reading pasted plain text.
+  it('carries the address once there is one to carry', () => {
+    if (!PROJECT_URL) {
+      expect(sourceLine()).not.toMatch(/https?:/);
+      return;
+    }
+    expect(sourceLine()).toContain(PROJECT_URL);
   });
 });

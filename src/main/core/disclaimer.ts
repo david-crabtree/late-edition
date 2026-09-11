@@ -18,6 +18,30 @@ export const OUTPUT_DISCLAIMER =
 export const OUTPUT_DISCLAIMER_SHORT =
   'AI-generated. Not journalism. Check the sources before you use it.';
 
+/** What made this. Printed as a name, so the credit survives being copied as plain text. */
+export const PROJECT_NAME = 'Late Edition';
+
+/**
+ * Where a reader who found this text somewhere else can go to find out what wrote it.
+ *
+ * Output from this software gets pasted into blogs, posts and documents, sometimes by
+ * people who did not generate it and have no idea what it is. A URL travelling with the
+ * text is the only thing that gets that reader back to an honest account of what they are
+ * reading. Set this and it appears in every artefact; leave it empty and the credit still
+ * appears, just without a link.
+ */
+export const PROJECT_URL = '';
+
+/**
+ * The credit line, for the foot of anything this software produces. It sits under the
+ * notice rather than inside it, so the notice stays about the output and this stays about
+ * where the output came from.
+ */
+export function sourceLine(): string {
+  const home = PROJECT_URL ? `: ${PROJECT_URL}` : '';
+  return `Written by ${PROJECT_NAME}, an open-source AI newsroom you run yourself${home}`;
+}
+
 /** Shown once, at first run, before anyone briefs the Chief. */
 export const FIRST_RUN_NOTICE = [
   'Late Edition runs AI agents on your machine and lays their output out as a newspaper. ' +

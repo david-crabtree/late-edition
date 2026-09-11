@@ -11,6 +11,7 @@ import {
   FIRST_RUN_NOTICE,
   OUTPUT_DISCLAIMER_SHORT,
   PLAN_BILLING_NOTICE,
+  sourceLine,
 } from '../main/core/disclaimer.js';
 import type { Edition } from '../main/core/edition.js';
 import { type CopyShape, LENGTHS, OUTLETS } from '../main/core/formats.js';
@@ -496,6 +497,11 @@ function createWindow(): void {
               sources: (r.sources || []).length,
               panelBuilt: !!(panel && panel.dataset.built),
               panelOffers: [...sel.options].length,
+              // Whatever is in the copy box is about to be pasted somewhere with none of
+              // this app around it, so the notice and the credit have to be IN the box.
+              boxCarriesNotice: /Not journalism/i.test(window.__leProbe.copyBoxText(r.text, r.sources)),
+              boxCarriesCredit: /open-source AI newsroom/i.test(window.__leProbe.copyBoxText(r.text, r.sources)),
+              noBylineOnPage: !(document.getElementById('fpByline')||{}).textContent,
               noSeparateToneBox: !panel.querySelector('#rwTone'),
               frontPageOpen: !document.getElementById('frontpage').hidden,
             });
@@ -817,6 +823,7 @@ handle('le:pickRoot', async () => {
 handle('le:notices', () => ({
   firstRun: FIRST_RUN_NOTICE,
   outputShort: OUTPUT_DISCLAIMER_SHORT,
+  source: sourceLine(),
   apiBilling: API_BILLING_NOTICE,
   planBilling: PLAN_BILLING_NOTICE,
   accepted: readAppConfig().noticeAccepted === NOTICE_VERSION,

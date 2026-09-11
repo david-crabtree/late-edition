@@ -1860,8 +1860,17 @@
       out.hidden=false;
     }finally{ rewriteBusy=false; btn.textContent=was; host.querySelectorAll('[data-fmt]').forEach(b=>{ b.disabled=false; }); }
   }
-  const rwWithSources=(text,sources)=>!sources||!sources.length ? text
-    : text+'\n\nSources\n'+sources.map(s=>`[${s.n}] ${s.title}${s.url?' — '+s.url:''}`).join('\n');
+  // Whatever is in this box is about to be pasted somewhere else, so everything a reader
+  // at the other end needs has to be IN it — the sources, the notice, and where it came
+  // from. A disclaimer sitting in a paragraph next to the box travels nowhere.
+  const rwWithSources=(text,sources)=>{
+    const out=[text];
+    if(sources&&sources.length){
+      out.push('\nSources\n'+sources.map(s=>`[${s.n}] ${s.title}${s.url?' — '+s.url:''}`).join('\n')); }
+    const notice=(noticeText&&noticeText.outputShort)||'';
+    const credit=(noticeText&&noticeText.source)||'';
+    if(notice||credit) out.push('\n—\n'+[notice,credit].filter(Boolean).join('\n'));
+    return out.join('\n'); };
   // Render a filed edition into the in-window front page: the lead story in full (byline, body,
   // numbered sources) plus the other headlines — not just the headline + standfirst teaser.
   const FP_CITE=/\[((?:[a-z0-9_]+:[0-9a-f]{6,})(?:\s*,\s*[a-z0-9_]+:[0-9a-f]{6,})*)\]/gi, FP_STRAY=/\[#[^\]\n]{0,60}\]|\[(?:ref|citation needed|source)\]/gi;
@@ -1869,7 +1878,7 @@
   function fpRenderEdition(edition){ const stories=(edition&&edition.stories)||[]; const st=stories[0];
     if(!st){ fpHead.textContent='A quiet day on the wire'; fpStand.textContent='Nothing stood up for page one.'; fpByline.textContent=''; fpBody.innerHTML=''; fpSources.innerHTML=''; fpAlso.innerHTML=''; buildRewritePanel(); frontpage.hidden=false; return; }
     fpHead.textContent=st.headline||'A quiet day on the wire'; fpStand.textContent=st.standfirst||'';
-    fpByline.textContent=st.byline?('By '+st.byline):'';
+    fpByline.textContent='';   // no byline: the reporter is a voice, not an author
     const srcs=st.sources||[], numOf=new Map(); srcs.forEach((r,i)=>{ if(r&&r.signalId) numOf.set(r.signalId,i+1); });
     fpBody.innerHTML=(st.body||'').split(/\n{2,}/).map(p=>{ const h=fpEsc(p.trim())
         .replace(FP_CITE,(_m,ids)=>{ const ns=ids.split(',').map(id=>numOf.get(id.trim())).filter(Boolean); return ns.length?('<sup>['+ns.join(',')+']</sup>'):''; })
@@ -2356,6 +2365,9 @@
       desks: () => staff.map(s=>({ role:s.role, label:s.label, spent:s.spent,
         lines:(s.log||[]).length, kinds:[...new Set((s.log||[]).map(e=>e.kind))] })),
       openCaseFile: () => openCaseFile(),
+      // Exactly what the Copy button puts on the clipboard, so a check can read it without
+      // a staffed newsroom behind the button that fills it.
+      copyBoxText: (text, sources) => rwWithSources(text, sources),
     };
   }
   if(window.lateEdition){ document.body.classList.add('real');

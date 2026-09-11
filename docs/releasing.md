@@ -50,6 +50,12 @@ one file thinking you shipped two. They are named `-Setup-` and `-portable-` for
 
 The repository has no remote yet, which is the cheap moment to do all of this.
 
+- [ ] **Set `PROJECT_URL`.** It is empty in `src/main/core/disclaimer.ts`, so every edition
+      currently says what wrote it but has nowhere to send a reader. Output from this gets
+      pasted into other people's blogs and posts by people who did not generate it; that
+      address is the only thing that gets a stranger back to an honest account of what
+      they are reading. Set it before the first release, not after.
+
 - [ ] **Drop the pre-scrub history.** Commit messages have been rewritten to remove AI
       attribution trailers, but the originals are still reachable locally:
 
