@@ -18,9 +18,12 @@ off the code on 11 Sep 2026; the full record is in [`app-facts.md`](app-facts.md
 - **There are no donation touchpoints.** No sponsor link, no Help item, no edition footer
   line, no tenth-edition prompt, and therefore no `donations.enabled` key. Phase 5.3 is
   unbuilt.
-- **One persona ships, not eight.** The cast exists in the interface with names, desks and
-  their own lines, but `newsroom/staff/` scaffolds `sam-vance.md` alone, and every story is
-  bylined by the reporter on its beat. Copy must not imply eight voices.
+- **One persona ships, not eight** — which is a separate thing from the paper's voice, and
+  easy to run together. The voice is the outlet picker and `style.md`, and both work: eleven
+  outlets, each reaching the reporter and the editor as well as the writer. A persona is one
+  reporter's bio folded into that reporter's own prompt, and `newsroom/staff/` scaffolds
+  `sam-vance.md` alone. Copy may say the paper writes in eleven voices. It may not say the
+  cast each write in their own.
 - **The byline is no longer printed.** Crediting a person who does not exist as the author
   of something a reader might take for journalism was the one flatly untrue claim in the
   output.

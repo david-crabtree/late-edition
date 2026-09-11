@@ -64,7 +64,8 @@
       "docs/prototype/newsroom-screen-test.html",
       "package.json",
       "!**/*.map",
-      "!**/*.test.*"
+      "!**/*.test.*",
+      "scripts/after-sign.mjs"
     ],
     "win": {
       "target": [
@@ -96,16 +97,29 @@
         {
           "target": "dmg",
           "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
         }
       ],
       "category": "public.app-category.news",
       "identity": null,
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "portable": {
       "artifactName": "${productName}-${version}-portable-${arch}.${ext}"
     },
-    "extraResources": ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
+    "extraResources": ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"],
+    "publish": [
+      {
+        "provider": "github",
+        "releaseType": "draft"
+      }
+    ],
+    "afterSign": "scripts/after-sign.mjs"
   },
   "repository": {
     "type": "git",

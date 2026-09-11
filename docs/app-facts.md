@@ -136,7 +136,15 @@ desks and their own one-liners.
 
 **Only one persona file ships**, `newsroom/staff/sam-vance.md`. The other names live in the
 interface only, and every story is bylined by the reporter on its beat, which is Sam in a
-fresh newsroom. Do not imply the cast write in eight different voices. They do not yet.
+fresh newsroom.
+
+**This is not about how the paper sounds.** How it sounds is set by the outlet picker beside
+the brief and by `style.md`, and both work — see Outlets above. Eleven voices, each reaching
+the reporter and the editor as well as the writer. A persona is a narrower thing: one
+reporter's bio and habits, folded into that one reporter's prompt.
+
+So in copy: **say the paper writes in eleven voices, because it does.** Do not say the cast
+each write in their own, because only one of them has anything written down.
 
 The byline is not printed in the rendered edition. Crediting a person who does not exist as
 the author of something a reader might take for journalism was the one claim in the output
@@ -175,11 +183,24 @@ Copy must not claim either.
 | | Configured | Actually built | Auto update | First launch |
 | --- | --- | --- | --- | --- |
 | Windows | NSIS installer + portable, x64 | **Yes**, both produced | None | Unsigned. SmartScreen warns; Smart App Control may block outright. |
-| macOS | dmg, x64 + arm64 | **No, never built** | None | Unverified. No ad-hoc signing step exists yet, so Apple Silicon may report it as damaged. |
-| Linux | AppImage + deb | **No, never built** | None | Unverified. |
+| macOS | dmg + zip, x64 + arm64 | **Not yet** — the release workflow builds it on a Mac runner | None | Ad-hoc signed by `scripts/after-sign.mjs`, not notarised. Right click, Open, Open. **Nobody has opened one.** |
+| Linux | AppImage + deb | **Not yet** — same workflow | None | Unverified. |
 
-**Only Windows has ever been produced and run.** Copy must not offer macOS or Linux
-downloads until they exist and somebody has opened one.
+macOS is a v1 target. It cannot be packaged from the Windows machine this is built on, so
+`.github/workflows/release.yml` builds all three on tag across `macos-latest`,
+`windows-latest` and `ubuntu-latest`, which is free for a public repository. The ad-hoc
+signature is what stops an Apple Silicon Mac calling the app *damaged* and refusing to open
+it; it proves nothing about who built it and is not notarisation.
+
+**What CI cannot do is tell us it launches.** Producing a .dmg and opening one are different
+claims. Until somebody with a Mac opens a build, copy may offer the download and must not
+say it has been tested.
+
+**Building from source is also a real answer, and on macOS a better one.** The Gatekeeper
+prompt comes from the quarantine flag the browser attaches to a download, so an app built on
+your own machine simply opens, with no right-click dance. It needs Node and a terminal,
+which is exactly where a non-developer stops, so it belongs in the docs as the developer
+path and never as the headline.
 
 ---
 
