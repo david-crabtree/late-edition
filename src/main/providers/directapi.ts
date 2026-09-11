@@ -30,9 +30,28 @@ export const directApiProvider: AgentProvider = {
   id: 'directapi',
   displayName: 'Direct API (bring your own key)',
   maturity: 'untested',
-  setupSteps: [
-    'Set LATE_EDITION_API_KEY to your API key',
-    'Optionally set LATE_EDITION_API_URL, _MODEL and _FORMAT',
+  blurb:
+    'Any OpenAI- or Anthropic-shaped API, using a key you already hold. The most ' +
+    'fiddly route: the key is read from an environment variable, which this app will ' +
+    'not set for you and cannot see.',
+  manualOnly:
+    'This one is all on you, and it is the fiddliest of the lot. The key lives in an ' +
+    'environment variable because Late Edition will not hold your key — so there is ' +
+    'nothing here for a button to press. If you have not done this before, one of the ' +
+    'agents above is a far easier start.',
+  setup: [
+    {
+      text: 'Have an API key from whichever provider you want to use',
+      note: 'This route bills per use against that key. Late Edition never reads, stores or transmits it — the agent process reads it from your environment.',
+    },
+    {
+      text: 'Set LATE_EDITION_API_KEY in your environment, then restart Late Edition',
+      note: 'On Windows: search for "Edit the system environment variables". A variable set in a terminal will not reach an app that is already running.',
+    },
+    {
+      text: 'Optionally set LATE_EDITION_API_URL, _MODEL and _FORMAT',
+      note: 'Only needed to point at something other than the default endpoint.',
+    },
   ],
   capabilities: { webSearch: false, fileAccess: false, jsonOutput: true, streaming: false },
 

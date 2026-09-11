@@ -12,7 +12,11 @@ export const opencodeProvider: AgentProvider = {
   id: 'opencode',
   displayName: 'OpenCode',
   maturity: 'untested',
-  setupSteps: ['Install OpenCode from https://opencode.ai', 'opencode auth login'],
+  blurb: 'An open-source agent that can front several different model providers.',
+  setup: [
+    { text: 'Install OpenCode', url: 'https://opencode.ai' },
+    { text: 'Sign in to whichever provider you want it to use', command: 'opencode auth login' },
+  ],
   capabilities: { webSearch: false, fileAccess: true, jsonOutput: false, streaming: true },
 
   async detect(): Promise<Detection> {

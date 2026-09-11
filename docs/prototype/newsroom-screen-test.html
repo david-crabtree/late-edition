@@ -120,17 +120,21 @@
   .setup h4{ font-family:var(--pixel); font-size:.56rem; letter-spacing:.06em; color:var(--bone-dim);
              text-transform:uppercase; margin:16px 0 8px; font-weight:400; }
   .setup .agents{ display:flex; flex-direction:column; gap:6px; }
-  .setup .ag{ border:1px solid #2c2519; border-radius:5px; background:#0e1116; padding:8px 10px; }
+  /* The sim's roster row is also `.ag`, and it is a six-column grid in the pixel font.
+     It was winning `display` and `font-family` here, which laid every agent out as a
+     narrow column of stacked pills — the first thing a new user sees, looking broken. */
+  .setup .ag{ display:block; font-family:var(--type); font-size:.8rem; border:1px solid #2c2519;
+              border-radius:5px; background:#0e1116; padding:8px 10px; }
   .setup .ag.ready{ border-color:#31603f; }
   .setup .ag.warn{ border-color:#8a5a2a; }
   .setup .ag-hd{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .setup .ag-nm{ font-size:.82rem; color:var(--bone); }
-  .setup .pill{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.04em; padding:3px 6px;
+  .setup .pill, .wiring .pill{ font-family:var(--pixel); font-size:.5rem; letter-spacing:.04em; padding:3px 6px;
                 border-radius:3px; border:1px solid #2c2519; color:#8a8270; white-space:nowrap; }
-  .setup .pill.ok{ border-color:#3f8a60; color:#a8dc92; }
-  .setup .pill.no{ border-color:#5a4a34; color:#a89678; }
-  .setup .pill.api{ border-color:#a8703a; color:#e8cf88; }
-  .setup .pill.beta{ border-color:#4a5a7a; color:#9fb6d8; }
+  .setup .pill.ok, .wiring .pill.ok{ border-color:#3f8a60; color:#a8dc92; }
+  .setup .pill.no, .wiring .pill.no{ border-color:#5a4a34; color:#a89678; }
+  .setup .pill.api, .wiring .pill.api{ border-color:#a8703a; color:#e8cf88; }
+  .setup .pill.beta, .wiring .pill.beta{ border-color:#4a5a7a; color:#9fb6d8; }
   .setup .ag-say{ font-size:.7rem; color:var(--bone-dim); margin:6px 0 0; line-height:1.5; }
   .setup .ag-say.money{ color:#e8b04b; }
   .setup .steps{ list-style:none; margin:7px 0 0; padding:0; display:flex; flex-direction:column; gap:4px; }
@@ -267,6 +271,30 @@
   .runopts select:hover, .papers select:hover{ border-color:#5a4a2c; }
   .runopts select:focus-visible, .papers select:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
   .runopts select option, .papers select option{ background:#12100b; color:var(--bone); }
+  /* Getting an agent working. Same furniture as the other two modals. */
+  .wiring{ position:fixed; inset:0; z-index:230; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
+  .wiring[hidden]{ display:none; }
+  .wiring .wi-card{ width:min(680px,94vw); max-height:88vh; display:flex; flex-direction:column; background:#0c0f14; border:1px solid #3a2e1b; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.6); overflow:hidden; }
+  .wiring .wi-hd{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:11px 14px; background:#14100b; border-bottom:1px solid #2c2519; }
+  .wiring .wi-hd b{ font-family:var(--display); text-transform:uppercase; letter-spacing:.03em; font-size:.9rem; color:var(--amber); }
+  .wiring .wi-hd #wiPills{ display:inline-flex; gap:5px; }
+  .wiring .wi-hd .grow{ flex:1; }
+  .wiring .wi-body{ overflow-y:auto; padding:12px 14px 14px; }
+  .wiring .wi-blurb{ margin:0 0 10px; font-size:.78rem; line-height:1.55; color:var(--bone-dim); max-width:62ch; }
+  .wiring .wi-state{ margin:0 0 12px; padding:8px 10px; border-radius:6px; font-size:.76rem; line-height:1.5; border:1px solid #23201a; background:#0e1116; color:var(--bone-dim); }
+  .wiring .wi-state.ok{ border-color:#4a6a3a; color:#bcd3a8; }
+  .wiring .wi-step{ border:1px solid #23201a; border-radius:6px; background:#0e1116; padding:10px 12px; margin-bottom:8px; }
+  .wiring .wi-step.done{ opacity:.6; }
+  .wiring .wi-step-hd{ display:flex; align-items:baseline; gap:8px; }
+  .wiring .wi-n{ font-family:var(--pixel); font-size:.5rem; color:var(--amber); min-width:1.2em; }
+  .wiring .wi-t{ font-size:.84rem; color:var(--bone); line-height:1.4; }
+  .wiring .wi-note{ margin:5px 0 0 calc(1.2em + 8px); font-size:.72rem; line-height:1.5; color:var(--bone-dim); max-width:58ch; }
+  .wiring .wi-cmd{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin:8px 0 0 calc(1.2em + 8px); }
+  .wiring code.wi-code{ font-family:var(--type); font-size:.76rem; color:#e8dfc6; background:#161a20; border:1px solid #2c2519; border-radius:4px; padding:4px 8px; }
+  .wiring .wi-ft{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding:10px 14px; background:#0a0d11; border-top:1px solid #2c2519; }
+  .wiring .wi-ft .hint{ flex:1; min-width:0; }
+  .setup .ag-act{ margin-left:auto; flex:0 0 auto; }
+  .setup .ag-nm{ flex:0 0 auto; }
   /* The paper picker. Same furniture as the case file, so the app has one modal idiom. */
   .papers{ position:fixed; inset:0; z-index:220; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .papers[hidden]{ display:none; }
@@ -1486,6 +1514,92 @@
     // An engine that doesn't send `kind` still has to produce a usable list.
     return out||shapeOpts.outlets.map(o=>OPT(o,cur)).join(''); }
   const OPT=(o,cur)=>'<option value="'+o.id+'"'+(o.id===cur?' selected':'')+'>'+escH(o.label)+'</option>';
+  // ---- Getting an agent working --------------------------------------------------------
+  // The first person to try this who was not a developer could not open a terminal, did
+  // not know one was needed, and gave up. The steps were right there in the panel and
+  // they may as well not have been. So: one agent at a time, what it is, what is missing,
+  // and a button per step that opens the page or opens a terminal already sitting at the
+  // command. Nothing here sends a command anywhere — the app looks it up by step number
+  // from its own definitions, so the page cannot ask the machine to run something.
+  let wiringEl=null, wiringFor=null, refreshSetupAgents=null;
+  function buildWiring(){
+    if(wiringEl) return wiringEl;
+    const el=document.createElement('div'); el.className='wiring'; el.hidden=true;
+    el.innerHTML=`<div class="wi-card">
+      <div class="wi-hd"><b id="wiName">Agent</b><span id="wiPills"></span><span class="grow"></span>
+        <button class="chip" id="wiClose">Close</button></div>
+      <div class="wi-body" id="wiBody"></div>
+      <div class="wi-ft"><button class="chip primary" id="wiCheck">Check again</button>
+        <span class="hint" id="wiMsg">You sign in inside the agent's own tool. Late Edition never sees it.</span></div>
+    </div>`;
+    document.body.appendChild(el);
+    el.addEventListener('click', e=>{ if(e.target===el) closeWiring(); });
+    el.querySelector('#wiClose').addEventListener('click', closeWiring);
+    el.querySelector('#wiCheck').addEventListener('click', recheckWiring);
+    wiringEl=el; return el; }
+  const closeWiring=()=>{ if(wiringEl) wiringEl.hidden=true; wiringFor=null; };
+  function renderWiring(d){
+    const el=buildWiring();
+    el.querySelector('#wiName').textContent=d.displayName||d.id;
+    const ready=d.installed&&d.authenticated;
+    el.querySelector('#wiPills').innerHTML =
+      (ready?'<span class="pill ok">ready</span>':`<span class="pill no">${d.installed?'not signed in':'not installed'}</span>`)
+      +(d.maturity==='untested'?'<span class="pill beta">untested here</span>':'');
+    const body=el.querySelector('#wiBody');
+    const state = ready
+      ? `<p class="wi-state ok">This one is ready. ${d.version?escH('Version '+d.version+'. '):''}Put it on a desk below and brief the Chief.</p>`
+      : `<p class="wi-state">${escH(d.detail||(d.installed?'It is installed but not signed in.':'It is not installed on this machine yet.'))}</p>`;
+    const blurb=d.blurb?`<p class="wi-blurb">${escH(d.blurb)}</p>`:'';
+    const steps=(d.setup||[]).map((st,i)=>{
+      const acts=[];
+      if(st.url) acts.push(`<button class="chip primary" data-page="${i}">Open the page ↗</button>`);
+      if(st.command){
+        acts.push(`<code class="wi-code">${escH(st.command)}</code>`);
+        acts.push(`<button class="chip primary" data-term="${i}">Open a terminal ▸</button>`);
+        acts.push(`<button class="chip" data-copy="${i}">Copy</button>`); }
+      return `<div class="wi-step${ready?' done':''}">
+        <div class="wi-step-hd"><span class="wi-n">${i+1}</span><span class="wi-t">${escH(st.text)}</span></div>
+        ${st.note?`<p class="wi-note">${escH(st.note)}</p>`:''}
+        ${acts.length?`<div class="wi-cmd">${acts.join('')}</div>`:''}
+      </div>`; }).join('');
+    // An agent the app cannot help with says so before the steps, so they can walk away
+    // and pick an easier one rather than work down a list of buttons that do nothing.
+    const manual=d.manualOnly?`<p class="wi-state">${escH(d.manualOnly)}</p>`:'';
+    body.innerHTML=blurb+state+manual+(steps||'<p class="wi-note">No setup steps are recorded for this one.</p>');
+    const say=m=>{ el.querySelector('#wiMsg').textContent=m; };
+    body.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click', async()=>{
+      if(!window.lateEdition.openSetupPage||!apiOk('le:openSetupPage')){ say('This build of the engine cannot open pages — run npm run app.'); return; }
+      const r=await window.lateEdition.openSetupPage(d.id, +b.dataset.page);
+      say(r&&r.ok?'Opened in your browser. Come back when the installer has finished.':(r&&r.error)||'Could not open that page.'); }));
+    body.querySelectorAll('[data-term]').forEach(b=>b.addEventListener('click', async()=>{
+      if(!window.lateEdition.openTerminal||!apiOk('le:openTerminal')){ say('This build of the engine cannot open a terminal — run npm run app.'); return; }
+      const r=await window.lateEdition.openTerminal(d.id, +b.dataset.term);
+      say(r&&r.ok?'A terminal has opened with the command ready — press Enter in it, then come back here.':(r&&r.error)||'Could not open a terminal.'); }));
+    body.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click', async()=>{
+      const cmd=((d.setup||[])[+b.dataset.copy]||{}).command||'';
+      try{ await navigator.clipboard.writeText(cmd); }catch(_){ }
+      b.textContent='Copied'; setTimeout(()=>{ b.textContent='Copy'; },1400); })); }
+  async function openWiring(providerId){
+    wiringFor=providerId;
+    const d=(providerInfo||[]).find(p=>p.id===providerId);
+    if(d) renderWiring(d);
+    buildWiring().hidden=false;
+    await recheckWiring(); }
+  // Coming back from a terminal is the moment the answer changes, so re-detect on the way
+  // in, on demand, and whenever the window is focused again with this open.
+  async function recheckWiring(){
+    if(!wiringFor||!window.lateEdition.detect) return;
+    const btn=wiringEl&&wiringEl.querySelector('#wiCheck');
+    if(btn){ btn.disabled=true; btn.textContent='Checking…'; }
+    try{
+      providerInfo=await window.lateEdition.detect();
+      const d=(providerInfo||[]).find(p=>p.id===wiringFor);
+      if(d) renderWiring(d);
+      if(typeof refreshSetupAgents==='function') refreshSetupAgents();
+    }catch(_){ }
+    if(btn){ btn.disabled=false; btn.textContent='Check again'; } }
+  window.addEventListener('focus', ()=>{ if(wiringEl&&!wiringEl.hidden) recheckWiring(); });
+
   // ---- The paper picker ----------------------------------------------------------------
   // A dropdown of eleven mastheads told you nothing about any of them. This is the same
   // list with the paragraph that says what you actually get, opened from the button that
@@ -2254,9 +2368,14 @@
       if(d.webSearch) pills.push('<span class="pill">can browse</span>');
       const say = ready&&(d.billing==='api'||d.billing==='subscription')
         ? `<p class="ag-say" data-billing="${d.billing}"></p>` : '';
-      const steps = !ready&&(d.setupSteps||[]).length
-        ? `<ol class="steps">${d.setupSteps.map(s=>`<li>${escH(s)}</li>`).join('')}</ol>` : '';
-      el.innerHTML=`<div class="ag-hd"><span class="ag-nm">${escH(d.displayName||d.id)}</span>${pills.join('')}</div>${say}${steps}`;
+      // The steps used to be printed here as a list and read as decoration. They live in
+      // their own panel now, one agent at a time, with a button per step.
+      const act = (d.setup||[]).length
+        ? `<button class="chip ${ready?'':'primary'} ag-act" data-wire="${escH(d.id)}">${ready?'How this works':'Set this up ▸'}</button>`
+        : '';
+      el.innerHTML=`<div class="ag-hd"><span class="ag-nm">${escH(d.displayName||d.id)}</span>${pills.join('')}${act}</div>${say}`;
+      const b=el.querySelector('[data-wire]');
+      if(b) b.addEventListener('click', ()=>openWiring(d.id));
       return el; }
     async function refreshProviders(){
       providerInfo=await LE.detect();
@@ -2265,6 +2384,11 @@
       for(const d of providerInfo.filter(p=>p.maturity!=='internal')) host.appendChild(agentRow(d));
       applyBillingNotices();
       return providerInfo; }
+    // So the wiring panel can repaint the row behind it after a recheck.
+    refreshSetupAgents=()=>{ const host=$('setupAgents'); if(!host||!providerInfo) return;
+      host.innerHTML='';
+      for(const d of providerInfo.filter(p=>p.maturity!=='internal')) host.appendChild(agentRow(d));
+      applyBillingNotices(); };
 
     // --- Desks: role, agent, model. The recommendation follows the chosen agent. ---
     function modelHint(rk, providerId){
@@ -2401,7 +2525,7 @@
     cam=state.panX=Math.max(0, Math.min(WORLD-VW, (WINDOW_XB-VW/2)/BP));
     buildAppChrome(); buildSetup(); buildStartupModal(); learnBilling();
     // Check the engine can do what this interface expects, then take the overnight file.
-    shakeHands(['le:api','le:watches','le:checkWatches','le:watchEdition','le:fieldDesk','le:runWatch','le:formats','le:rewrite','le:editions'])
+    shakeHands(['le:api','le:watches','le:checkWatches','le:watchEdition','le:fieldDesk','le:runWatch','le:formats','le:rewrite','le:editions','le:openSetupPage','le:openTerminal'])
       .then(()=>refreshWatches(true));
   }
 

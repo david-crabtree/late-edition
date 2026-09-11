@@ -43,7 +43,26 @@ export const claudeProvider: AgentProvider = {
   id: 'claude',
   displayName: 'Claude Code',
   maturity: 'proven',
-  setupSteps: ['Install Claude Code from https://claude.com/code', 'claude auth login'],
+  blurb:
+    'Anthropic’s own command-line agent. The one desk of this newsroom that has been ' +
+    'proven end to end. Runs on a Claude subscription or an API key.',
+  setup: [
+    {
+      text: 'Install Claude Code on this machine',
+      url: 'https://claude.com/code',
+      note: 'Follow the installer on that page. When it finishes, come back here.',
+    },
+    {
+      text: 'Sign in, so it can talk to Anthropic on your behalf',
+      command: 'claude auth login',
+      note: 'This opens your browser to sign in. Late Edition never sees the login — it lives inside Claude Code.',
+    },
+    {
+      text: 'Check it answers',
+      command: 'claude --version',
+      note: 'If this prints a version number you are done. Press Recheck below.',
+    },
+  ],
   capabilities: {
     webSearch: true,
     fileAccess: true,

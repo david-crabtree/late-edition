@@ -1,5 +1,6 @@
+import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron';
@@ -21,7 +22,7 @@ import { rewriteStory } from '../main/pipeline/rewrite.js';
 import { runEdition } from '../main/pipeline/run.js';
 import { StaffNotConfiguredError } from '../main/pipeline/staffing.js';
 import { VerificationNeededError } from '../main/pipeline/verify.js';
-import { detectAll, listProviders } from '../main/providers/registry.js';
+import { detectAll, getProvider, listProviders } from '../main/providers/registry.js';
 import { type EditionSummary, listEditions } from '../main/store/edition-store.js';
 import { PipelineHaltError, clearHalt, isHalted, setHalt } from '../main/store/halt.js';
 import type { LogEvent } from '../main/store/log.js';
@@ -564,6 +565,65 @@ function createWindow(): void {
           })()`),
         );
       }
+      // The first person to try this who was not a developer could not open a terminal,
+      // did not know one was needed, and abandoned it. The steps were printed in the
+      // panel and may as well not have been.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG wiring:',
+          await js(`(async () => {
+            document.querySelector('.setup').hidden = false;
+            for (let i = 0; i < 40 && !document.querySelector('[data-wire]'); i++)
+              await new Promise(x => setTimeout(x, 100));
+            const row = document.querySelector('[data-wire="claude"]');
+            const out = { everyAgentOffersAWayIn: [...document.querySelectorAll('.setup .ag')]
+              .every(a => !!a.querySelector('[data-wire]')) };
+            out.buttonSays = row ? row.textContent.trim() : null;
+            row.click();
+            for (let i = 0; i < 40 && !document.querySelector('.wiring:not([hidden])'); i++)
+              await new Promise(x => setTimeout(x, 100));
+            const m = document.querySelector('.wiring');
+            out.opens = !m.hidden;
+            out.name = m.querySelector('#wiName').textContent;
+            // What it is, and what is actually missing — before any command.
+            out.saysWhatItIs = (m.querySelector('.wi-blurb') || {}).textContent || '';
+            out.saysWhatIsMissing = !!(m.querySelector('.wi-state') || {}).textContent;
+            const steps = [...m.querySelectorAll('.wi-step')];
+            out.steps = steps.length;
+            // A download step opens the page; a command step opens a terminal AND can be
+            // copied, with the command visible so nothing runs unseen.
+            out.stepsWithAPage = m.querySelectorAll('[data-page]').length;
+            out.stepsWithATerminal = m.querySelectorAll('[data-term]').length;
+            out.stepsWithACopy = m.querySelectorAll('[data-copy]').length;
+            out.commandsShown = [...m.querySelectorAll('code.wi-code')].map(c => c.textContent);
+            out.canRecheck = !!m.querySelector('#wiCheck');
+            m.querySelector('#wiClose').click();
+            out.closes = m.hidden;
+            document.querySelector('.setup').hidden = true;
+            return JSON.stringify(out);
+          })()`),
+        );
+      }
+      // The help buttons take a provider id and a step number, never an address or a
+      // command. A page that could hand either one to the operating system would be a way
+      // to run anything on the machine wearing a help button's clothes.
+      if (process.env.LE_DEBUG_RUN) {
+        console.log(
+          'LE_DEBUG wiring-safety:',
+          await js(`(async () => {
+            const bad = [
+              await window.lateEdition.openTerminal('claude', 99),
+              await window.lateEdition.openTerminal('no-such-agent', 0),
+              await window.lateEdition.openSetupPage('claude', 99),
+              await window.lateEdition.openSetupPage('no-such-agent', 0),
+            ];
+            return JSON.stringify({
+              allRefused: bad.every(r => r && r.ok === false),
+              reasons: bad.map(r => (r || {}).error),
+            });
+          })()`),
+        );
+      }
       // The front page in the window is what people actually read and copy — edition.md
       // is correct and nobody opens it. A post shown here had a news headline, a
       // standfirst, superscript footnotes numbered off the full source list, and six
@@ -879,12 +939,98 @@ handle('le:detect', async () => {
     id: p.id,
     displayName: p.displayName,
     maturity: p.maturity ?? 'untested',
-    setupSteps: p.setupSteps ?? [],
+    blurb: p.blurb ?? '',
+    manualOnly: p.manualOnly ?? '',
+    setup: (p.setup ?? []).map((step, i) => ({
+      i,
+      text: step.text,
+      url: step.url,
+      command: step.command,
+      note: step.note,
+    })),
     models: p.capabilities.models ?? [],
     recommend: p.capabilities.recommend ?? {},
     webSearch: p.capabilities.webSearch,
     ...(m.get(p.id) ?? { installed: false, authenticated: false }),
   }));
+});
+
+/**
+ * Open a setup page in the real browser.
+ *
+ * Only ever a URL that this build ships in a provider's own setup steps. The interface
+ * asks by provider id and step number and the address is looked up here, so nothing the
+ * page can say becomes something the operating system opens.
+ */
+handle('le:openSetupPage', (_e, providerId: string, stepIndex: number) => {
+  const step = getProvider(providerId)?.setup?.[stepIndex];
+  if (!step?.url) return { ok: false, error: 'No page for that step.' };
+  if (!/^https:\/\//.test(step.url)) return { ok: false, error: 'Refusing a non-https address.' };
+  shell.openExternal(step.url);
+  return { ok: true, url: step.url };
+});
+
+/**
+ * Open a real terminal window sitting at the command for a setup step.
+ *
+ * The thing that stopped the first person who was not a developer from ever getting this
+ * running was not the command. It was not knowing a terminal existed, where to find one,
+ * or what "run this" meant. So the app opens one, with the command already typed, and
+ * they press Enter and watch it. It stays open afterwards so they can read what happened.
+ *
+ * As with the page above, the command is looked up from the provider definition by id and
+ * step number. **Nothing typed in the interface is ever executed** — if this took a string
+ * it would be a way to run anything on the machine, dressed up as a help button.
+ */
+handle('le:openTerminal', (_e, providerId: string, stepIndex: number) => {
+  const step = getProvider(providerId)?.setup?.[stepIndex];
+  if (!step?.command) return { ok: false, error: 'No command for that step.' };
+  const cwd = existsSync(newsroomRoot()) ? newsroomRoot() : homedir();
+  try {
+    if (process.platform === 'win32') {
+      // `start` needs a window title first, or it eats the next quoted argument as one.
+      // /k keeps the window open after the command finishes so the output can be read.
+      spawn('cmd.exe', ['/c', 'start', 'Late Edition setup', 'cmd.exe', '/k', step.command], {
+        cwd,
+        detached: true,
+        stdio: 'ignore',
+        windowsVerbatimArguments: false,
+      }).unref();
+    } else if (process.platform === 'darwin') {
+      const escaped = step.command.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      spawn(
+        'osascript',
+        [
+          '-e',
+          `tell application "Terminal" to do script "cd ${cwd} && ${escaped}"`,
+          '-e',
+          'tell application "Terminal" to activate',
+        ],
+        { detached: true, stdio: 'ignore' },
+      ).unref();
+    } else {
+      // No single terminal exists on Linux; try the usual suspects and report if none took.
+      const tried = ['x-terminal-emulator', 'gnome-terminal', 'konsole', 'xterm'];
+      let opened = false;
+      for (const term of tried) {
+        try {
+          spawn(term, ['-e', 'bash', '-lc', `${step.command}; exec bash`], {
+            cwd,
+            detached: true,
+            stdio: 'ignore',
+          }).unref();
+          opened = true;
+          break;
+        } catch {
+          /* try the next one */
+        }
+      }
+      if (!opened) return { ok: false, error: `No terminal found. Tried: ${tried.join(', ')}.` };
+    }
+    return { ok: true, command: step.command, cwd };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
 });
 
 /** The current per-role staff assignment (for the Setup panel). */

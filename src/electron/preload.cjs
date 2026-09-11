@@ -13,6 +13,12 @@ contextBridge.exposeInMainWorld('lateEdition', {
   acceptNotice: () => ipcRenderer.invoke('le:acceptNotice'),
   /** Which agent providers are ready, and how they bill (plan usage vs metered API). */
   detect: () => ipcRenderer.invoke('le:detect'),
+  // Setup help. Both take a provider id and a step number, never an address or a command —
+  // the app looks those up from its own provider definitions.
+  openSetupPage: (providerId, stepIndex) =>
+    ipcRenderer.invoke('le:openSetupPage', providerId, stepIndex),
+  openTerminal: (providerId, stepIndex) =>
+    ipcRenderer.invoke('le:openTerminal', providerId, stepIndex),
   /** The current per-role staff assignment. */
   staff: () => ipcRenderer.invoke('le:staff'),
   /** Save a per-role staff assignment (writes staff.yaml). */

@@ -94,14 +94,42 @@ export type AgentEvent =
  */
 export type ProviderMaturity = 'proven' | 'untested' | 'internal';
 
+/**
+ * One thing a person has to do to make an agent ready.
+ *
+ * This used to be a line of text telling them what to type, which assumes they know what a
+ * terminal is, how to open one, and that "run this" means anything at all. It is the exact
+ * point at which someone who is not a developer gives up. A step now says what it is FOR
+ * in plain words, and carries whichever of a page or a command it needs, so the app can
+ * put the download in front of them or open a terminal sitting at the command.
+ */
+export interface SetupStep {
+  /** What this step gets you, in plain English. Not the command — the point of it. */
+  text: string;
+  /** A page to open in their browser: a download, a sign-up, documentation. */
+  url?: string;
+  /** A command to run. The app never takes this from the interface — see `le:openTerminal`. */
+  command?: string;
+  /** Anything they will want to know before doing it. Shown under the step. */
+  note?: string;
+}
+
 export interface AgentProvider {
   /** Stable id: "claude" | "codex" | "gemini" | "ollama" | "fake" | ... */
   id: string;
   displayName: string;
   /** Honest status of this integration. Defaults to `untested` where unset. */
   maturity?: ProviderMaturity;
-  /** Exact commands that make this provider ready, one step per line, for Setup to show. */
-  setupSteps?: string[];
+  /** One line on what this agent IS, for somebody who has never heard of it. */
+  blurb?: string;
+  /** What it takes to make this agent ready, as steps the app can act on. */
+  setup?: SetupStep[];
+  /**
+   * Why the app cannot do any of this one for you. Set it only where that is genuinely
+   * true — it is shown to the user as a plain admission, and the honest version of an
+   * agent nobody can get working is saying so, not a panel of buttons that do nothing.
+   */
+  manualOnly?: string;
   /** Is the CLI installed and authenticated? */
   detect(): Promise<Detection>;
   /** Run a job, streaming events. Must always end with a 'done' or 'error'. */

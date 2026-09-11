@@ -17,7 +17,15 @@ export const codexProvider: AgentProvider = {
   id: 'codex',
   displayName: 'Codex CLI',
   maturity: 'untested',
-  setupSteps: ['Install the Codex CLI from https://developers.openai.com/codex', 'codex login'],
+  blurb: 'OpenAI’s command-line agent. Runs on a ChatGPT plan or an OpenAI API key.',
+  setup: [
+    { text: 'Install the Codex CLI', url: 'https://developers.openai.com/codex' },
+    {
+      text: 'Sign in, so it can talk to OpenAI on your behalf',
+      command: 'codex login',
+      note: 'Opens your browser. The login stays inside Codex — Late Edition never sees it.',
+    },
+  ],
   capabilities: {
     webSearch: false,
     fileAccess: true,

@@ -14,10 +14,21 @@ export const ollamaProvider: AgentProvider = {
   id: 'ollama',
   displayName: 'Ollama (local models)',
   maturity: 'untested',
-  setupSteps: [
-    'Install Ollama from https://ollama.com',
-    'ollama serve',
-    'ollama pull llama3.1   (or any model you prefer)',
+  blurb:
+    'Runs models on your own machine. Nothing leaves it, and nothing is billed — but it ' +
+    'is only as good as the model your hardware can hold, and it cannot browse the web.',
+  setup: [
+    { text: 'Install Ollama', url: 'https://ollama.com' },
+    {
+      text: 'Start it running',
+      command: 'ollama serve',
+      note: 'Leave that window open. On most installs Ollama is already running and this will say so.',
+    },
+    {
+      text: 'Download a model for it to use',
+      command: 'ollama pull llama3.1',
+      note: 'Several gigabytes, once. Any model you prefer works — put its name in the desk’s model box.',
+    },
   ],
   capabilities: { webSearch: false, fileAccess: false, jsonOutput: true, streaming: true },
 
