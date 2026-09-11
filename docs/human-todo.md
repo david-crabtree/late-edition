@@ -74,9 +74,11 @@ Ordered roughly by what unblocks the most.
       cloud certificate is roughly £45 a year. Confirm they accept a source-available
       licence before paying — their programme is also written for open source.
 
-- [ ] **macOS.** There is no free notarisation route at all. The plan's ad-hoc signing stops
-      Apple Silicon reporting the app as damaged, but first launch still needs right-click,
-      Open, Open. Worth deciding whether macOS is a v1 target or waits.
+- [ ] **Open the first macOS build on your Mac.** This is the one thing CI cannot do for us.
+      The release workflow packages a .dmg on a Mac runner and ad-hoc signs it, which stops
+      Apple Silicon calling it damaged — but producing one and opening one are different
+      claims, and no copy may say macOS works until you have double-clicked it. First launch
+      is right-click, Open, Open. There is no free notarisation route, so that stays true.
 
 ---
 

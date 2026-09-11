@@ -13,6 +13,17 @@ contextBridge.exposeInMainWorld('lateEdition', {
   acceptNotice: () => ipcRenderer.invoke('le:acceptNotice'),
   /** Which agent providers are ready, and how they bill (plan usage vs metered API). */
   detect: () => ipcRenderer.invoke('le:detect'),
+  // New versions. The app asks GitHub what the latest tag is and nothing else — no account,
+  // no identifier, no payload.
+  updateState: () => ipcRenderer.invoke('le:updateState'),
+  installUpdate: () => ipcRenderer.invoke('le:installUpdate'),
+  openReleases: () => ipcRenderer.invoke('le:openReleases'),
+  setUpdates: (on) => ipcRenderer.invoke('le:setUpdates', on),
+  onUpdate: (fn) => {
+    const h = (_e, state) => fn(state);
+    ipcRenderer.on('le:update', h);
+    return () => ipcRenderer.removeListener('le:update', h);
+  },
   // Setup help. Both take a provider id and a step number, never an address or a command —
   // the app looks those up from its own provider definitions.
   openSetupPage: (providerId, stepIndex) =>

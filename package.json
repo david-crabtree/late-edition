@@ -37,6 +37,7 @@
   "dependencies": {
     "cheerio": "^1.0.0",
     "diff": "^5.2.0",
+    "electron-updater": "^6.8.9",
     "rss-parser": "^3.13.0",
     "yaml": "^2.5.1"
   },

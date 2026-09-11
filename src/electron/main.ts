@@ -36,6 +36,14 @@ import {
   unwatch,
   watchEdition,
 } from '../main/watch/field.js';
+import {
+  installNow,
+  openReleases,
+  setUpdatesEnabled,
+  startUpdateChecks,
+  updateState,
+  updatesEnabled,
+} from './updates.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 /**
@@ -129,6 +137,18 @@ function createWindow(): void {
     return;
   }
   win.loadFile(RENDERER);
+
+  // The only server this app contacts on its own behalf, and only to ask what the latest
+  // tag is. Never in a diagnostic run, which has no business reaching the network.
+  if (!process.env.LE_DEBUG_RUN) {
+    startUpdateChecks(win, {
+      configPath: appConfigPath(),
+      releasesUrl: RELEASES_URL,
+      onState: (s) => {
+        if (s.available) console.log(`Update available: ${s.version ?? '(unknown version)'}`);
+      },
+    });
+  }
   // Diagnostic: `LE_DEBUG=1 npm run electron` checks the preload bridge + a real IPC round-trip,
   // then quits — a headless way to confirm "real mode" is wired without a visible window.
   win.webContents.once('did-finish-load', async () => {
@@ -1121,6 +1141,39 @@ handle('le:openTerminal', (_e, providerId: string, stepIndex: number) => {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 });
+
+/** Where a person goes to get a new version themselves. */
+const RELEASES_URL = 'https://github.com/late-edition/late-edition/releases';
+
+/**
+ * Is there a newer version, and can this platform install it for itself?
+ *
+ * macOS is told and never updated: the builds are ad-hoc signed rather than notarised, and
+ * an unsigned auto-install fails partway and leaves a broken app behind.
+ */
+handle('le:updateState', () => ({
+  ...updateState(),
+  enabled: updatesEnabled(appConfigPath()),
+  canInstall: process.platform !== 'darwin',
+  url: RELEASES_URL,
+}));
+
+/** Install what has been downloaded and restart into it. Nothing else ever restarts the app. */
+handle('le:installUpdate', () => {
+  installNow();
+  return { ok: true as const };
+});
+
+/** Open the release page, for a platform that cannot install for itself. */
+handle('le:openReleases', () => {
+  openReleases(RELEASES_URL);
+  return { ok: true as const, url: RELEASES_URL };
+});
+
+/** Turn the check off entirely, including the timer. */
+handle('le:setUpdates', (_e, on: boolean) => ({
+  enabled: setUpdatesEnabled(appConfigPath(), on !== false),
+}));
 
 /** The current per-role staff assignment (for the Setup panel). */
 handle('le:staff', async () => {

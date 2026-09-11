@@ -272,6 +272,13 @@
   .runopts select:hover, .papers select:hover{ border-color:#5a4a2c; }
   .runopts select:focus-visible, .papers select:focus-visible{ outline:2px solid var(--amber); outline-offset:1px; }
   .runopts select option, .papers select option{ background:#12100b; color:var(--bone); }
+  /* A new edition of the app itself. Same strip as the overnight file, one line high. */
+  .newver{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin:9px 0 0; padding:8px 11px;
+           border:1px solid #3a2e1b; border-left:3px solid var(--amber); border-radius:5px; background:#12100b; }
+  .newver[hidden]{ display:none; }
+  .newver .nv-who{ font-family:var(--pixel); font-size:.5rem; color:var(--amber); letter-spacing:.04em; }
+  .newver .nv-q{ font-size:.8rem; color:var(--bone); }
+  .newver .nv-acts{ margin-left:auto; display:flex; gap:5px; flex-wrap:wrap; }
   /* Getting an agent working. Same furniture as the other two modals. */
   .wiring{ position:fixed; inset:0; z-index:230; display:flex; align-items:center; justify-content:center; background:rgba(6,8,11,.82); backdrop-filter:blur(3px); }
   .wiring[hidden]{ display:none; }
@@ -1515,6 +1522,42 @@
     // An engine that doesn't send `kind` still has to produce a usable list.
     return out||shapeOpts.outlets.map(o=>OPT(o,cur)).join(''); }
   const OPT=(o,cur)=>'<option value="'+o.id+'"'+(o.id===cur?' selected':'')+'>'+escH(o.label)+'</option>';
+  // ---- A new edition of the paper itself -----------------------------------------------
+  // The only thing this app contacts on its own behalf is GitHub, asking what the latest
+  // tag is. It never restarts itself and it never installs behind anyone's back. On macOS
+  // it does not install at all: the builds are ad-hoc signed rather than notarised, and an
+  // unsigned auto-install fails partway and leaves a broken app behind, so that platform
+  // gets told and sent to the release page.
+  let updEl=null;
+  function buildUpdate(){
+    if(updEl) return updEl;
+    const el=document.createElement('div'); el.className='newver'; el.hidden=true;
+    el.innerHTML=`<span class="nv-who">PRESSROOM</span><span class="nv-q" id="nvQ"></span>
+      <span class="nv-acts"><button class="chip primary" id="nvGo"></button>
+      <button class="chip" id="nvNot">Not now</button></span>`;
+    const anchor=document.querySelector('.appbar');
+    if(anchor) anchor.after(el); else document.body.appendChild(el);
+    el.querySelector('#nvNot').addEventListener('click',()=>{ el.hidden=true; });
+    updEl=el; return el; }
+  function paintUpdate(st){
+    if(!st||!st.available) return;
+    const el=buildUpdate();
+    const v=st.version?`v${st.version}`:'A new version';
+    const canInstall=st.canInstall!==false&&st.ready;
+    el.querySelector('#nvQ').textContent = canInstall
+      ? `${v} is downloaded and ready. Restart when you are between editions.`
+      : `${v} is out. This one has to be downloaded by hand.`;
+    const go=el.querySelector('#nvGo');
+    go.textContent = canInstall ? 'Restart and update' : 'Open the releases page ↗';
+    go.onclick = async()=>{
+      if(canInstall){ go.disabled=true; go.textContent='Restarting…'; await window.lateEdition.installUpdate(); }
+      else { await window.lateEdition.openReleases(); el.hidden=true; } };
+    el.hidden=false; }
+  async function watchForUpdates(){
+    if(!window.lateEdition.updateState||!apiOk('le:updateState')) return;
+    try{ paintUpdate(await window.lateEdition.updateState()); }catch(_){ }
+    if(window.lateEdition.onUpdate) window.lateEdition.onUpdate(st=>paintUpdate({ ...st, canInstall:navigator.platform.indexOf('Mac')<0 })); }
+
   // ---- Getting an agent working --------------------------------------------------------
   // The first person to try this who was not a developer could not open a terminal, did
   // not know one was needed, and gave up. The steps were right there in the panel and
@@ -2594,7 +2637,7 @@
     buildAppChrome(); buildSetup(); buildStartupModal(); learnBilling();
     // Check the engine can do what this interface expects, then take the overnight file.
     shakeHands(['le:api','le:watches','le:checkWatches','le:watchEdition','le:fieldDesk','le:runWatch','le:formats','le:rewrite','le:editions','le:openSetupPage','le:openTerminal'])
-      .then(()=>refreshWatches(true));
+      .then(()=>{ refreshWatches(true); watchForUpdates(); });
   }
 
   selectCast(0); setScene('roam'); newBanter(); requestAnimationFrame(frame);

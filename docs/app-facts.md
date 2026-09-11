@@ -167,14 +167,21 @@ that was flatly untrue.
 
 `root` (which newsroom folder is open), `fieldDesk` (on by default), `noticeAccepted`.
 
+### Updates
+
+`updates.enabled` in `le-config.json`, on by default, turns the whole thing off including
+the check. The app asks GitHub's releases endpoint for this repository what the latest tag
+is, and nothing else: no account, no identifier, no payload, nothing that says who asked.
+
+Windows and Linux download in the background and then ask. **macOS is told and never
+updated** — the builds are ad-hoc signed rather than notarised, and an unsigned
+auto-install fails partway and leaves a broken app behind, so that platform gets a line and
+a link to the release page. Nothing ever restarts itself.
+
 ### Keys the rollout plan specifies that **do not exist yet**
 
 - `donations.enabled` — nothing in the app mentions donations at all. There is no sponsor
-  link, no Help menu item, no footer line, no tenth-edition prompt.
-- `updates.enabled` — there is no auto-update. `electron-updater` is not a dependency and
-  nothing checks for a new version.
-
-Copy must not claim either.
+  link, no Help menu item, no footer line, no tenth-edition prompt. Copy must not claim it.
 
 ---
 
@@ -182,9 +189,9 @@ Copy must not claim either.
 
 | | Configured | Actually built | Auto update | First launch |
 | --- | --- | --- | --- | --- |
-| Windows | NSIS installer + portable, x64 | **Yes**, both produced | None | Unsigned. SmartScreen warns; Smart App Control may block outright. |
-| macOS | dmg + zip, x64 + arm64 | **Not yet** — the release workflow builds it on a Mac runner | None | Ad-hoc signed by `scripts/after-sign.mjs`, not notarised. Right click, Open, Open. **Nobody has opened one.** |
-| Linux | AppImage + deb | **Not yet** — same workflow | None | Unverified. |
+| Windows | NSIS installer + portable, x64 | **Yes**, both produced | Downloads, then asks | Unsigned. SmartScreen warns; Smart App Control may block outright. |
+| macOS | dmg + zip, x64 + arm64 | **Not yet** — the release workflow builds it on a Mac runner | Told, never installed | Ad-hoc signed by `scripts/after-sign.mjs`, not notarised. Right click, Open, Open. David has a Mac and opens the first build before release. |
+| Linux | AppImage + deb | **Not yet** — same workflow | Downloads, then asks | Unverified. |
 
 macOS is a v1 target. It cannot be packaged from the Windows machine this is built on, so
 `.github/workflows/release.yml` builds all three on tag across `macos-latest`,
@@ -193,8 +200,8 @@ signature is what stops an Apple Silicon Mac calling the app *damaged* and refus
 it; it proves nothing about who built it and is not notarisation.
 
 **What CI cannot do is tell us it launches.** Producing a .dmg and opening one are different
-claims. Until somebody with a Mac opens a build, copy may offer the download and must not
-say it has been tested.
+claims — but David has a Mac, so the first build gets opened before anything is offered for
+download. Until that has happened, copy may not claim macOS works.
 
 **Building from source is also a real answer, and on macOS a better one.** The Gatekeeper
 prompt comes from the quarantine flag the browser attaches to a download, so an app built on
