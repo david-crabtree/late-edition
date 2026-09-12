@@ -84,7 +84,7 @@ export const PRIVACY_STATEMENT =
  */
 export function sourceLine(): string {
   const home = PROJECT_URL ? `: ${PROJECT_URL}` : '';
-  return `Written by ${PROJECT_NAME}, an open-source AI newsroom you run yourself${home}`;
+  return `Written by ${PROJECT_NAME}, an AI newsroom you run on your own machine${home}`;
 }
 
 /** Shown once, at first run, before anyone briefs the Chief. */

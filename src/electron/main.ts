@@ -548,7 +548,7 @@ function createWindow(): void {
               // Whatever is in the copy box is about to be pasted somewhere with none of
               // this app around it, so the notice and the credit have to be IN the box.
               boxCarriesNotice: /Not journalism/i.test(window.__leProbe.copyBoxText(r.text, r.sources)),
-              boxCarriesCredit: /open-source AI newsroom/i.test(window.__leProbe.copyBoxText(r.text, r.sources)),
+              boxCarriesCredit: /an AI newsroom you run on your own machine/i.test(window.__leProbe.copyBoxText(r.text, r.sources)),
               noBylineOnPage: !(document.getElementById('fpByline')||{}).textContent,
               noSeparateToneBox: !panel.querySelector('#rwTone'),
               frontPageOpen: !document.getElementById('frontpage').hidden,

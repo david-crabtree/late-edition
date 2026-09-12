@@ -244,7 +244,7 @@ describe('what a copied edition says for itself', () => {
       const res = await run(outlet);
       for (const out of [renderMarkdown(res.edition), renderHtml(res.edition)]) {
         expect(out).toContain('Late Edition');
-        expect(out).toContain('open-source AI newsroom');
+        expect(out).toContain('an AI newsroom you run on your own machine');
         expect(out).toContain('This is not journalism');
       }
     }

@@ -359,7 +359,7 @@ export const OUTLETS: OutletSpec[] = [
     blurb:
       'Conversational and direct, and explicit about which parts are well sourced ' +
       'and which are thin. On Reddit that candour is what keeps a post standing. ' +
-      'marketing register, no sign-off, and sources listed at the end.',
+      'No marketing register, no sign-off, and sources listed at the end.',
     shape: '200 to 400 words, sub-headed if it helps',
     citations: 'plain',
     position:
