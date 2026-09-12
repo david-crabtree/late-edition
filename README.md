@@ -10,6 +10,8 @@
 
 ![The newsroom at work](docs/media/newsroom.png)
 
+**[Read the wiki](https://github.com/david-crabtree/late-edition/wiki)** for setup, the eleven papers, the art, and everything else.
+
 You brief the Chief with a topic. A researcher digs, reporters file competing angles, an
 editor picks the line, the copy desk cuts anything that doesn't stand up, and the presses
 run. You get a paper. It runs on the Claude Code or Codex subscription already sitting on
@@ -78,6 +80,28 @@ hungriest desk — and a strong one on the editor, who makes the call.
 3. Type a topic into **Brief the Chief** and press send.
 4. Watch the floor work. Answer the Chief if he asks anything.
 5. Read the paper.
+
+## The floor is the progress bar
+
+![An edition being filed](docs/media/the-floor-working.gif)
+
+Most tools that call an agent show you a spinner. This one shows you an office, and the
+office is telling you something. When the researcher is digging, Ruth is at her desk typing.
+When the editor is choosing between two angles, the camera is on the Chief. The wire ticker
+along the bottom carries what the newsroom is thinking, and clicking any staffer opens their
+desk log, which is that stage's real output rather than a summary of it.
+
+The look is late-80s point-and-click adventure in a 1930s-40s newsroom: amber lamplight,
+blue-black shadow, and one hot red accent held back for **Stop the Press**. All original art,
+32 indexed colours, nearest-neighbour only, and every pixel drawn in code — there are no
+image assets in the app at all. The full specification, down to frame counts and pivot
+points, is in [`docs/art-brief.md`](docs/art-brief.md).
+
+Nine faces work the floor: the Chief, Ruth Ledger on research, Sam Vance reporting, Dot
+Banner editing, Hal Brevier on rewrite, Mac Stet on the copy desk, Gus Dash running copy,
+Ida Stringer in the field and Iris Plate on pictures.
+
+More in the wiki: [The newsroom floor](https://github.com/david-crabtree/late-edition/wiki/The-newsroom-floor).
 
 ## Write it as
 
