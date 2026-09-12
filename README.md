@@ -1,4 +1,4 @@
-# Late Edition
+![Late Edition, a newsroom on your desktop staffed by the agents you already pay for](docs/media/social-preview.png)
 
 **A newsroom on your desktop, staffed by the AI agents you already pay for.**
 
@@ -8,15 +8,17 @@
 [![Discord](https://img.shields.io/discord/0?label=discord&logo=discord)](https://discord.gg/kmr8wqKJJj)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/david-crabtree)
 
-![The newsroom at work](docs/media/newsroom.png)
-
 **[Read the wiki](https://github.com/david-crabtree/late-edition/wiki)** for setup, the eleven papers, the art, and everything else.
 
 You brief the Chief with a topic. A researcher digs, reporters file competing angles, an
 editor picks the line, the copy desk cuts anything that doesn't stand up, and the presses
 run. You get a paper. It runs on the Claude Code or Codex subscription already sitting on
-your machine, so an edition costs you nothing you weren't already paying. Nothing leaves
-your computer except to the sources you chose and the agent you already signed into.
+your machine, so an edition costs you nothing you weren't already paying. It talks to the
+sources you chose, the agent you already signed into, and GitHub once a day to ask whether
+there is a newer version — the
+[full list is in the wiki](https://github.com/david-crabtree/late-edition/wiki/Privacy).
+
+![The newsroom at work](docs/media/newsroom.png)
 
 ## Download
 
