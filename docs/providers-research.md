@@ -7,6 +7,11 @@ listed here.
 
 Last researched: 2026-09-09.
 
+> **Since then (13 Sep 2026):** every provider now passes the prompt on **stdin**, never as
+> an argument. The `"<prompt>"` forms below record what each CLI accepts; they are not how
+> Late Edition calls it. See the "The prompt always goes on stdin" section of
+> [`providers.md`](providers.md) for the per-CLI evidence.
+
 ---
 
 ## 1. Claude Code (`claude`)

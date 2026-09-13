@@ -3,9 +3,17 @@ import type { AgentEvent, AgentJob, AgentProvider, Detection } from './types.js'
 import { composePrompt, jsonField } from './util.js';
 
 /**
- * Google Gemini CLI. Verified invocation (docs/providers-research.md):
- *   gemini -p "<prompt>" --output-format json [-m <model>]
- * The final answer text is in the JSON envelope's `response` field.
+ * Google Gemini CLI. Verified invocation (docs/providers-research.md, docs/providers.md):
+ *   <prompt on stdin> | gemini --output-format json [-m <model>]
+ * The prompt goes on STDIN, never argv: on Windows `runCli` launches through `cmd.exe /c`,
+ * which mangles quotes, expands `%VAR%` and caps the command line at ~8 KB — and the
+ * prompt embeds fetched web/RSS text, so argv would let a hostile source inject a command.
+ * Piped stdin is documented: the CLI reference lists `cat logs.txt | gemini`, the headless
+ * docs say headless mode "is triggered when the CLI is run in a non-TTY environment", and
+ * gemini.tsx reads stdin whenever `!process.stdin.isTTY`. `-p` is therefore not needed
+ * (it is documented as "Appended to stdin input if provided") and is deliberately not
+ * passed — the material must never ride in argv. The final answer text is in the JSON
+ * envelope's `response` field.
  */
 export const geminiProvider: AgentProvider = {
   id: 'gemini',
@@ -64,10 +72,13 @@ export const geminiProvider: AgentProvider = {
 
   async *run(job: AgentJob): AsyncIterable<AgentEvent> {
     yield { type: 'start', provider: 'gemini', model: job.model };
-    const args = ['-p', composePrompt(job), '--output-format', 'json'];
+    const args = ['--output-format', 'json'];
     if (job.model) args.push('-m', job.model);
     try {
-      const { stdout, stderr, code } = await runCli('gemini', args, { timeoutMs: job.timeoutMs });
+      const { stdout, stderr, code } = await runCli('gemini', args, {
+        timeoutMs: job.timeoutMs,
+        input: composePrompt(job),
+      });
       const text = jsonField(stdout, 'response') ?? stdout.trim();
       if (!text) {
         yield {

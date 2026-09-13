@@ -42,7 +42,7 @@ export const directApiProvider: AgentProvider = {
   setup: [
     {
       text: 'Have an API key from whichever provider you want to use',
-      note: 'This route bills per use against that key. Late Edition never reads, stores or transmits it — the agent process reads it from your environment.',
+      note: 'This route bills per use against that key. Late Edition reads it from your environment at call time, sends it only to the endpoint you configured, and never writes it to disk.',
     },
     {
       text: 'Set LATE_EDITION_API_KEY in your environment, then restart Late Edition',

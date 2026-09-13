@@ -35,9 +35,11 @@ export const myProvider: AgentProvider = {
   async *run(job: AgentJob): AsyncIterable<AgentEvent> {
     yield { type: 'start', provider: 'mytool', model: job.model };
     try {
-      const { stdout } = await runCli('mytool', ['--json', composePrompt(job)], {
+      // The prompt goes on stdin, never argv — see docs/providers.md.
+      const { stdout } = await runCli('mytool', ['--json'], {
         timeoutMs: job.timeoutMs,
         cwd: job.workingDir,
+        input: composePrompt(job),
       });
       const text = jsonField(stdout, 'result') ?? stdout.trim();
       yield { type: 'text', text };
@@ -53,6 +55,10 @@ export const myProvider: AgentProvider = {
 
 - **Never store the user's credentials** when a CLI owns the auth. The CLI is the source of
   truth; we only spawn it.
+- **Pass the prompt on stdin** (`runCli`'s `input`), never in argv. It embeds fetched web
+  text, and on Windows argv goes through `cmd.exe /c`, which is an injection route and an
+  ~8 KB limit. If a CLI truly cannot read stdin, write the prompt to a temp file and pass
+  the path — never the raw text.
 - **Return the model's final text.** Extract it from whatever envelope the tool emits (a
   JSON `.result` field, a `--output-last-message` file, plain stdout). The pipeline handles
   JSON parsing — a provider must not.
