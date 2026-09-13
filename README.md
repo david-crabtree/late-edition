@@ -5,7 +5,7 @@
 [![Latest release](https://img.shields.io/github/v/release/david-crabtree/late-edition?label=download)](https://github.com/david-crabtree/late-edition/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/david-crabtree/late-edition/total)](https://github.com/david-crabtree/late-edition/releases)
 [![Licence](https://img.shields.io/badge/licence-Apache--2.0%20WITH%20Commons--Clause-blue)](LICENSE)
-[![Discord](https://img.shields.io/discord/0?label=discord&logo=discord)](https://discord.gg/kmr8wqKJJj)
+[![Discord](https://img.shields.io/badge/discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/kmr8wqKJJj)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/david-crabtree)
 
 **[Read the wiki](https://github.com/david-crabtree/late-edition/wiki)** for setup, the eleven papers, the art, and everything else.
@@ -228,3 +228,10 @@ meant to take a single file. That's a design goal, not an aspiration.
 
 Built by [David Crabtree](https://github.com/david-crabtree). All the pixel art is drawn
 procedurally in canvas — there are no image assets in the newsroom at all.
+
+---
+
+<p align="center">
+Built by <a href="https://github.com/david-crabtree">David Crabtree</a>, on his own time, with nobody's money.<br>
+If the paper earns its keep, <a href="https://github.com/sponsors/david-crabtree"><b>buy the newsroom a coffee</b></a> &mdash; one-off or monthly, and nothing is gated either way.
+</p>
