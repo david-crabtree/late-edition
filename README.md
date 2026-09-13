@@ -30,7 +30,9 @@ there is a newer version — the
 | **macOS** | `.dmg`, Intel and Apple Silicon |
 | **Linux** | AppImage or `.deb` |
 
-Nothing is code-signed yet, so here is exactly what you will see:
+Windows code signing is provided through the [SignPath Foundation](https://signpath.org),
+the free code-signing programme for open source software. The first signed release is not
+out yet, so until it is, here is exactly what you will see:
 
 - **Windows** shows a blue "Windows protected your PC" panel. Click **More info**, then
   **Run anyway**. On Windows 11, Smart App Control may block it outright rather than warn.
