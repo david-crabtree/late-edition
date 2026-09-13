@@ -86,7 +86,7 @@ hungriest desk — and a strong one on the editor, who makes the call.
 
 ## The floor is the progress bar
 
-![An edition being filed](docs/media/the-floor-working.gif)
+![Fifteen seconds of an edition, at the speed the floor moves](docs/media/floor-realtime.gif)
 
 Most tools that call an agent show you a spinner. This one shows you an office, and the
 office is telling you something. When the researcher is digging, Ruth is at her desk typing.
