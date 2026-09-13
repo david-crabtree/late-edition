@@ -10,13 +10,22 @@
 
 **[Read the wiki](https://github.com/david-crabtree/late-edition/wiki)** for setup, the eleven papers, the art, and everything else.
 
-You brief the Chief with a topic. A researcher digs, reporters file competing angles, an
-editor picks the line, the copy desk cuts anything that doesn't stand up, and the presses
-run. You get a paper. It runs on the Claude Code or Codex subscription already sitting on
-your machine, so an edition costs you nothing you weren't already paying. It talks to the
-sources you chose, the agent you already signed into, and GitHub once a day to ask whether
-there is a newer version — the
-[full list is in the wiki](https://github.com/david-crabtree/late-edition/wiki/Privacy).
+**Type a topic. Get a paper.**
+
+You give the Chief a subject: a competitor, a product launch, a question you'd have spent
+the afternoon reading about. A researcher goes and finds out. Reporters file competing
+angles. An editor picks the line, the copy desk cuts anything it can't stand up, and the
+presses run. A little later you're reading a front page about it, with every claim
+footnoted to where it came from.
+
+Write it as a red-top, a broadsheet, a business daily, a wire item, a tech site, a
+newsletter, a LinkedIn post, a Reddit post, or plain bullets. Same research, eleven papers.
+
+![A finished front page](docs/media/front-page.png)
+
+It runs on the Claude subscription you already have. Nothing is uploaded anywhere, there is
+no account to make, and on a subscription it costs nothing beyond the plan you already pay for. What it
+writes is a draft with its sources listed, not journalism, and it says so on every page.
 
 ![The newsroom at work](docs/media/newsroom.png)
 
@@ -50,10 +59,29 @@ to tell a real download from a tampered one.
 Gatekeeper prompt comes from the quarantine flag your browser attaches to a download, so an
 app you built yourself just opens. See [Build from source](#build-from-source).
 
-## Bring your own agent
+## Quick start
 
-Late Edition runs no AI itself. Each desk is handed to an agent you have already installed
-and signed into, so the work counts against a plan you already have rather than a new bill.
+You need one thing: a **Claude Pro, Max or Team subscription** (ChatGPT and others below).
+
+1. **Install the app** and open it. Pick a folder for your newsroom to live in.
+2. **Open Setup.** It checks whether Claude Code is on your machine and, if not, gives you
+   the one command that installs it and opens a window already sitting at it. Press Enter,
+   sign in with your Claude account in the browser tab it opens, and come back. Five
+   minutes, once.
+3. **Put a desk on Claude.** One click per desk, or the same agent on all of them.
+4. **Type a topic into Brief the Chief** and press send. Answer him if he asks anything.
+5. **Read the paper.** It's in the app, and as a file in your newsroom folder you can send
+   to anyone.
+
+An empty desk stops a run and says so, rather than filling the paper with invented copy.
+
+## Which AI it uses
+
+Whichever you already pay for. Late Edition runs no AI itself. Each desk is handed to an
+agent installed and signed in on your machine, so the work counts against a plan you
+already have rather than a new bill. Claude is the one that is proven end to end today; a
+ChatGPT subscription works through Codex once that is confirmed, and the rest are written
+and waiting for someone to tell us they ran.
 
 | Agent | Status | Get it |
 | --- | --- | --- |
@@ -74,15 +102,6 @@ sitting at it — so you never have to know what a terminal is to get started.
 
 Desks are staffed individually, so you can put a cheap model on research — by far the
 hungriest desk — and a strong one on the editor, who makes the call.
-
-## Quick start
-
-1. Install the app and open it. Pick a folder for your newsroom.
-2. Open **Setup**, put an agent on each desk. An empty desk stops a run and says so, rather
-   than filling the paper with invented copy.
-3. Type a topic into **Brief the Chief** and press send.
-4. Watch the floor work. Answer the Chief if he asks anything.
-5. Read the paper.
 
 ## The floor is the progress bar
 
