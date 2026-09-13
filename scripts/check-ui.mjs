@@ -12,7 +12,7 @@
 // other than the two documented diagnostic surfaces.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -67,8 +67,24 @@ if (leaks.length) {
   process.exit(1);
 }
 
+// The interface must not reach the network. Every font it names has to ship next to it,
+// and nothing may point at an external host. That is the app's privacy statement, and it
+// was broken once by three <link> tags to Google Fonts.
+const missing = [...html.matchAll(/url\("(fonts\/[^"]+)"\)/g)]
+  .map((m) => m[1])
+  .filter((rel) => !existsSync(join(dirname(file), rel)));
+const external = [...html.matchAll(/(?:src=|href=|url\()["']?(https?:\/\/[^"'\s)]+)/g)].map(
+  (m) => m[1],
+);
+if (missing.length || external.length) {
+  console.error('FAIL  the interface would not load offline:');
+  for (const m of missing) console.error(`      - ${m} is referenced but not in docs/prototype/`);
+  for (const u of external) console.error(`      - loads ${u} from the network`);
+  process.exit(1);
+}
+
 const quips = [...body.matchAll(/lines:\[(.*?)\] \}/g)].map((m) => m[1].split("','").length);
 console.log(
   `OK    interface parses · ${(body.length / 1024).toFixed(0)}kB of script · ` +
-    `${quips.length} cast members · ${quips.reduce((a, b) => a + b, 0)} quips · no debug leftovers`,
+    `${quips.length} cast members · ${quips.reduce((a, b) => a + b, 0)} quips · no debug leftovers · no network loads`,
 );

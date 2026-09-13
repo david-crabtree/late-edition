@@ -1,8 +1,11 @@
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Late Edition — The Daily Bit</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Special+Elite&family=Press+Start+2P&display=swap">
 <style>
+  /* Fonts ship with the app (docs/prototype/fonts/, OFL-1.1) so launching it makes no network requests. Oswald is one variable file covering 500-700. */
+  @font-face{ font-family:"Oswald"; font-style:normal; font-weight:500 700; font-display:swap; src:url("fonts/oswald.woff2") format("woff2"); }
+  @font-face{ font-family:"Special Elite"; font-style:normal; font-weight:400; font-display:swap; src:url("fonts/special-elite.woff2") format("woff2"); }
+  @font-face{ font-family:"Press Start 2P"; font-style:normal; font-weight:400; font-display:swap; src:url("fonts/press-start-2p.woff2") format("woff2"); }
   :root{ --ink:#0d0b0a; --line:#2c2519; --amber:#e8b04b; --amber-dim:#a97b2f; --bone:#e8e2d0; --bone-dim:#a49c86; --red:#c2412d;
     --display:"Oswald","Arial Narrow",sans-serif; --type:"Special Elite","Courier New",monospace; --pixel:"Press Start 2P","Courier New",monospace; }
   *{box-sizing:border-box} html,body{margin:0}
@@ -1082,7 +1085,7 @@
   // ---- Per-character log: a friendly rendering of each agent's "CLI" — what they're doing
   // (do), what they did (act), and what they're thinking (their dialogue). Click a card to read.
   let logSel=staff[0];
-  const escH=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const escH=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const clogName=document.getElementById('clogName'), clogRole=document.getElementById('clogRole'),
         clogCur=document.getElementById('clogCur'), clogBody=document.getElementById('clogBody'), clogPortrait=document.getElementById('clogPortrait');
   function charLog(s,kind,text){ if(!s||!text) return; s.log=s.log||[]; const last=s.log[s.log.length-1];
@@ -2135,7 +2138,7 @@
   // Render a filed edition into the in-window front page: the lead story in full (byline, body,
   // numbered sources) plus the other headlines — not just the headline + standfirst teaser.
   const FP_CITE=/\[((?:[a-z0-9_]+:[0-9a-f]{6,})(?:\s*,\s*[a-z0-9_]+:[0-9a-f]{6,})*)\]/gi, FP_STRAY=/\[#[^\]\n]{0,60}\]|\[(?:ref|citation needed|source)\]/gi;
-  const fpEsc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const fpEsc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   // What this edition was written as, as far as the interface is concerned. An edition
   // filed before outlets existed has none, and is a paper.
   const fpOutlet=edition=>shapeOpts.outlets.find(o=>o.id===((edition&&edition.outlet)||'newspaper'))||{kind:'paper',citations:'numbered'};

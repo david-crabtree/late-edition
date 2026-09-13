@@ -3,10 +3,10 @@
   "version": "0.1.1",
   "private": true,
   "description": "A noir newsroom that turns your own AI agents into a daily paper.",
-  "license": "Apache-2.0 WITH Commons-Clause",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "main": "dist/electron/main.js",
   "bin": {
@@ -45,7 +45,7 @@
     "@biomejs/biome": "^1.9.4",
     "@types/diff": "^5.2.3",
     "@types/node": "^20.16.5",
-    "electron": "^31.7.7",
+    "electron": "^44.3.0",
     "electron-builder": "^26.15.3",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",
@@ -66,6 +66,7 @@
     "files": [
       "dist/**/*",
       "docs/prototype/newsroom-screen-test.html",
+      "docs/prototype/fonts/**",
       "package.json",
       "!**/*.map",
       "!**/*.test.*",
