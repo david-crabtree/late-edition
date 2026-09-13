@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and help
+    url: https://github.com/david-crabtree/late-edition/discussions
+    about: Anything that is not a bug goes here, where it stays searchable.
+  - name: Security problems
+    url: https://github.com/david-crabtree/late-edition/security/advisories/new
+    about: Report privately. Do not open a public issue.
