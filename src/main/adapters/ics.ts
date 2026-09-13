@@ -1,7 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import type { Signal } from '../core/signal.js';
 import { makeSignalId, shortHash } from '../core/signal.js';
-import { clampText, filterUnseen, optNumber, optString } from './helpers.js';
+import {
+  clampText,
+  fetchText as fetchTextChecked,
+  filterUnseen,
+  optNumber,
+  optString,
+} from './helpers.js';
 import type { FetchContext, SourceAdapter, SourceConfig } from './types.js';
 
 /**
@@ -61,12 +67,7 @@ export const icsAdapter: SourceAdapter = {
 };
 
 async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { 'user-agent': 'late-edition/0.0 (+ics)' },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`ics: ${url} responded ${res.status}.`);
-  return res.text();
+  return fetchTextChecked(url, 'ics', { timeoutMs: 15000 });
 }
 
 /** Unfold RFC-5545 folded lines (continuation lines begin with a space or tab). */

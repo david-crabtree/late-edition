@@ -83,6 +83,21 @@ describe('slack channel', () => {
   });
 });
 
+describe('rss channel without a base_url', () => {
+  it('leaves the link out rather than writing a file:// path into the feed', async () => {
+    mkdirSync(join(dir, 'editions'), { recursive: true });
+    const r = await rssChannel.send(
+      { ...ctx(false), edition: edition('2026-09-09-001', 1) },
+      { type: 'rss' },
+    );
+    expect(r.ok).toBe(true);
+    const feed = readFileSync(join(dir, 'editions', 'feed.xml'), 'utf8');
+    expect(feed).not.toContain('file://');
+    expect(feed.split('<item>')[1]).not.toContain('<link>');
+    expect(feed).toContain('<guid isPermaLink="false">2026-09-09-001</guid>');
+  });
+});
+
 describe('rss channel', () => {
   it('writes a valid feed listing editions on disk', async () => {
     const editionsDir = join(dir, 'editions');

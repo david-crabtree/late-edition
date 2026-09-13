@@ -31,7 +31,11 @@ export const webhookChannel: Channel = {
       stories: ed.stories.map((s) => ({ headline: s.headline, placement: s.placement })),
     };
     if (ctx.dryRun) {
-      return { channel: 'webhook', ok: true, detail: `[dry-run] would POST JSON to ${url}.` };
+      return {
+        channel: 'webhook',
+        ok: true,
+        detail: `[dry-run] would POST JSON to ${hostOf(url)}.`,
+      };
     }
     try {
       const res = await fetch(url, {
@@ -41,7 +45,7 @@ export const webhookChannel: Channel = {
         signal: AbortSignal.timeout(15000),
       });
       return res.ok
-        ? { channel: 'webhook', ok: true, detail: `Posted to ${url}.` }
+        ? { channel: 'webhook', ok: true, detail: `Posted to ${hostOf(url)}.` }
         : { channel: 'webhook', ok: false, detail: `Webhook responded ${res.status}.` };
     } catch (err) {
       return {
@@ -52,3 +56,15 @@ export const webhookChannel: Channel = {
     }
   },
 };
+
+/**
+ * Only the host is ever printed. A webhook URL usually carries its secret in the path, and
+ * a run's output ends up in logs, terminals and bug reports.
+ */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return '(webhook)';
+  }
+}

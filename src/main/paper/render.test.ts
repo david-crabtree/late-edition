@@ -75,6 +75,21 @@ describe('citation rendering', () => {
     expect(md).toContain('[1]');
   });
 
+  it('links a source only when its URL is one a browser should follow', () => {
+    const html = renderHtml(
+      edition({
+        body: 'A [research:aaaaaaaaaaaa] and B [research:bbbbbbbbbbbb].',
+        sources: [
+          { signalId: 'research:aaaaaaaaaaaa', title: 'Fine', url: 'https://example.com/ok' },
+          { signalId: 'research:bbbbbbbbbbbb', title: 'Hostile', url: 'javascript:alert(1)' },
+        ],
+      }),
+    );
+    expect(html).toContain('<a href="https://example.com/ok">Fine</a>');
+    expect(html).not.toContain('javascript:');
+    expect(html).toContain('<li id="src-2">Hostile</li>');
+  });
+
   it('HTML renders citations as superscript links to numbered sources', () => {
     const html = renderHtml(edition({ body: 'A fact [research:bbbbbbbbbbbb].', sources: SOURCES }));
     expect(html).toContain('<sup class="cite">');

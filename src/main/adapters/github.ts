@@ -21,7 +21,9 @@ export const githubAdapter: SourceAdapter = {
     if (!/^[^/]+\/[^/]+$/.test(repo)) {
       throw new Error(`github: \`repo\` must be "owner/name", got "${repo}".`);
     }
-    const token = optString(source, 'token') ?? process.env.GITHUB_TOKEN;
+    // Prefer the environment. A `token` key in config.yaml works, but that file is meant to
+    // be backed up and committed, and a token in it will be too.
+    const token = process.env.GITHUB_TOKEN ?? optString(source, 'token');
     const max = optNumber(source, 'max', 20);
     const kinds = Array.isArray(source.kinds) ? (source.kinds as string[]) : ['issues', 'releases'];
 

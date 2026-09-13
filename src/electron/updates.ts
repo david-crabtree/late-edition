@@ -7,9 +7,13 @@ import electronUpdater from 'electron-updater';
  * Telling you a new version exists.
  *
  * The only server this app ever talks to on its own behalf is GitHub's releases endpoint for
- * this repository, and only to ask what the latest tag is. No account, no identifier, no
- * payload, nothing that says who asked. That is the whole promise in the privacy statement
- * and it is the reason this file is small.
+ * this repository: it asks for the latest release, and on Windows and Linux it then fetches
+ * the installer from the same place, checked against the sha512 in the release manifest.
+ * No account, no identifier, no payload, nothing that says who asked. That is the whole
+ * promise in the privacy statement and it is the reason this file is small.
+ *
+ * Nothing is code-signed, so the download's integrity rests on TLS to github.com plus that
+ * checksum. It is the same guarantee a person gets downloading by hand.
  *
  * **macOS gets told, never updated.** The builds are ad-hoc signed and not notarised, and an
  * unsigned auto-install fails partway and leaves a broken app behind. Far better to say a
@@ -141,5 +145,5 @@ export function startUpdateChecks(win: BrowserWindow | null, opts: UpdateOptions
 
 /** Open the releases page, for a platform that cannot install for itself. */
 export function openReleases(url: string): void {
-  shell.openExternal(url);
+  void shell.openExternal(url).catch((err) => console.error('openExternal:', err));
 }

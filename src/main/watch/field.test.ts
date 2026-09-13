@@ -24,6 +24,9 @@ let base = '';
 let pageBody = 'The price is £10.';
 
 beforeAll(async () => {
+  // The test page lives on the loopback address, which the field desk refuses to adopt
+  // from a story's sources unless told otherwise. Told otherwise.
+  process.env.LATE_EDITION_ALLOW_LOCAL_URLS = '1';
   server = createServer((_req, res) => {
     res.writeHead(200, { 'content-type': 'text/html' });
     res.end(`<html><body><main>${pageBody}</main></body></html>`);
@@ -32,7 +35,10 @@ beforeAll(async () => {
   const addr = server.address();
   base = typeof addr === 'object' && addr ? `http://127.0.0.1:${addr.port}` : '';
 });
-afterAll(() => new Promise<void>((r) => server.close(() => r())));
+afterAll(() => {
+  delete process.env.LATE_EDITION_ALLOW_LOCAL_URLS;
+  return new Promise<void>((r) => server.close(() => r()));
+});
 
 describe('the field desk', () => {
   let root: string;

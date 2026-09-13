@@ -48,6 +48,15 @@ function sourceLineHtml(): string {
   return line.replace(esc(PROJECT_URL), `<a href="${esc(PROJECT_URL)}">${esc(PROJECT_URL)}</a>`);
 }
 
+/**
+ * A source URL becomes a link only if it is one a browser should follow. Sources come from
+ * feeds, pages and agents, none of which this program controls, and `edition.html` opens
+ * in the reader's real browser, so a `javascript:` or `file:` value must print as text.
+ */
+function linkable(url: string | undefined): url is string {
+  return typeof url === 'string' && /^https?:\/\/[^\s<>"']+$/i.test(url.trim());
+}
+
 /** Map an inline citation token to the footnote numbers of the sources it names. */
 function citeNumbers(ids: string, numberOf: Map<string, number>): number[] {
   return ids
@@ -154,7 +163,7 @@ function renderPostHtml(ed: Edition): string {
         ? `<div class="sources"><strong>Sources</strong><ol>${list
             .map(
               (r) =>
-                `<li>${r.url ? `<a href="${esc(r.url)}">${esc(r.title)}</a>` : esc(r.title)}</li>`,
+                `<li>${linkable(r.url) ? `<a href="${esc(r.url)}">${esc(r.title)}</a>` : esc(r.title)}</li>`,
             )
             .join('')}</ol></div>`
         : '';
@@ -360,7 +369,10 @@ export function renderHtml(ed: Edition): string {
   if (ed.briefs.length) {
     sections.push(
       `<section class="briefs"><h2>Briefs</h2><ul>${ed.briefs
-        .map((b) => `<li>${esc(b.text)}${b.url ? ` <a href="${esc(b.url)}">↗</a>` : ''}</li>`)
+        .map(
+          (b) =>
+            `<li>${esc(b.text)}${linkable(b.url) ? ` <a href="${esc(b.url)}">↗</a>` : ''}</li>`,
+        )
         .join('')}</ul></section>`,
     );
   }
@@ -416,7 +428,7 @@ function storyHtml(s: Story): string {
     ? `<div class="sources"><strong>Sources</strong><ol>${list
         .map(
           (r, i) =>
-            `<li id="src-${i + 1}">${r.url ? `<a href="${esc(r.url)}">${esc(r.title)}</a>` : esc(r.title)}</li>`,
+            `<li id="src-${i + 1}">${linkable(r.url) ? `<a href="${esc(r.url)}">${esc(r.title)}</a>` : esc(r.title)}</li>`,
         )
         .join('')}</ol></div>`
     : '';

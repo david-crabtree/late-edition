@@ -20,8 +20,9 @@ contextBridge.exposeInMainWorld('lateEdition', {
   openLink: (which) => ipcRenderer.invoke('le:openLink', which),
   donations: () => ipcRenderer.invoke('le:donations'),
   setDonations: (on) => ipcRenderer.invoke('le:setDonations', on),
-  // New versions. The app asks GitHub what the latest tag is and nothing else — no account,
-  // no identifier, no payload.
+  // New versions. The app asks GitHub for the latest release, and on Windows and Linux
+  // fetches the installer ready for the user to say yes — no account, no identifier, no
+  // payload, and nothing installs until they do.
   updateState: () => ipcRenderer.invoke('le:updateState'),
   installUpdate: () => ipcRenderer.invoke('le:installUpdate'),
   openReleases: () => ipcRenderer.invoke('le:openReleases'),

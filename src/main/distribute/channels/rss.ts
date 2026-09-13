@@ -80,16 +80,21 @@ function buildFeed(
 ): string {
   const items = editions
     .map((ed) => {
-      const link = baseUrl
-        ? `${baseUrl}/${ed.id}/edition.html`
-        : `file://${join(editionsDir, ed.id, 'edition.html').replace(/\\/g, '/')}`;
+      // Without a base_url there is no address anyone else can open, and a file:// path
+      // would carry the user's folder layout (usually their name) into a feed meant to be
+      // sent on. The guid still identifies the edition; the link is simply left out.
+      const link = baseUrl ? `${baseUrl}/${ed.id}/edition.html` : undefined;
       const desc = [ed.weatherLine, ...ed.stories.map((s) => `• ${s.headline}`)]
         .filter(Boolean)
         .join('\n');
       return `    <item>
       <title>${xml(`${paperName} — No. ${ed.number}`)}</title>
-      <link>${xml(link)}</link>
-      <guid isPermaLink="false">${xml(ed.id)}</guid>
+${
+  link
+    ? `      <link>${xml(link)}</link>
+`
+    : ''
+}      <guid isPermaLink="false">${xml(ed.id)}</guid>
       <pubDate>${new Date(ed.generatedAt).toUTCString()}</pubDate>
       <description>${xml(desc)}</description>
     </item>`;

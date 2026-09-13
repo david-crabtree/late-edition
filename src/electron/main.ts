@@ -139,7 +139,7 @@ let win: BrowserWindow | null = null;
 function createWindow(): void {
   win = new BrowserWindow({
     // Sized to the content, not the frame, so the newsroom stage lands at the proportions
-    // David tuned the art to. The window chrome is added on top by the OS.
+    // the art was drawn to. The window chrome is added on top by the OS.
     useContentSize: true,
     width: 995,
     height: 914,
@@ -150,10 +150,18 @@ function createWindow(): void {
     webPreferences: {
       preload: PRELOAD, // CommonJS preload — Electron loads it reliably
       contextIsolation: true,
-      sandbox: false,
+      // The preload needs nothing beyond `contextBridge` and `ipcRenderer`, both of which a
+      // sandboxed renderer still gets, so the page runs with the OS sandbox on.
+      sandbox: true,
       nodeIntegration: false,
     },
   });
+  // The window shows one local file and never navigates. A page that is asked to go
+  // somewhere else, or to open a second window, is refused here regardless of why; the
+  // three outward links the app offers all go through `shell.openExternal` from a fixed
+  // table in the main process instead.
+  win.webContents.on('will-navigate', (e) => e.preventDefault());
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   if (!existsSync(RENDERER)) {
     // Nothing useful can happen without the page, and a blank window tells the user nothing.
     dialog.showErrorBox(
@@ -1141,7 +1149,7 @@ handle('le:openSetupPage', (_e, providerId: string, stepIndex: number) => {
   const step = getProvider(providerId)?.setup?.[stepIndex];
   if (!step?.url) return { ok: false, error: 'No page for that step.' };
   if (!/^https:\/\//.test(step.url)) return { ok: false, error: 'Refusing a non-https address.' };
-  shell.openExternal(step.url);
+  void shell.openExternal(step.url).catch((err) => console.error('openExternal:', err));
   return { ok: true, url: step.url };
 });
 
@@ -1244,7 +1252,7 @@ handle('le:openLegal', (_e, name: string) => {
   if (!LEGAL_FILES.includes(name as LegalFile)) return { ok: false, error: 'Not a legal file.' };
   const path = legalPath(name as LegalFile);
   if (!path) return { ok: false, error: `${name} is not bundled with this build.` };
-  shell.openPath(path);
+  void shell.openPath(path).catch((err) => console.error('openPath:', err));
   return { ok: true, path };
 });
 
@@ -1255,7 +1263,7 @@ handle('le:openLegal', (_e, name: string) => {
 handle('le:openLink', (_e, which: string) => {
   const url = which === 'community' ? COMMUNITY_URL : which === 'sponsor' ? SPONSOR_URL : null;
   if (!url) return { ok: false, error: 'Unknown link.' };
-  shell.openExternal(url);
+  void shell.openExternal(url).catch((err) => console.error('openExternal:', err));
   return { ok: true, url };
 });
 
@@ -1329,9 +1337,12 @@ interface RolePick {
 /** Write staff.yaml from the Setup panel — this is how a user wires roles to their agents. */
 handle('le:setStaff', async (_e, a: Record<string, RolePick>) => {
   const root = newsroomRoot();
+  // JSON strings are valid YAML scalars, so a model called `a: b` or `#x` cannot break the
+  // file it is written into.
+  const q = (v: string) => JSON.stringify(String(v));
   const line = (r?: RolePick) => {
-    const p = r?.provider || 'fake';
-    return r?.model ? `{ provider: ${p}, model: ${r.model} }` : `{ provider: ${p} }`;
+    const p = q(r?.provider || 'fake');
+    return r?.model ? `{ provider: ${p}, model: ${q(r.model)} }` : `{ provider: ${p} }`;
   };
   const yaml = [
     '# Written by the Late Edition setup panel. Auth lives in each agent CLI (we never store it).',
@@ -1776,7 +1787,12 @@ handle('le:edition', (_e, editionId: string) => {
  * token spend; a misclick should be recoverable from the bin rather than gone.
  */
 handle('le:deleteEdition', async (_e, editionId: string) => {
-  const dir = paths(newsroomRoot()).editionDir(editionId);
+  let dir: string;
+  try {
+    dir = paths(newsroomRoot()).editionDir(editionId);
+  } catch (err) {
+    return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
+  }
   if (!existsSync(dir)) return { ok: false as const, error: 'That edition is already gone.' };
   try {
     await shell.trashItem(dir);
@@ -1788,9 +1804,15 @@ handle('le:deleteEdition', async (_e, editionId: string) => {
 
 /** Open the finished paper in the user's real browser (a full-size, shareable view). */
 handle('le:openPaper', (_e, editionId: string) => {
-  const file = join(paths(newsroomRoot()).editionDir(editionId), 'edition.html');
-  if (existsSync(file)) shell.openPath(file);
-  return existsSync(file);
+  let file: string;
+  try {
+    file = join(paths(newsroomRoot()).editionDir(editionId), 'edition.html');
+  } catch {
+    return false;
+  }
+  if (!existsSync(file)) return false;
+  void shell.openPath(file).catch((err) => console.error('openPath:', err));
+  return true;
 });
 
 /** Read a finished edition's rendered HTML (for the in-window front-page view). */

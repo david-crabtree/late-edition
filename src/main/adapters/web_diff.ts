@@ -2,7 +2,7 @@ import { load } from 'cheerio';
 import { diffLines } from 'diff';
 import type { Signal } from '../core/signal.js';
 import { makeSignalId, shortHash } from '../core/signal.js';
-import { clampText, optString, requireString } from './helpers.js';
+import { clampText, fetchText, optString, requireString } from './helpers.js';
 import type { FetchContext, SourceAdapter, SourceConfig } from './types.js';
 
 /**
@@ -21,12 +21,7 @@ export const webDiffAdapter: SourceAdapter = {
     const url = requireString(source, 'url');
     const selector = optString(source, 'selector');
 
-    const res = await fetch(url, {
-      headers: { 'user-agent': 'late-edition/0.0 (+web_diff)' },
-      signal: AbortSignal.timeout(20000),
-    });
-    if (!res.ok) throw new Error(`web_diff: ${url} responded ${res.status}.`);
-    const html = await res.text();
+    const html = await fetchText(url, 'web_diff');
     const text = extractText(html, selector);
     const hash = shortHash(text);
 

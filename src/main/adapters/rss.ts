@@ -1,7 +1,7 @@
 import RssParser from 'rss-parser';
 import type { Signal } from '../core/signal.js';
 import { makeSignalId, shortHash } from '../core/signal.js';
-import { clampText, filterUnseen, optNumber, requireString } from './helpers.js';
+import { clampText, fetchText, filterUnseen, optNumber, requireString } from './helpers.js';
 import type { FetchContext, SourceAdapter, SourceConfig } from './types.js';
 
 /**
@@ -11,7 +11,7 @@ import type { FetchContext, SourceAdapter, SourceConfig } from './types.js';
  * Config:
  *   { id, type: 'rss', url: 'https://…/feed.xml', max?: number }
  */
-const parser = new RssParser({ timeout: 15000 });
+const parser = new RssParser();
 
 export const rssAdapter: SourceAdapter = {
   type: 'rss',
@@ -20,7 +20,9 @@ export const rssAdapter: SourceAdapter = {
     const url = requireString(source, 'url');
     const max = optNumber(source, 'max', 50);
 
-    const feed = await parser.parseURL(url);
+    // Fetched through the shared reader rather than the parser's own, so the feed gets the
+    // same scheme check and size cap as every other URL this program reads.
+    const feed = await parser.parseString(await fetchText(url, 'rss', { timeoutMs: 15000 }));
     const items = (feed.items ?? []).slice(0, max);
 
     const candidates: Signal[] = items.map((item) => {

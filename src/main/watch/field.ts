@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import '../adapters/index.js'; // register built-in source adapters (side-effect import)
+import { assertFetchableUrl } from '../adapters/helpers.js';
 import { runSource } from '../adapters/run.js';
 import type { SourceConfig } from '../adapters/types.js';
 import { loadNewsroom } from '../config/newsroom.js';
@@ -100,9 +101,17 @@ export async function watchEdition(
   const story = opts.slug ? edition.stories.find((s) => s.slug === opts.slug) : edition.stories[0];
   if (!story) throw new Error(`No story "${opts.slug ?? '(lead)'}" in edition ${editionId}.`);
 
+  // These URLs came out of other people's pages, feeds and agent output, not out of the
+  // user's config, so a private or local address is refused rather than watched.
   const urls: string[] = [];
   for (const ref of story.sources) {
-    if (ref.url && !urls.includes(ref.url)) urls.push(ref.url);
+    if (!ref.url || urls.includes(ref.url)) continue;
+    try {
+      assertFetchableUrl(ref.url, 'field desk');
+    } catch {
+      continue;
+    }
+    urls.push(ref.url);
   }
   const skipped = story.sources.length - urls.length;
   if (!urls.length) {

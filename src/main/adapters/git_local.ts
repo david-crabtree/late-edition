@@ -31,7 +31,9 @@ export const gitLocalAdapter: SourceAdapter = {
 
     const format = `${['%H', '%an', '%aI', '%s', '%b'].join(FS)}${RS}`;
     const args = ['log', `--max-count=${max}`, `--pretty=format:${format}`];
-    if (branch) args.push(branch);
+    // `--end-of-options` stops a `branch` value that begins with a dash from being read as
+    // a git option; git 2.24+ understands it and every supported platform ships newer.
+    if (branch) args.push('--end-of-options', branch);
 
     const { stdout } = await run('git', ['-C', cwd, ...args], {
       maxBuffer: 10 * 1024 * 1024,
