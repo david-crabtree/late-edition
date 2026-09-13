@@ -56,11 +56,12 @@ export const TRADEMARK_NOTICE =
  * rather than left implied.
  */
 export const LICENCE_SUMMARY =
-  'Late Edition is free to use, at home or at work, for any purpose. You can read the ' +
-  'code, change it and share your changes. The one thing you can’t do is sell it: no ' +
-  'charging for the software, no hosting it as a paid service, no paid products built on ' +
-  'top of it. The name and the characters belong to David Crabtree, so forks need their ' +
-  'own name. Full terms in the LICENSE file.';
+  'Late Edition is free software under the GNU Affero General Public License, version 3. ' +
+  'Use it at home or at work, for any purpose. Read the code, change it and share your ' +
+  'changes. If you pass it on, or run it for other people as a service, you must give them ' +
+  'the complete source under the same licence, so there is no version of it anyone can ' +
+  'sell that the buyer cannot then download for free. The name and the characters belong ' +
+  'to David Crabtree, so forks need their own name. Full terms in the LICENSE file.';
 
 /**
  * What leaves the machine, stated exactly.

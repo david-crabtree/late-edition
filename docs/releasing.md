@@ -85,7 +85,7 @@ The repository has no remote yet, which is the cheap moment to do all of this.
       ```
 
 - [x] HANDOVER.md is gone from the tree. It was a working document addressed to whoever
-      picked this up, and the release conditions rule out notes written to a coding session.
+      picked this up, and working notes do not belong in a public tree.
       Anything in it worth keeping is in [`architecture.md`](architecture.md) and
       [`decisions.md`](decisions.md).
 - [ ] **Push only `main`.** `git push -u origin main`, not `--all` and not `--mirror`, or the
@@ -118,20 +118,18 @@ hundreds of clean installs, and there is no way to submit a build to speed it up
 Since 2023 Microsoft has required code-signing keys to live on certified hardware, so the
 old cheap "download a .pfx" certificates no longer exist.
 
-**The licence decides this, and the licence is Apache 2.0 with the Commons Clause.** That
-is source-available, not open source: the Commons Clause forbids selling the software, and
-the OSI definition does not allow a restriction on who may use it or for what. Every free
-signing programme worth having is for open source specifically — SignPath Foundation's
-terms require "an OSI-approved Open Source license without commercial dual-licensing for
-all components", which this is not. So the free route is closed by choice, deliberately,
-and **shipping unsigned with published checksums is the decision**. See
-[`decisions.md`](decisions.md).
+**The licence decides this, and since 13 September 2026 the licence is AGPL-3.0**, which
+is OSI-approved. SignPath Foundation's terms require "an OSI-approved Open Source license
+without commercial dual-licensing for all components", and that is now met. **The decision
+is to apply to SignPath Foundation and ship signed Windows builds once approved**, with
+unsigned builds and published checksums in the meantime. See [`decisions.md`](decisions.md)
+DR.5.
 
 | Route | Cost | Notes |
 | --- | --- | --- |
-| **Ship unsigned** | Free | SmartScreen warning; Smart App Control may block. Publish checksums and say plainly what people will see. **This is the decision.** |
-| SignPath Foundation | Free | Free OV-level signing, but **only for OSI-approved open source**. The Commons Clause rules it out. Reachable only by dropping that clause. |
-| Certum open source | €25 / €49 / €69 | The fallback if the SmartScreen friction proves too costly. €49 cloud version, no hardware. Confirm they accept a source-available licence before paying — their programme is also written for open source. |
+| **SignPath Foundation** | Free | Free OV-level signing for OSI-approved open source. **This is the decision**, now that the licence qualifies. Applied for by the maintainer; every release is approved by hand. |
+| Ship unsigned | Free | SmartScreen warning; Smart App Control may block. Publish checksums and say plainly what people will see. **What ships until SignPath approves.** |
+| Certum open source | €25 / €49 / €69 | The fallback if SignPath declines. €49 cloud version, no hardware. |
 | Microsoft Store (MSIX) | Free | Free, and no warning at all. Worth considering as a second distribution channel. |
 | Azure Artifact Signing | ~$10/mo | Formerly Trusted Signing. **Individual developers are limited to the USA and Canada** — so as a UK individual this route is closed to you. Organisations in the UK/EU are eligible. |
 | OV certificate | $150–300/yr | Microsoft's own advice to an individual outside the US/Canada. |
@@ -145,12 +143,22 @@ built from your own source, builds must be verifiable from source, every release
 manual approval, and every contributor needs multi-factor authentication. The certificate is
 issued in SignPath Foundation's name, not yours, with the key on their HSM.
 
-**Late Edition does not qualify.** SignPath Foundation asks for "an OSI-approved Open
-Source license without commercial dual-licensing for all components", and Apache 2.0 with
-the Commons Clause is not OSI-approved — forbidding sale is a restriction on use, which the
-OSI definition does not permit. This was checked against their own terms, not assumed. The
-licence was chosen knowing that; the decision is in [`decisions.md`](decisions.md) DR.1 and
-the consequence is that Windows ships unsigned with checksums.
+**Late Edition qualifies as of 13 September 2026.** SignPath Foundation asks for "an
+OSI-approved Open Source license without commercial dual-licensing for all components";
+AGPL-3.0 is OSI-approved and there is no dual licence. The other conditions are met or in
+the maintainer's hands: an existing release, active maintenance, a public build workflow,
+a code signing policy on the README, and two-factor authentication on the GitHub account.
+
+**How the application goes.** The form is at <https://signpath.org/apply.html> and asks for
+the repository, the licence, where releases are downloaded from, and a description of what
+the software is and who uses it. It must be submitted by the maintainer, from their own
+accounts. On approval SignPath issues an organisation and a project; the release workflow
+then uploads the unsigned `.exe` files with SignPath's GitHub Action
+(`signpath/github-action-submit-signing-request`), a person approves the request in
+SignPath's interface, and the signed files come back to be attached to the release. The
+certificate is SignPath Foundation's, so the signature reads "Free code signing provided
+by SignPath.io, certificate by SignPath Foundation", and that line must also appear on the
+download page.
 
 **One date to diary:** from 27 February 2026 a single code-signing certificate may be valid
 for a maximum of 459 days. Certum reissues free during a longer service period, but a €69
@@ -183,14 +191,14 @@ normal for the format.
 
 1. **Apply to SignPath Foundation now.** It's free, it's the route Microsoft's own docs
    point at, and the review is the only thing standing between you and a signed Windows
-   build. Check the contributor-MFA condition first.
+   build. Turn on two-factor authentication on GitHub first; they check.
 2. **Windows, unsigned**, both the installer and the portable build, while that's pending.
    Publish checksums.
 3. **Linux AppImage.**
 4. **Hold macOS.** $99/yr on a guess is worse than a note in the README saying Mac builds
    aren't available yet.
-5. If SignPath doesn't work out, **Certum's €49 cloud certificate** is the cheapest real
-   option for a UK individual. Azure Artifact Signing is not open to you personally.
+5. If SignPath declines, **Certum's €49 cloud certificate** is the cheapest real option
+   for a UK individual. Azure Artifact Signing is not open to you personally.
 
 Put one honest line in the README about the Windows warning and how to get past it. Plenty
 of well-regarded free tools do exactly this, and being upfront about it reads far better

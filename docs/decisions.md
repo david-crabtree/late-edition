@@ -6,8 +6,30 @@ markers where relevant.
 
 ## Release
 
+### DR.5 — Licence: AGPL-3.0, superseding DR.1
+Changed on 13 September 2026, while David Crabtree was still the only contributor, so no
+consent from anyone else was needed and none will be needed again for this decision.
+
+The goal has not moved: nobody sells it. What moved is the judgement about how that goal
+is best served. The Commons Clause forbids sale in words, and the price of those words was
+real and immediate: no OSI-approved licence means no free code signing, and an unsigned
+Windows build stops most people at the download with a warning that reads as "malware".
+That friction was working against the project's only other goal, which is to be used.
+
+AGPL-3.0 deters sale by making it worthless rather than by forbidding it. Anyone who
+distributes a copy or runs it as a service must give every recipient the full source under
+the same terms, so there is no product to sell that the buyer cannot download for free. The
+name and the characters remain trademarks, unchanged in `NOTICE`, so what is sold cannot
+even be called Late Edition. Companies avoid AGPL code for exactly this reason.
+
+What it buys back: an OSI-approved licence, which reopens SignPath Foundation's free
+signing, the "open source" word in the README and the FAQ, and the lists and package
+indexes that check licence type. What it costs: on paper somebody may charge for a rebranded
+copy if they publish the source. That is the same exposure as every GPL project, and it is
+not a business.
+
 ### DR.4 — The app asks for money in one place, and quietly
-The rollout plan specifies three donation touchpoints. One is built: a link in the colophon
+The launch plan had three donation touchpoints. One is built: a link in the colophon
 with a switch beside it, and `donations.enabled: false` removes every trace.
 
 The other two are deliberately dropped.
@@ -24,11 +46,10 @@ if the line lands, and a fundraising ask wearing a costume reads worse than no l
 The risk is to the app's voice, which is the thing people will actually come for.
 
 ### DR.3 — Where the planning documents and the code disagree
-The copy handoff asks for these to be written down rather than silently reconciled. Read
-off the code on 11 Sep 2026; the full record is in [`app-facts.md`](app-facts.md).
+Written down rather than silently reconciled. Read off the code on 11 Sep 2026.
 
 - **Only Windows has ever been built.** macOS and Linux targets are configured in
-  `electron-builder` and neither has been produced or opened. The rollout plan's README
+  `electron-builder` and neither has been produced or opened. The launch plan's README
   section wants three download links. There is one.
 - **There is no auto-update.** `electron-updater` is not a dependency and nothing checks for
   a new version, so the plan's `updates.enabled` key has nothing to switch off.
@@ -48,9 +69,12 @@ off the code on 11 Sep 2026; the full record is in [`app-facts.md`](app-facts.md
   pages a story came from for nothing, and outlets, which change what the desk leads on as
   well as how it reads.
 - **`late-edition-launch-kit.md` is not in the repo**, so its "structure and tone" cannot be
-  followed. Launch copy follows the rollout plan's section 7.2 instead.
+  followed. Launch copy follows the launch plan instead.
 
 ### DR.1 — Licence: Apache 2.0 with the Commons Clause, and therefore no free signing
+**Superseded by DR.5 on 13 September 2026.** Kept as the record of why the first choice
+was made and what it cost.
+
 Apache 2.0 with the Commons Clause License Condition v1.0. Anyone may use it, at home or
 at work, read it, change it and share their changes. Nobody may sell it, host it for a fee,
 or build a paid product on it.

@@ -1,12 +1,13 @@
 # Contributing to Late Edition
 
-Thanks for helping build the newsroom. This project is licensed under the Apache
-License 2.0 with the Commons Clause, and welcomes contributions of code, art, personas,
+Thanks for helping build the newsroom. This project is licensed under the GNU Affero
+General Public License, version 3, and welcomes contributions of code, art, personas,
 source adapters and provider adapters.
 
 > By submitting a contribution you confirm that you wrote it or have the right to submit
-> it, and you agree that it is licensed under the same terms as the project (Apache 2.0
-> with the Commons Clause), with David Crabtree as licensor.
+> it, and you agree that it is licensed under the same terms as the project (AGPL-3.0),
+> with David Crabtree as licensor. Outside contributions are reviewed before they are
+> merged, and two-factor authentication is required on any account with write access.
 
 ## Ground rules (the non-negotiables)
 
@@ -19,9 +20,9 @@ These come from the build plan and every change is judged against them:
 4. **Provider neutral.** No provider is privileged in the architecture.
 5. **The paper must be better than the six tabs it replaces.**
 6. **No paid dependencies**, no required SaaS in the build chain.
-7. **Free to use, and nobody sells it.** Apache 2.0 with the Commons Clause: use it
-   anywhere including at work, change it, share it. Selling it, hosting it for a fee or
-   building a paid product on it is out.
+7. **Free to use, and nobody gets to sell it quietly.** AGPL-3.0: use it anywhere
+   including at work, change it, share it. Distribute it or host it and you owe your users
+   the source. The name and the characters are trademarks and stay with the project.
 
 ## Getting set up
 

@@ -4,7 +4,7 @@
 
 [![Latest release](https://img.shields.io/github/v/release/david-crabtree/late-edition?label=download)](https://github.com/david-crabtree/late-edition/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/david-crabtree/late-edition/total)](https://github.com/david-crabtree/late-edition/releases)
-[![Licence](https://img.shields.io/badge/licence-Apache--2.0%20WITH%20Commons--Clause-blue)](LICENSE)
+[![Licence](https://img.shields.io/badge/licence-AGPL--3.0-blue)](LICENSE)
 [![Discord](https://img.shields.io/badge/discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/kmr8wqKJJj)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/david-crabtree)
 
@@ -30,8 +30,7 @@ there is a newer version — the
 | **macOS** | `.dmg`, Intel and Apple Silicon |
 | **Linux** | AppImage or `.deb` |
 
-Nothing is code-signed. Free signing programmes are for OSI-approved licences and this one
-isn't, so here is exactly what you will see:
+Nothing is code-signed yet, so here is exactly what you will see:
 
 - **Windows** shows a blue "Windows protected your PC" panel. Click **More info**, then
   **Run anyway**. On Windows 11, Smart App Control may block it outright rather than warn.
@@ -196,16 +195,27 @@ David Crabtree, ever.
 
 ## Licence
 
-Late Edition is free to use, at home or at work, for any purpose. You can read the code,
-change it and share your changes. The one thing you can't do is sell it: no charging for the
-software, no hosting it as a paid service, no paid products built on top of it. The name and
-the characters belong to David Crabtree, so forks need their own name. Full terms in the
-[LICENSE](LICENSE) file.
+Late Edition is free software under the **GNU Affero General Public License, version 3**.
+Use it at home or at work, for any purpose. Read the code, change it, share your changes.
+Full terms in the [LICENSE](LICENSE) file.
 
-Apache License 2.0 with the Commons Clause. That makes it **source-available, not open
-source** — the OSI definition doesn't allow a restriction on who may use software or for
-what, and forbidding sale is exactly that. A deliberate choice, and it costs the free code
-signing. See [`docs/decisions.md`](docs/decisions.md).
+Two things follow from that licence and the trademark notice, and they are the point:
+
+- **If you distribute it, or run it for other people as a service, you must hand them the
+  complete source of what you are running**, under the same licence. There is no version
+  of Late Edition you can sell that the buyer cannot then download for free.
+- **The name and the characters belong to David Crabtree.** A fork is welcome and must be
+  somebody else's newspaper, with somebody else's name on the masthead. See [NOTICE](NOTICE).
+
+It was Apache 2.0 with the Commons Clause until 13 September 2026. Why it changed is in
+[`docs/decisions.md`](docs/decisions.md).
+
+## Code signing policy
+
+Only artefacts built by this repository's [release workflow](.github/workflows/release.yml),
+from a tagged commit on `main`, are ever submitted for signing. David Crabtree is the sole
+author, the reviewer of every outside contribution, and the approver of every signing
+request. Two-factor authentication is required on every account with write access.
 
 ## Community and support
 

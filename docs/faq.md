@@ -7,22 +7,23 @@
 Yes. Use it anywhere, for anything, including commercially. No licence key, no seat count,
 no "contact us for enterprise".
 
-The one thing you may not do is **sell it**: no charging for the software, no hosting it as
-a paid service, no paid product built on top of it. Using it to do your job is not selling
-it. Neither is putting it on every machine in your company.
+Using it to do your job is not distributing it. Neither is putting it on every machine in
+your company.
 
 ### Can I sell it, or host it for other people?
 
-No. That is the entire point of the Commons Clause sitting on top of the Apache licence.
+You can try, and the licence will make it pointless. It is the GNU Affero General Public
+License: anyone you give a copy to, or let use over a network, is entitled to the complete
+source of exactly what you gave them, under the same terms. So whatever you sell, your
+customer can download for free the next day. And it cannot be called Late Edition or use
+the characters, because those are trademarks that the licence does not grant. Rebrand it,
+publish your source, and sell that if you can find a buyer.
 
 ### Is it open source?
 
-**No, and it is worth being straight about that.** It is *source-available*. All the code is
-there, you can read it, change it and share your changes, but the Open Source Initiative's
-definition doesn't allow a restriction on who may use software or for what, and forbidding
-sale is exactly such a restriction.
-
-That distinction costs something real, which is why the next question exists.
+Yes. AGPL-3.0 is an OSI-approved licence. It was Apache 2.0 with the Commons Clause until
+13 September 2026, which was source-available rather than open source, and the switch is
+recorded in [`decisions.md`](decisions.md).
 
 ### What does it cost to run?
 
@@ -44,11 +45,9 @@ credits, and that is all it will ever buy.
 
 ### Why isn't it signed? Windows is shouting at me.
 
-Because the licence rules out every free signing programme. They are all for OSI-approved
-open source, and forbidding sale disqualifies this. A paid certificate is around £45 a year,
-and shipping unsigned was chosen over either paying that or dropping the no-selling clause.
-
-So Windows shows a blue "Windows protected your PC" panel. Click **More info**, then **Run
+Because it is new. Windows builds are unsigned until a certificate is in place; the
+[code signing policy](../README.md#code-signing-policy) says how that will work. Until then,
+Windows shows a blue "Windows protected your PC" panel. Click **More info**, then **Run
 anyway**. On Windows 11, Smart App Control may block it outright rather than warn, in which
 case building from source is the way round it.
 
